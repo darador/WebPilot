@@ -1,10 +1,21 @@
 import { NextResponse } from 'next/server';
 import { getLolaSearchHistory } from '@/services/lola.service';
+import { createClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
   try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Sesión no iniciada.' },
+        { status: 401 }
+      );
+    }
+
     const { searchParams } = new URL(req.url);
     const limit = Number(searchParams.get('limit')) || 10;
     const history = await getLolaSearchHistory(limit);

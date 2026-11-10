@@ -10,6 +10,13 @@ export async function POST(req: Request) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Sesión no iniciada. Por favor iniciá sesión para operar a Lola.' },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json();
     const { candidateIds } = body;
 

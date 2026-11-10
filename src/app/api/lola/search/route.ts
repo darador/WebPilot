@@ -6,6 +6,17 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
+    // 1. Verificación básica de sesión para Daro y Julieta
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Sesión no iniciada. Por favor iniciá sesión para operar a Lola.' },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json();
     const { industry, city, state_province, country, max_results } = body;
 
@@ -24,17 +35,8 @@ export async function POST(req: Request) {
       max_results: Math.min(Math.max(Number(max_results) || 20, 1), 20),
     };
 
-    let userId: string | null = null;
-    try {
-      const supabase = await createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      userId = user?.id || null;
-    } catch {
-      userId = null;
-    }
-
     // Ejecuta Etapa 1: Descubrimiento con Google Places API (New) sin costo de Contact Data
-    const result = await runLolaDiscovery(params, userId);
+    const result = await runLolaDiscovery(params, user.id);
 
     return NextResponse.json(result);
   } catch (error: any) {

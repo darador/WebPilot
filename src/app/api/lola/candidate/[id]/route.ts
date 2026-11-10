@@ -13,6 +13,13 @@ export async function PATCH(
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Sesión no iniciada. Por favor iniciá sesión para operar a Lola.' },
+        { status: 401 }
+      );
+    }
+
     const candidateId = params.id;
     const body = await req.json();
 

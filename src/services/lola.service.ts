@@ -160,7 +160,24 @@ export async function investigateWebsite(url: string | null | undefined): Promis
       };
     }
 
-    const html = await res.text();
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('text/html') && !contentType.includes('text/plain') && contentType !== '') {
+      return {
+        has_website: true,
+        has_whatsapp: false,
+        has_forms: false,
+        is_mobile_friendly: false,
+        site_title: null,
+        site_description: null,
+        email: null,
+        services_detected: [],
+        notes: `Sitio web accesible (${contentType}).`,
+        verified_status: 'ACCESIBLE',
+      };
+    }
+
+    const rawText = await res.text();
+    const html = rawText.slice(0, 250000);
 
     // Extracción de título
     const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
