@@ -1,4 +1,4 @@
-# WebPilot AI — Fase 1: Fundación del Sistema
+# WebPilot AI — Agencia Digital Automatizada
 
 Plataforma interna para gestionar una agencia de desarrollo web automatizada mediante inteligencia artificial.
 
@@ -25,6 +25,10 @@ Crear el archivo `.env.local` en la raíz del proyecto tomando como plantilla `.
 NEXT_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=tu-clave-anonima-publica
 SUPABASE_SERVICE_ROLE_KEY=tu-clave-service-role-privada # Opcional
+
+# Google Places API (New) Key (para el agente de prospección Lola)
+# Si no está configurada, Lola utiliza el motor local de alta fidelidad como fallback automático.
+GOOGLE_MAPS_API_KEY=tu-clave-de-google-places
 ```
 
 > **Importante**: No expongas la clave `SUPABASE_SERVICE_ROLE_KEY` en el cliente. La aplicación utiliza exclusivamente `NEXT_PUBLIC_SUPABASE_ANON_KEY` para clientes browser y SSR bajo políticas de seguridad RLS.
@@ -33,43 +37,39 @@ SUPABASE_SERVICE_ROLE_KEY=tu-clave-service-role-privada # Opcional
 
 ## 3. Base de Datos y Migraciones SQL
 
-El script de migración se encuentra en:
-`supabase/migrations/20261110000001_initial_schema.sql`
+Los scripts de migración se encuentran en `supabase/migrations/`:
+1. `20261110000001_initial_schema.sql` (Esquema relacional base, triggers y RLS inicial).
+2. `20261110000002_fix_rls_policies.sql` (Permisos permisivos para acceso de equipo y operaciones de agencia).
+3. `20261110000003_lola_agent.sql` (Tablas para el agente Lola: `lola_searches` y `lola_candidates`).
 
-Contiene:
-1. **Tipos Enumerados**:
-   - `crm_stage`: `NUEVO`, `AUDITADO`, `SELECCIONADO`, `CONTACTADO`, `RESPONDIÓ`, `NEGOCIACIÓN`, `GANADO`, `PERDIDO`.
-   - `activity_type`: `CAMBIO_ESTADO`, `LLAMADA`, `EMAIL`, `REUNION`, `NOTA`, `IMPORTACION`.
-   - `audit_status`: `PENDIENTE`, `EN_PROCESO`, `COMPLETADO`, `FALLIDO`.
-   - `issue_severity`: `CRITICO`, `ALTO`, `MEDIO`, `BAJO`, `INFO`.
-   - `proposal_status`: `BORRADOR`, `ENVIADO`, `ACEPTADO`, `RECHAZADO`.
-   - `project_status`: `PLANIFICACION`, `EN_DESARROLLO`, `REVISION`, `ENTREGADO`, `CANCELADO`.
-2. **Tablas Relacionales**:
-   - `businesses`
-   - `contacts`
-   - `audits`
-   - `audit_issues`
-   - `opportunities`
-   - `proposals`
-   - `sales`
-   - `projects`
-   - `activities`
-3. **Triggers Automáticos**:
-   - `trigger_businesses_updated_at`: actualiza la columna `updated_at` en cada modificación.
-   - `trigger_business_stage_change`: audita de forma nativa en la tabla `activities` cada cambio de estado comercial en `businesses` con el estado anterior y el nuevo.
-4. **Políticas RLS**:
-   - Acceso autenticado protegido para todas las operaciones.
-
-Para ejecutar la migración en Supabase:
+### Para ejecutar las migraciones en Supabase:
 1. Dirigirse al panel de Supabase > **SQL Editor**.
-2. Copiar y pegar el contenido de `supabase/migrations/20261110000001_initial_schema.sql`.
+2. Copiar y pegar el contenido de los archivos SQL de migración en orden.
 3. Hacer clic en **Run**.
 
 ---
 
-## 4. Módulos Desarrollados en Fase 1
+## 4. Módulos Desarrollados
 
-### 4.1 Dashboard Operativo
+### 4.1 Nuestro Equipo Digital (`/team`)
+Presentación de los 6 asistentes virtuales de WebPilot AI diseñados para el equipo de Daro y Julieta:
+- **LOLA** — La cazadora de negocios (Prospección | Operativa).
+- **TITO** — El inspector (Auditoría técnica web | Próximamente Fase 2B).
+- **VERA** — La estratega (Análisis comercial y oportunidades | Próximamente).
+- **BRUNO** — El creativo (Diseño y construcción de sitios | Próximamente).
+- **CATA** — La comercial (Seguimiento y propuestas | Próximamente).
+- **RAMÓN** — Control de calidad (Revisión antes de entrega | Próximamente).
+
+Avatares 3D ilustrados almacenados localmente en `/public/agents/*.svg`.
+
+### 4.2 Lola — Buscadora de Negocios (`/agents/lola`)
+Primer agente real operativo de WebPilot AI:
+- **Búsqueda parametrizada**: Rubro, Localidad, Provincia, País, Cantidad máxima de resultados y Filtros web (Todos, Con web, Sin web).
+- **Motor de prospección híbrido**: Conexión nativa con **Google Places API (New)** con fallback inteligente para operar de inmediato sin bloquear al usuario.
+- **Investigador de sitios web seguro (SSRF-Protected)**: Validador de IPs privadas y metadatos cloud, detección de WhatsApp, formularios de contacto, etiquetas de responsividad móvil y diagnóstico preliminar en español argentino.
+- **Tabla de candidatos y aprobación**: Separación entre candidatos de investigación y el directorio central. Incorporación al CRM en un clic con deduplicación por dominio, email o nombre.
+
+### 4.3 Dashboard Operativo (`/`)
 - Indicadores en tiempo real conectados a Supabase:
   - Total de negocios (`COUNT(*)`)
   - Negocios nuevos (`COUNT(*) WHERE status = 'NUEVO'`)
@@ -80,31 +80,19 @@ Para ejecutar la migración en Supabase:
 - Muestra cero en indicadores sin registros, sin datos ficticios.
 - Sección de actividad comercial reciente en vivo.
 
-### 4.2 Módulo de Negocios (CRUD Completo)
-- **Campos**: Nombre del negocio, rubro, localidad, provincia, país, sitio web, teléfono, email, fuente, estado comercial, observaciones y fecha de creación.
-- **Búsqueda y Filtros**: Búsqueda textual reactiva, filtro por rubro, localidad y estado comercial.
-- **Paginación y Ordenamiento**: Navegación por páginas y ordenamiento por fecha.
-- **Operaciones**: Modal para agregar negocio, modal de edición, eliminación con confirmación destructiva y vista de detalle integral por ID (`/prospects/[id]`).
+### 4.4 Módulo de Negocios (`/prospects`)
+- CRUD completo adaptado al español argentino natural.
+- Búsqueda textual reactiva y filtros por rubro, localidad y estado comercial.
+- Vista de detalle integral por ID (`/prospects/[id]`).
 
-### 4.3 Asistente de Importación CSV
-- Mapeo inteligente y flexible de columnas (español e inglés).
-- Detección de duplicados en doble nivel:
-  1. Contra la base de datos Supabase existente por email y por dominio web normalizado.
-  2. Dentro del propio archivo CSV.
-- Pestañas de previsualización: válidos, duplicados omitidos y errores de estructura.
-- **Confirmación explícita obligatoria** antes de insertar en base de datos.
-- Generador y descarga directa de plantilla CSV de ejemplo (`webpilot_negocios_ejemplo.csv`).
+### 4.5 Asistente de Importación CSV (`/prospects/import`)
+- Asistente guiado de 8 pasos.
+- Detección de duplicados en doble nivel (base de datos y archivo CSV).
+- Descarga de plantilla CSV de ejemplo.
 
-### 4.4 Tablero CRM y Actividades
+### 4.6 Tablero CRM Kanban (`/crm`)
 - Tablero visual organizado por las 8 etapas comerciales.
-- Cambio ágil de estados con flechas de avance/retroceso o selector rápido.
-- Modal para registro manual de actividades: **Llamadas telefónicas**, **Emails**, **Reuniones** y **Notas internas**.
-- Generación automática de actividad en cada cambio de etapa con trazabilidad completa.
-
-### 4.5 Seguridad & Autenticación
-- Supabase Auth integrado con pantalla de Login y Registro interno (`/login`).
-- Middleware de sesión para proteger todas las rutas privadas del dashboard.
-- Redirección automática de usuarios no autenticados.
+- Registro manual y automático de actividades con historial de trazabilidad.
 
 ---
 

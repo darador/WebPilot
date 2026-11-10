@@ -12,6 +12,8 @@ import {
   Sparkles,
   ChevronRight,
   ShieldCheck,
+  Bot,
+  Search,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
@@ -23,6 +25,18 @@ const NAV_ITEMS = [
     href: '/',
     icon: LayoutDashboard,
     badge: null,
+  },
+  {
+    label: 'Lola — Prospección',
+    href: '/agents/lola',
+    icon: Sparkles,
+    badge: 'Agente',
+  },
+  {
+    label: 'Nuestro equipo',
+    href: '/team',
+    icon: Bot,
+    badge: '6 IA',
   },
   {
     label: 'Negocios',

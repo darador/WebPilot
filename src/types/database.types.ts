@@ -144,3 +144,52 @@ export interface DashboardMetrics {
   wonClients: number;
   totalRevenue: number;
 }
+
+export interface LolaSearch {
+  id: string;
+  user_id: string | null;
+  industry: string;
+  city: string;
+  state_province: string | null;
+  country: string;
+  max_results: number;
+  web_filter: 'ALL' | 'WITH_WEB' | 'WITHOUT_WEB';
+  status: 'EN_PROCESO' | 'COMPLETADO' | 'ERROR';
+  total_found: number;
+  with_website: number;
+  without_website: number;
+  investigated_count: number;
+  approved_count: number;
+  source_used: string;
+  duration_ms: number;
+  error_message: string | null;
+  created_at: string;
+}
+
+export interface LolaCandidate {
+  id: string;
+  search_id: string;
+  place_id: string | null;
+  name: string;
+  industry: string | null;
+  city: string | null;
+  state_province: string | null;
+  country: string;
+  website: string | null;
+  phone: string | null;
+  email: string | null;
+  source: string;
+  url_origin: string | null;
+  has_website: boolean;
+  has_whatsapp: boolean;
+  has_forms: boolean;
+  is_mobile_friendly: boolean;
+  site_title: string | null;
+  site_description: string | null;
+  services_detected: string[];
+  notes: string | null;
+  verified_status: string;
+  import_status: 'PENDIENTE' | 'APROBADO' | 'DESCARTADO';
+  business_id: string | null;
+  created_at: string;
+}

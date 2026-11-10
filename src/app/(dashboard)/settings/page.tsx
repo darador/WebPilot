@@ -98,7 +98,7 @@ export default function SettingsPage() {
               <span className="text-slate-400">Políticas de Seguridad:</span>
               <span className="text-emerald-400 font-medium flex items-center gap-1">
                 <ShieldCheck className="h-4 w-4" />
-                Row Level Security (RLS) habilitado en 9 tablas
+                Row Level Security (RLS) habilitado en 11 tablas
               </span>
             </div>
 
@@ -115,23 +115,53 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        {/* Lola Agent & Google Places Configuration */}
+        <div className="rounded-xl border border-[#1a2336] bg-[#0c1220] p-6 shadow-xl">
+          <div className="flex items-center justify-between border-b border-[#172238] pb-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-950/60 border border-cyan-800/60 text-cyan-400">
+                <Key className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold text-white">Lola — Motor de Búsqueda y Google Places</h2>
+                <p className="text-xs text-slate-400">Configuración de fuentes de prospección comercial para Lola</p>
+              </div>
+            </div>
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-mono bg-cyan-950/50 text-cyan-300 border border-cyan-700/50">
+              Operativo (Híbrido)
+            </span>
+          </div>
+
+          <div className="mt-4 space-y-3 text-xs text-slate-300">
+            <p className="leading-relaxed">
+              Lola utiliza de forma prioritaria la API <strong>Google Places (New)</strong> para obtener negocios reales por rubro y localidad. Si la variable <code className="text-cyan-300 bg-slate-900 px-1 py-0.5 rounded">GOOGLE_MAPS_API_KEY</code> no está presente o se agota su cuota, Lola conmuta automáticamente al <strong>Motor Local WebPilot</strong> para no interrumpir el flujo de trabajo del equipo.
+            </p>
+            <div className="rounded-lg bg-[#080d18] p-3 border border-[#172238] space-y-1.5">
+              <div className="text-slate-400 text-[11px]">Variable de entorno recomendada en <code>.env.local</code>:</div>
+              <code className="text-cyan-400 font-mono text-xs block select-all">GOOGLE_MAPS_API_KEY=AIzaSy...tu_clave_de_google</code>
+            </div>
+          </div>
+        </div>
+
         {/* Tablas de Base de Datos */}
         <div className="rounded-xl border border-[#1a2336] bg-[#0c1220] p-6 shadow-xl">
-          <h3 className="text-sm font-semibold text-white mb-2">Esquema Relacional Inicial</h3>
+          <h3 className="text-sm font-semibold text-white mb-2">Esquema Relacional (Fases 1 y 2A)</h3>
           <p className="text-xs text-slate-400 mb-4">
-            Estructura creada para la Fase 1 con preparación para auditorías e IA:
+            Estructura operativa de WebPilot AI con soporte para el equipo de agentes digitales:
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
             {[
-              { name: 'businesses', desc: 'Prospectos y clientes comerciales' },
+              { name: 'businesses', desc: 'Negocios y clientes comerciales' },
               { name: 'contacts', desc: 'Personas de contacto por negocio' },
-              { name: 'audits', desc: 'Auditorías técnicas web' },
+              { name: 'lola_searches', desc: 'Historial de sesiones de búsqueda de Lola' },
+              { name: 'lola_candidates', desc: 'Candidatos investigados pendientes de aprobación' },
+              { name: 'audits', desc: 'Auditorías técnicas web (Tito)' },
               { name: 'audit_issues', desc: 'Problemas individuales detectados' },
-              { name: 'opportunities', desc: 'Negociaciones y valor estimado' },
+              { name: 'opportunities', desc: 'Negociaciones y valor estimado (Vera/Cata)' },
               { name: 'proposals', desc: 'Propuestas comerciales' },
               { name: 'sales', desc: 'Ventas y facturación cerrada' },
-              { name: 'projects', desc: 'Sitios web en desarrollo' },
+              { name: 'projects', desc: 'Sitios web en desarrollo (Bruno/Ramón)' },
               { name: 'activities', desc: 'Auditoría y trazabilidad comercial' },
             ].map((tbl) => (
               <div
