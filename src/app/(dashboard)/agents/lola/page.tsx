@@ -229,16 +229,16 @@ export default function LolaAgentPage() {
         <div className="absolute top-0 right-0 -mt-10 -mr-10 w-72 h-72 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="flex flex-col md:flex-row items-start md:items-center gap-6 relative z-10">
-          <div className="relative w-24 h-24 md:w-28 md:h-28 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-blue-600/30 border border-cyan-400/40 p-2 flex items-center justify-center shadow-lg shadow-cyan-500/10">
+          <div className="relative w-24 h-24 md:w-28 md:h-28 rounded-full overflow-hidden bg-gradient-to-br from-cyan-500/20 to-blue-600/30 border-2 border-cyan-400/60 shadow-lg shadow-cyan-500/20">
             <Image
-              src="/agents/lola.svg"
+              src="/avatars/lola.png"
               alt="Lola — Agente de Prospección"
-              width={100}
-              height={100}
-              className="w-full h-full object-contain"
+              width={112}
+              height={112}
+              className="w-full h-full object-cover"
               priority
             />
-            <span className="absolute -bottom-1.5 -right-1.5 flex h-4 w-4">
+            <span className="absolute bottom-1 right-1 flex h-4 w-4">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 border-2 border-slate-950"></span>
             </span>
@@ -527,13 +527,13 @@ export default function LolaAgentPage() {
 
                   {/* Respuestas de Lola */}
                   <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-cyan-500/20 border border-cyan-400/40 p-1 shrink-0">
+                    <div className="w-8 h-8 rounded-full overflow-hidden bg-cyan-500/20 border border-cyan-400/50 shrink-0">
                       <Image
-                        src="/agents/lola.svg"
+                        src="/avatars/lola.png"
                         alt="Lola"
-                        width={28}
-                        height={28}
-                        className="w-full h-full object-contain"
+                        width={32}
+                        height={32}
+                        className="w-full h-full object-cover"
                       />
                     </div>
                     <div className="space-y-2 flex-1">
