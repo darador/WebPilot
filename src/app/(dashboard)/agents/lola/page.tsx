@@ -141,12 +141,22 @@ export default function LolaAgentPage() {
       // Refrescar historial
       fetchHistory();
     } catch (err: any) {
+      const isMissingApiKey =
+        err?.message?.includes('GOOGLE_MAPS_API_KEY') ||
+        err?.message?.includes('clave de API') ||
+        err?.message?.includes('API key');
+
       setErrorMessage(err.message || 'Ocurrió un error inesperado');
       setConversation((prev) => ({
         userPrompt: prev?.userPrompt || userPrompt,
-        lolaReplies: [
-          `Uh, tuve un inconveniente buscando: ${err.message || 'error de conexión'}. Probá de vuelta en unos segundos.`,
-        ],
+        lolaReplies: isMissingApiKey
+          ? [
+              'Para buscar comercios reales necesito que esté configurada la variable GOOGLE_MAPS_API_KEY en el servidor (.env.local).',
+              'Una vez configurada tu clave de Google Places API (New), podré rastrear negocios reales al instante sin problemas.',
+            ]
+          : [
+              `Ocurrió un error al consultar Google Places API: ${err.message || 'error de conexión'}. Verificá tu clave y conexión.`,
+            ],
       }));
     } finally {
       setIsSearching(false);
@@ -706,6 +716,14 @@ export default function LolaAgentPage() {
                       <td className="p-4">
                         <div className="font-semibold text-white text-sm">{c.name}</div>
                         <div className="text-[11px] text-cyan-400 mt-0.5">{c.industry}</div>
+                        {c.place_id && (
+                          <div className="text-[10px] font-mono text-slate-500 mt-1 flex items-center gap-1">
+                            <span className="text-slate-600">ID:</span>
+                            <span className="truncate max-w-[140px]" title={c.place_id}>
+                              {c.place_id}
+                            </span>
+                          </div>
+                        )}
                       </td>
 
                       <td className="p-4 space-y-1">
@@ -724,15 +742,24 @@ export default function LolaAgentPage() {
                       </td>
 
                       <td className="p-4 space-y-1.5">
-                        {c.has_website && c.website ? (
+                        {c.verified_status === 'SIN_SITIO_WEB' || !c.website ? (
+                          <span className="inline-flex items-center gap-1 text-amber-400 bg-amber-950/40 px-2.5 py-1 rounded border border-amber-800/40 text-[11px] font-medium">
+                            <AlertCircle className="w-3 h-3 shrink-0" /> Sin sitio web informado
+                          </span>
+                        ) : c.verified_status === 'ACCESIBLE' ? (
                           <>
+                            <div className="flex items-center gap-1.5">
+                              <span className="inline-flex items-center gap-1 text-emerald-400 bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-800/50 text-[10px] font-semibold">
+                                <CheckCircle2 className="w-3 h-3 shrink-0" /> Sitio web accesible
+                              </span>
+                            </div>
                             <a
                               href={c.website}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex items-center gap-1 text-cyan-400 hover:underline font-medium"
+                              className="inline-flex items-center gap-1 text-cyan-400 hover:underline font-medium text-[11px]"
                             >
-                              <Globe className="w-3.5 h-3.5 shrink-0" />
+                              <Globe className="w-3 h-3 shrink-0" />
                               <span className="truncate max-w-[180px]">
                                 {c.website.replace(/^https?:\/\//, '')}
                               </span>
@@ -756,9 +783,25 @@ export default function LolaAgentPage() {
                             </div>
                           </>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-amber-400 bg-amber-950/40 px-2 py-0.5 rounded border border-amber-800/40 text-[11px]">
-                            <AlertCircle className="w-3 h-3" /> Sin sitio web
-                          </span>
+                          <>
+                            <div className="flex items-center gap-1.5">
+                              <span className="inline-flex items-center gap-1 text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-700 text-[10px] font-medium">
+                                <AlertCircle className="w-3 h-3 shrink-0 text-slate-500" /> No se pudo verificar
+                              </span>
+                            </div>
+                            <a
+                              href={c.website}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 text-slate-400 hover:text-slate-200 hover:underline text-[11px]"
+                            >
+                              <Globe className="w-3 h-3 shrink-0" />
+                              <span className="truncate max-w-[180px]">
+                                {c.website.replace(/^https?:\/\//, '')}
+                              </span>
+                              <ExternalLink className="w-3 h-3 shrink-0" />
+                            </a>
+                          </>
                         )}
                       </td>
 

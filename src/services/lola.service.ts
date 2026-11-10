@@ -11,6 +11,8 @@ export interface LolaSearchParams {
   web_filter?: 'ALL' | 'WITH_WEB' | 'WITHOUT_WEB';
 }
 
+export type WebVerifiedStatus = 'SIN_SITIO_WEB' | 'ACCESIBLE' | 'NO_VERIFICADO';
+
 export interface WebsiteInvestigationResult {
   has_website: boolean;
   has_whatsapp: boolean;
@@ -20,7 +22,7 @@ export interface WebsiteInvestigationResult {
   site_description: string | null;
   services_detected: string[];
   notes: string;
-  verified_status: string;
+  verified_status: WebVerifiedStatus;
 }
 
 export interface RawPlaceResult {
@@ -29,7 +31,6 @@ export interface RawPlaceResult {
   formatted_address?: string;
   phone?: string;
   website?: string;
-  types?: string[];
 }
 
 /**
@@ -88,6 +89,10 @@ function isSafeUrl(urlString: string): boolean {
 
 /**
  * Investigador de sitios web con protección SSRF y timeout estricto.
+ * Diferencia con precisión:
+ * - 'SIN_SITIO_WEB': Sin sitio web informado en Google Places.
+ * - 'ACCESIBLE': El sitio web responde correctamente (HTTP 200..399).
+ * - 'NO_VERIFICADO': No se pudo verificar (timeout, error de red o error HTTP).
  */
 export async function investigateWebsite(url: string | null | undefined): Promise<WebsiteInvestigationResult> {
   if (!url || !url.trim()) {
@@ -99,7 +104,7 @@ export async function investigateWebsite(url: string | null | undefined): Promis
       site_title: null,
       site_description: null,
       services_detected: [],
-      notes: 'No posee sitio web registrado. Oportunidad ideal para ofrecer presencia digital desde cero.',
+      notes: 'Sin sitio web informado en Google Places. Oportunidad ideal para ofrecer presencia digital desde cero.',
       verified_status: 'SIN_SITIO_WEB',
     };
   }
@@ -115,8 +120,8 @@ export async function investigateWebsite(url: string | null | undefined): Promis
       site_title: null,
       site_description: null,
       services_detected: [],
-      notes: 'URL descartada por políticas de seguridad interna (dominio o IP no pública).',
-      verified_status: 'URL_NO_SEGURA',
+      notes: 'No se pudo verificar el sitio web (URL no segura o dirección IP interna).',
+      verified_status: 'NO_VERIFICADO',
     };
   }
 
@@ -144,8 +149,8 @@ export async function investigateWebsite(url: string | null | undefined): Promis
         site_title: null,
         site_description: null,
         services_detected: [],
-        notes: `El sitio web respondió con código de error HTTP ${res.status}. Posible sitio caído o en mantenimiento.`,
-        verified_status: 'ERROR_HTTP',
+        notes: `No se pudo verificar el sitio web (Servidor respondió con código HTTP ${res.status}).`,
+        verified_status: 'NO_VERIFICADO',
       };
     }
 
@@ -180,19 +185,17 @@ export async function investigateWebsite(url: string | null | undefined): Promis
 
     // Construcción de notas diagnósticas de Lola
     const observations: string[] = [];
-    if (site_title) observations.push(`Título: "${site_title}"`);
+    if (site_title) observations.push(`Título: "${site_title}".`);
     if (!has_whatsapp) {
-      observations.push('No tiene botón directo de WhatsApp detectado (mejora comercial urgente).');
+      observations.push('Sin botón de WhatsApp directo visible (mejora comercial urgente).');
     } else {
       observations.push('Cuenta con enlace directo a WhatsApp.');
     }
     if (!is_mobile_friendly) {
-      observations.push('No parece estar optimizado para celulares (falta etiqueta viewport responsive).');
+      observations.push('No adaptado para dispositivos móviles (falta viewport responsive).');
     }
     if (has_forms) {
-      observations.push('Posee formulario de contacto.');
-    } else {
-      observations.push('Sin formulario de contacto web visible.');
+      observations.push('Tiene formulario de contacto.');
     }
 
     return {
@@ -203,8 +206,8 @@ export async function investigateWebsite(url: string | null | undefined): Promis
       site_title,
       site_description,
       services_detected,
-      notes: observations.join(' ') || 'Sitio web activo analizado por Lola.',
-      verified_status: 'WEB_ACTIVA',
+      notes: observations.join(' ') || 'Sitio web accesible y verificado.',
+      verified_status: 'ACCESIBLE',
     };
   } catch (err: any) {
     clearTimeout(timeoutId);
@@ -218,15 +221,16 @@ export async function investigateWebsite(url: string | null | undefined): Promis
       site_description: null,
       services_detected: [],
       notes: isTimeout
-        ? 'El sitio web tardó más de 6 segundos en responder (servidor lento o no disponible).'
-        : `No se pudo conectar al sitio web (${err?.message || 'Error de red'}).`,
-      verified_status: isTimeout ? 'TIMEOUT' : 'ERROR_CONEXION',
+        ? 'No se pudo verificar el sitio web (Tiempo de espera agotado >6s).'
+        : `No se pudo verificar el sitio web (${err?.message || 'Error de conexión'}).`,
+      verified_status: 'NO_VERIFICADO',
     };
   }
 }
 
 /**
- * Búsqueda con Google Places API (New) o fallback estructurado realista.
+ * Consulta a Google Places API (New) vía Text Search con FieldMask.
+ * Sin simulación ni datos inventados: si falla o no está configurada, informa el error real.
  */
 export async function searchPlacesEngine(params: LolaSearchParams): Promise<{
   places: RawPlaceResult[];
@@ -234,106 +238,58 @@ export async function searchPlacesEngine(params: LolaSearchParams): Promise<{
 }> {
   const apiKey = process.env.GOOGLE_MAPS_API_KEY;
 
-  if (apiKey && apiKey.trim().length > 10) {
-    try {
-      const textQuery = `${params.industry} en ${params.city}, ${params.state_province || ''} ${params.country || 'Argentina'}`.trim();
-      const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Goog-Api-Key': apiKey.trim(),
-          'X-Goog-FieldMask':
-            'places.id,places.displayName,places.websiteUri,places.nationalPhoneNumber,places.formattedAddress,places.types',
-        },
-        body: JSON.stringify({
-          textQuery,
-          maxResultCount: Math.min(params.max_results || 10, 20),
-          languageCode: 'es',
-        }),
-      });
-
-      if (res.ok) {
-        const json = await res.json();
-        const rawList = json.places || [];
-        const places: RawPlaceResult[] = rawList.map((p: any) => ({
-          place_id: p.id || `google_${Math.random().toString(36).substring(7)}`,
-          name: p.displayName?.text || 'Negocio sin nombre',
-          formatted_address: p.formattedAddress || `${params.city}, Argentina`,
-          phone: p.nationalPhoneNumber || null,
-          website: p.websiteUri || null,
-          types: p.types || [],
-        }));
-
-        if (places.length > 0) {
-          return {
-            places,
-            sourceUsed: 'Google Places API (New)',
-          };
-        }
-      } else {
-        console.warn('Google Places API respondió con error:', await res.text());
-      }
-    } catch (e) {
-      console.warn('Fallo en conexión con Google Places API, recurriendo a motor local:', e);
-    }
+  if (!apiKey || !apiKey.trim()) {
+    throw new Error(
+      'Falta configurar la variable de entorno GOOGLE_MAPS_API_KEY en .env.local. ' +
+      'Para buscar comercios reales con Lola mediante Google Places API (New), ingresá tu clave de API en la configuración.'
+    );
   }
 
-  // Fallback Inteligente / Simulación con datos de alta fidelidad para prospección comercial en Argentina
-  const places = generateRealisticFallbackPlaces(params);
+  const textQuery = `${params.industry} en ${params.city}, ${params.state_province || ''} ${params.country || 'Argentina'}`.trim();
+  const maxResultCount = Math.min(Math.max(params.max_results || 10, 1), 20);
+
+  // Field Mask estricto con los campos permitidos y necesarios:
+  // places.id, places.displayName, places.formattedAddress, places.nationalPhoneNumber, places.websiteUri
+  const fieldMask = 'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri';
+
+  const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Goog-Api-Key': apiKey.trim(),
+      'X-Goog-FieldMask': fieldMask,
+    },
+    body: JSON.stringify({
+      textQuery,
+      maxResultCount,
+      languageCode: 'es',
+    }),
+  });
+
+  if (!res.ok) {
+    const errorBody = await res.json().catch(() => null);
+    const errorMsg =
+      errorBody?.error?.message ||
+      `HTTP ${res.status}: ${res.statusText || 'Error en la respuesta de Google Places'}`;
+
+    throw new Error(`Google Places API respondió con error: ${errorMsg}`);
+  }
+
+  const json = await res.json();
+  const rawPlaces = json.places || [];
+
+  const places: RawPlaceResult[] = rawPlaces.map((p: any) => ({
+    place_id: p.id,
+    name: p.displayName?.text || 'Comercio sin nombre informado',
+    formatted_address: p.formattedAddress || `${params.city}, Argentina`,
+    phone: p.nationalPhoneNumber || null,
+    website: p.websiteUri || null,
+  }));
+
   return {
     places,
-    sourceUsed: apiKey ? 'Google Places Fallback (Cuota o clave inválida)' : 'Motor de Prospección Local WebPilot',
+    sourceUsed: 'Google Places API (New)',
   };
-}
-
-/**
- * Generador de negocios realistas para pruebas inmediatas cuando no hay API key configurada.
- */
-function generateRealisticFallbackPlaces(params: LolaSearchParams): RawPlaceResult[] {
-  const count = params.max_results || 10;
-  const ind = params.industry.trim();
-  const city = params.city.trim();
-
-  // Plantillas de nombres comerciales verosímiles por rubro
-  const nameTemplates = [
-    `${ind} ${city}`,
-    `Centro Integral de ${ind}`,
-    `${ind} del Sur`,
-    `${ind} Central`,
-    `${ind} San Martín`,
-    `Grupo ${ind} Express`,
-    `Servicios de ${ind} Profesional`,
-    `${ind} y Asociados`,
-    `${ind} Moderna`,
-    `Soluciones de ${ind} ${city}`,
-    `${ind} Quilmes Oeste`,
-    `Maestros en ${ind}`,
-    `Distribuidora & ${ind} Federal`,
-    `${ind} Platense`,
-  ];
-
-  const results: RawPlaceResult[] = [];
-
-  for (let i = 0; i < count; i++) {
-    const rawName = nameTemplates[i % nameTemplates.length] + (i > 10 ? ` ${i + 1}` : '');
-    const hasWeb = params.web_filter === 'WITHOUT_WEB' ? false : params.web_filter === 'WITH_WEB' ? true : i % 3 !== 0;
-
-    const slug = rawName
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, '')
-      .slice(0, 18);
-
-    results.push({
-      place_id: `wp_fallback_${slug}_${i}`,
-      name: rawName,
-      formatted_address: `Av. Principal ${100 + i * 45}, ${city}, Argentina`,
-      phone: `+54 11 ${4000 + i * 37}-${1000 + i * 19}`,
-      website: hasWeb ? `https://${slug}.com.ar` : undefined,
-      types: [ind.toLowerCase(), 'point_of_interest'],
-    });
-  }
-
-  return results;
 }
 
 /**
@@ -367,21 +323,21 @@ export async function runLolaProspecting(
         without_website: 0,
         investigated_count: 0,
         approved_count: 0,
-        source_used: 'Iniciando búsqueda...',
+        source_used: 'Google Places API (New)',
       },
     ])
     .select()
     .single();
 
   if (searchError || !searchSession) {
-    throw new Error(`Error al iniciar sesión de Lola: ${searchError?.message}`);
+    throw new Error(`Error al registrar sesión de búsqueda: ${searchError?.message}`);
   }
 
   try {
-    // 2. Ejecutar búsqueda de lugares
+    // 2. Ejecutar búsqueda real en Google Places API (New)
     const { places, sourceUsed } = await searchPlacesEngine(params);
 
-    // Filtrar según web_filter
+    // Filtrar según web_filter si el usuario lo especificó
     let filteredPlaces = places;
     if (params.web_filter === 'WITH_WEB') {
       filteredPlaces = places.filter((p) => Boolean(p.website));
@@ -389,7 +345,7 @@ export async function runLolaProspecting(
       filteredPlaces = places.filter((p) => !p.website);
     }
 
-    // 3. Investigar presencia web en paralelo para cada candidato
+    // 3. Investigar presencia web de cada candidato real
     const candidateInserts: any[] = [];
     let withWebCount = 0;
     let withoutWebCount = 0;
@@ -401,7 +357,7 @@ export async function runLolaProspecting(
         withoutWebCount++;
       }
 
-      // Investigar sitio web
+      // Comprobar si el sitio responde
       const investigation = await investigateWebsite(place.website);
 
       candidateInserts.push({
@@ -415,9 +371,9 @@ export async function runLolaProspecting(
         website: place.website || null,
         phone: place.phone || null,
         email: null,
-        source: 'Lola AI',
+        source: 'Google Places API (New)',
         url_origin: place.website || null,
-        has_website: Boolean(place.website),
+        has_website: investigation.has_website,
         has_whatsapp: investigation.has_whatsapp,
         has_forms: investigation.has_forms,
         is_mobile_friendly: investigation.is_mobile_friendly,
@@ -440,6 +396,7 @@ export async function runLolaProspecting(
 
       if (candError) {
         console.error('Error insertando candidatos:', candError);
+        throw new Error(`Error guardando candidatos encontrados: ${candError.message}`);
       } else {
         insertedCandidates = (saved as LolaCandidate[]) || [];
       }
@@ -471,7 +428,7 @@ export async function runLolaProspecting(
       .from('lola_searches')
       .update({
         status: 'ERROR',
-        error_message: error?.message || 'Error inesperado durante la prospección',
+        error_message: error?.message || 'Error durante la consulta a Google Places API',
       })
       .eq('id', searchSession.id);
 
@@ -541,7 +498,7 @@ export async function approveLolaCandidates(
       continue;
     }
 
-    // Insertar en businesses
+    // Insertar en businesses con atribución clara
     const { data: newBusiness, error: insertError } = await supabase
       .from('businesses')
       .insert([
@@ -555,9 +512,9 @@ export async function approveLolaCandidates(
           website: cand.website || null,
           phone: cand.phone || null,
           email: cand.email || null,
-          source: 'Lola AI',
+          source: 'Google Places API (New)',
           status: 'NUEVO',
-          notes: cand.notes || 'Prospectado e investigado por Lola AI.',
+          notes: cand.notes ? `[Google Place ID: ${cand.place_id || 'N/A'}] ${cand.notes}` : `Prospectado por Lola con Google Places.`,
         },
       ])
       .select()
@@ -575,13 +532,13 @@ export async function approveLolaCandidates(
     if (candEmail) existingEmails.add(candEmail);
     existingNames.add(candName);
 
-    // Registrar actividad en CRM
+    // Registrar actividad en CRM con trazabilidad
     await supabase.from('activities').insert([
       {
         business_id: newBusiness.id,
         user_id: userId || null,
         type: 'NOTA',
-        description: `Negocio incorporado al directorio desde Lola (Prospección de ${cand.industry || 'negocios'} en ${cand.city || 'Argentina'}).`,
+        description: `Negocio incorporado desde Google Places API (New) por Lola. Place ID: ${cand.place_id || 'N/A'}.`,
         from_stage: null,
         to_stage: 'NUEVO',
       },
@@ -619,7 +576,7 @@ export async function approveLolaCandidates(
 }
 
 /**
- * Obtiene el historial de búsquedas de Lola con sus candidatos.
+ * Obtiene el historial de búsquedas de Lola.
  */
 export async function getLolaSearchHistory(limit = 10): Promise<LolaSearch[]> {
   const supabase = createClient();
