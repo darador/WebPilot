@@ -206,6 +206,16 @@ export async function importValidRows(
 
   const supabase = createClient();
 
+  let resolvedUserId = userId;
+  if (!resolvedUserId) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      resolvedUserId = user?.id || null;
+    } catch {
+      resolvedUserId = null;
+    }
+  }
+
   const recordsToInsert = rows.map((r) => ({
     name: r.name,
     industry: r.industry || null,
@@ -218,7 +228,7 @@ export async function importValidRows(
     source: r.source || 'CSV Import',
     status: r.status || 'NUEVO',
     notes: r.notes || null,
-    user_id: userId || null,
+    user_id: resolvedUserId,
   }));
 
   const { data, error } = await supabase
@@ -235,7 +245,7 @@ export async function importValidRows(
   if (data && data.length > 0) {
     const activitiesToInsert = data.map((b) => ({
       business_id: b.id,
-      user_id: userId || null,
+      user_id: resolvedUserId,
       type: 'IMPORTACION' as const,
       description: `Prospecto importado mediante carga masiva CSV (${rows.length} registros)`,
       from_stage: null,

@@ -311,66 +311,75 @@ ALTER TABLE sales ENABLE ROW LEVEL SECURITY;
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE activities ENABLE ROW LEVEL SECURITY;
 
--- Políticas para usuarios autenticados (modelo simple, uso interno)
+-- Políticas para acceso interno (uso exclusivo de la agencia)
 DROP POLICY IF EXISTS "Authenticated users have full access to businesses" ON businesses;
-CREATE POLICY "Authenticated users have full access to businesses"
+DROP POLICY IF EXISTS "Allow all access to businesses" ON businesses;
+CREATE POLICY "Allow all access to businesses"
     ON businesses FOR ALL
-    TO authenticated
+    TO anon, authenticated
     USING (true)
     WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Authenticated users have full access to contacts" ON contacts;
-CREATE POLICY "Authenticated users have full access to contacts"
+DROP POLICY IF EXISTS "Allow all access to contacts" ON contacts;
+CREATE POLICY "Allow all access to contacts"
     ON contacts FOR ALL
-    TO authenticated
+    TO anon, authenticated
     USING (true)
     WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Authenticated users have full access to audits" ON audits;
-CREATE POLICY "Authenticated users have full access to audits"
+DROP POLICY IF EXISTS "Allow all access to audits" ON audits;
+CREATE POLICY "Allow all access to audits"
     ON audits FOR ALL
-    TO authenticated
+    TO anon, authenticated
     USING (true)
     WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Authenticated users have full access to audit_issues" ON audit_issues;
-CREATE POLICY "Authenticated users have full access to audit_issues"
+DROP POLICY IF EXISTS "Allow all access to audit_issues" ON audit_issues;
+CREATE POLICY "Allow all access to audit_issues"
     ON audit_issues FOR ALL
-    TO authenticated
+    TO anon, authenticated
     USING (true)
     WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Authenticated users have full access to opportunities" ON opportunities;
-CREATE POLICY "Authenticated users have full access to opportunities"
+DROP POLICY IF EXISTS "Allow all access to opportunities" ON opportunities;
+CREATE POLICY "Allow all access to opportunities"
     ON opportunities FOR ALL
-    TO authenticated
+    TO anon, authenticated
     USING (true)
     WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Authenticated users have full access to proposals" ON proposals;
-CREATE POLICY "Authenticated users have full access to proposals"
+DROP POLICY IF EXISTS "Allow all access to proposals" ON proposals;
+CREATE POLICY "Allow all access to proposals"
     ON proposals FOR ALL
-    TO authenticated
+    TO anon, authenticated
     USING (true)
     WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Authenticated users have full access to sales" ON sales;
-CREATE POLICY "Authenticated users have full access to sales"
+DROP POLICY IF EXISTS "Allow all access to sales" ON sales;
+CREATE POLICY "Allow all access to sales"
     ON sales FOR ALL
-    TO authenticated
+    TO anon, authenticated
     USING (true)
     WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Authenticated users have full access to projects" ON projects;
-CREATE POLICY "Authenticated users have full access to projects"
+DROP POLICY IF EXISTS "Allow all access to projects" ON projects;
+CREATE POLICY "Allow all access to projects"
     ON projects FOR ALL
-    TO authenticated
+    TO anon, authenticated
     USING (true)
     WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Authenticated users have full access to activities" ON activities;
-CREATE POLICY "Authenticated users have full access to activities"
+DROP POLICY IF EXISTS "Allow all access to activities" ON activities;
+CREATE POLICY "Allow all access to activities"
     ON activities FOR ALL
-    TO authenticated
+    TO anon, authenticated
     USING (true)
     WITH CHECK (true);

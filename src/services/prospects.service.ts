@@ -123,6 +123,16 @@ export async function createProspect(
 ): Promise<Business> {
   const supabase = createClient();
 
+  let resolvedUserId = userId;
+  if (!resolvedUserId) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      resolvedUserId = user?.id || null;
+    } catch {
+      resolvedUserId = null;
+    }
+  }
+
   const payload: Partial<Business> = {
     name: values.name.trim(),
     industry: values.industry?.trim() || null,
@@ -135,7 +145,7 @@ export async function createProspect(
     source: values.source || 'Manual',
     status: values.status || 'NUEVO',
     notes: values.notes?.trim() || null,
-    user_id: userId || null,
+    user_id: resolvedUserId,
   };
 
   const { data, error } = await supabase
@@ -153,7 +163,7 @@ export async function createProspect(
   await supabase.from('activities').insert([
     {
       business_id: data.id,
-      user_id: userId || null,
+      user_id: resolvedUserId,
       type: 'NOTA',
       description: 'Prospecto dado de alta en la plataforma',
       from_stage: null,

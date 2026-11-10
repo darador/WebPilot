@@ -86,12 +86,22 @@ export async function logActivity(
 ): Promise<Activity> {
   const supabase = createClient();
 
+  let resolvedUserId = userId;
+  if (!resolvedUserId) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      resolvedUserId = user?.id || null;
+    } catch {
+      resolvedUserId = null;
+    }
+  }
+
   const { data, error } = await supabase
     .from('activities')
     .insert([
       {
         business_id: businessId,
-        user_id: userId || null,
+        user_id: resolvedUserId,
         type,
         description,
         from_stage: null,
