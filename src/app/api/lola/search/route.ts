@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
-import { runLolaProspecting, LolaSearchParams } from '@/services/lola.service';
+import { runLolaDiscovery, LolaSearchParams } from '@/services/lola.service';
 import { createClient } from '@/lib/supabase/server';
+
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { industry, city, state_province, country, max_results, web_filter } = body;
+    const { industry, city, state_province, country, max_results } = body;
 
     if (!industry || !industry.trim() || !city || !city.trim()) {
       return NextResponse.json(
@@ -19,8 +21,7 @@ export async function POST(req: Request) {
       city: city.trim(),
       state_province: state_province?.trim() || 'Buenos Aires',
       country: country?.trim() || 'Argentina',
-      max_results: Number(max_results) || 10,
-      web_filter: web_filter || 'ALL',
+      max_results: Math.min(Math.max(Number(max_results) || 20, 1), 20),
     };
 
     let userId: string | null = null;
@@ -32,13 +33,14 @@ export async function POST(req: Request) {
       userId = null;
     }
 
-    const result = await runLolaProspecting(params, userId);
+    // Ejecuta Etapa 1: Descubrimiento con Google Places API (New) sin costo de Contact Data
+    const result = await runLolaDiscovery(params, userId);
 
     return NextResponse.json(result);
   } catch (error: any) {
-    console.error('Error en /api/lola/search:', error);
+    console.error('Error en /api/lola/search (Etapa 1):', error);
     return NextResponse.json(
-      { error: error?.message || 'Error interno al procesar la prospección de Lola.' },
+      { error: error?.message || 'Error al ejecutar descubrimiento con Google Places API.' },
       { status: 500 }
     );
   }

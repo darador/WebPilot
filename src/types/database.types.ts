@@ -160,11 +160,14 @@ export interface LolaSearch {
   without_website: number;
   investigated_count: number;
   approved_count: number;
+  api_calls_count?: number;
   source_used: string;
   duration_ms: number;
   error_message: string | null;
   created_at: string;
 }
+
+export type LolaCandidateStatus = 'DESCUBIERTO' | 'INVESTIGADO' | 'APROBADO' | 'DESCARTADO' | 'PENDIENTE';
 
 export interface LolaCandidate {
   id: string;
@@ -175,6 +178,7 @@ export interface LolaCandidate {
   city: string | null;
   state_province: string | null;
   country: string;
+  address?: string | null;
   website: string | null;
   phone: string | null;
   email: string | null;
@@ -189,7 +193,9 @@ export interface LolaCandidate {
   services_detected: string[];
   notes: string | null;
   verified_status: string;
-  import_status: 'PENDIENTE' | 'APROBADO' | 'DESCARTADO';
+  import_status: LolaCandidateStatus;
+  manually_edited?: boolean;
+  investigated_at?: string | null;
   business_id: string | null;
   created_at: string;
 }

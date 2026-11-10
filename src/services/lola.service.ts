@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
 import { normalizeDomain, normalizeEmail } from '@/lib/utils';
-import { LolaSearch, LolaCandidate, Business } from '@/types/database.types';
+import { LolaSearch, LolaCandidate, Business, LolaCandidateStatus } from '@/types/database.types';
 
 export interface LolaSearchParams {
   industry: string;
@@ -8,10 +8,9 @@ export interface LolaSearchParams {
   state_province?: string;
   country?: string;
   max_results?: number;
-  web_filter?: 'ALL' | 'WITH_WEB' | 'WITHOUT_WEB';
 }
 
-export type WebVerifiedStatus = 'SIN_SITIO_WEB' | 'ACCESIBLE' | 'NO_VERIFICADO';
+export type WebVerifiedStatus = 'PENDIENTE' | 'SIN_SITIO_WEB' | 'ACCESIBLE' | 'NO_VERIFICADO';
 
 export interface WebsiteInvestigationResult {
   has_website: boolean;
@@ -20,17 +19,24 @@ export interface WebsiteInvestigationResult {
   is_mobile_friendly: boolean;
   site_title: string | null;
   site_description: string | null;
+  email: string | null;
   services_detected: string[];
   notes: string;
   verified_status: WebVerifiedStatus;
 }
 
-export interface RawPlaceResult {
+export interface RawDiscoveryPlace {
+  place_id: string;
+  name: string;
+  formatted_address: string;
+}
+
+export interface RawPlaceDetails {
   place_id: string;
   name: string;
   formatted_address?: string;
-  phone?: string;
-  website?: string;
+  phone?: string | null;
+  website?: string | null;
 }
 
 /**
@@ -88,11 +94,8 @@ function isSafeUrl(urlString: string): boolean {
 }
 
 /**
- * Investigador de sitios web con protección SSRF y timeout estricto.
- * Diferencia con precisión:
- * - 'SIN_SITIO_WEB': Sin sitio web informado en Google Places.
- * - 'ACCESIBLE': El sitio web responde correctamente (HTTP 200..399).
- * - 'NO_VERIFICADO': No se pudo verificar (timeout, error de red o error HTTP).
+ * Investigador de sitios web con protección SSRF y timeout estricto (6 segundos).
+ * Extrae WhatsApp, formularios, responsive, y busca emails en la página.
  */
 export async function investigateWebsite(url: string | null | undefined): Promise<WebsiteInvestigationResult> {
   if (!url || !url.trim()) {
@@ -103,8 +106,9 @@ export async function investigateWebsite(url: string | null | undefined): Promis
       is_mobile_friendly: false,
       site_title: null,
       site_description: null,
+      email: null,
       services_detected: [],
-      notes: 'Sin sitio web informado en Google Places. Oportunidad ideal para ofrecer presencia digital desde cero.',
+      notes: 'Sin sitio web informado en Google Places. Excelente oportunidad para ofrecer desarrollo web inicial.',
       verified_status: 'SIN_SITIO_WEB',
     };
   }
@@ -119,6 +123,7 @@ export async function investigateWebsite(url: string | null | undefined): Promis
       is_mobile_friendly: false,
       site_title: null,
       site_description: null,
+      email: null,
       services_detected: [],
       notes: 'No se pudo verificar el sitio web (URL no segura o dirección IP interna).',
       verified_status: 'NO_VERIFICADO',
@@ -148,6 +153,7 @@ export async function investigateWebsite(url: string | null | undefined): Promis
         is_mobile_friendly: false,
         site_title: null,
         site_description: null,
+        email: null,
         services_detected: [],
         notes: `No se pudo verificar el sitio web (Servidor respondió con código HTTP ${res.status}).`,
         verified_status: 'NO_VERIFICADO',
@@ -176,6 +182,23 @@ export async function investigateWebsite(url: string | null | undefined): Promis
     // Detección de viewport móvil
     const is_mobile_friendly = /<meta[^>]*name=["']viewport["']/i.test(html);
 
+    // Búsqueda de email en HTML
+    let detectedEmail: string | null = null;
+    const mailtoMatch = html.match(/mailto:([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
+    if (mailtoMatch) {
+      detectedEmail = mailtoMatch[1].toLowerCase();
+    } else {
+      const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g;
+      const allEmails = html.match(emailRegex);
+      if (allEmails && allEmails.length > 0) {
+        // Filtrar extensiones comunes de imágenes o assets
+        const valid = allEmails.find(
+          (em) => !em.endsWith('.png') && !em.endsWith('.jpg') && !em.endsWith('.webp')
+        );
+        if (valid) detectedEmail = valid.toLowerCase();
+      }
+    }
+
     // Detección de servicios clave
     const services_detected: string[] = [];
     if (/asesor|consult/i.test(html)) services_detected.push('Asesoramiento');
@@ -197,6 +220,9 @@ export async function investigateWebsite(url: string | null | undefined): Promis
     if (has_forms) {
       observations.push('Tiene formulario de contacto.');
     }
+    if (detectedEmail) {
+      observations.push(`Email detectado en web: ${detectedEmail}.`);
+    }
 
     return {
       has_website: true,
@@ -205,6 +231,7 @@ export async function investigateWebsite(url: string | null | undefined): Promis
       is_mobile_friendly,
       site_title,
       site_description,
+      email: detectedEmail,
       services_detected,
       notes: observations.join(' ') || 'Sitio web accesible y verificado.',
       verified_status: 'ACCESIBLE',
@@ -219,6 +246,7 @@ export async function investigateWebsite(url: string | null | undefined): Promis
       is_mobile_friendly: false,
       site_title: null,
       site_description: null,
+      email: null,
       services_detected: [],
       notes: isTimeout
         ? 'No se pudo verificar el sitio web (Tiempo de espera agotado >6s).'
@@ -228,13 +256,16 @@ export async function investigateWebsite(url: string | null | undefined): Promis
   }
 }
 
-/**
- * Consulta a Google Places API (New) vía Text Search con FieldMask.
- * Sin simulación ni datos inventados: si falla o no está configurada, informa el error real.
- */
-export async function searchPlacesEngine(params: LolaSearchParams): Promise<{
-  places: RawPlaceResult[];
-  sourceUsed: string;
+// ============================================================================
+// ETAPA 1 — DESCUBRIR (Text Search con FieldMask Basic/Essentials)
+// Optimización de costos: No pide teléfono ni sitio web en esta etapa.
+// ============================================================================
+export async function runLolaDiscovery(
+  params: LolaSearchParams,
+  userId?: string | null
+): Promise<{
+  search: LolaSearch;
+  candidates: LolaCandidate[];
 }> {
   const apiKey = process.env.GOOGLE_MAPS_API_KEY;
 
@@ -245,63 +276,6 @@ export async function searchPlacesEngine(params: LolaSearchParams): Promise<{
     );
   }
 
-  const textQuery = `${params.industry} en ${params.city}, ${params.state_province || ''} ${params.country || 'Argentina'}`.trim();
-  const maxResultCount = Math.min(Math.max(params.max_results || 10, 1), 20);
-
-  // Field Mask estricto con los campos permitidos y necesarios:
-  // places.id, places.displayName, places.formattedAddress, places.nationalPhoneNumber, places.websiteUri
-  const fieldMask = 'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri';
-
-  const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Goog-Api-Key': apiKey.trim(),
-      'X-Goog-FieldMask': fieldMask,
-    },
-    body: JSON.stringify({
-      textQuery,
-      maxResultCount,
-      languageCode: 'es',
-    }),
-  });
-
-  if (!res.ok) {
-    const errorBody = await res.json().catch(() => null);
-    const errorMsg =
-      errorBody?.error?.message ||
-      `HTTP ${res.status}: ${res.statusText || 'Error en la respuesta de Google Places'}`;
-
-    throw new Error(`Google Places API respondió con error: ${errorMsg}`);
-  }
-
-  const json = await res.json();
-  const rawPlaces = json.places || [];
-
-  const places: RawPlaceResult[] = rawPlaces.map((p: any) => ({
-    place_id: p.id,
-    name: p.displayName?.text || 'Comercio sin nombre informado',
-    formatted_address: p.formattedAddress || `${params.city}, Argentina`,
-    phone: p.nationalPhoneNumber || null,
-    website: p.websiteUri || null,
-  }));
-
-  return {
-    places,
-    sourceUsed: 'Google Places API (New)',
-  };
-}
-
-/**
- * Ejecuta el pipeline completo de búsqueda e investigación de Lola.
- */
-export async function runLolaProspecting(
-  params: LolaSearchParams,
-  userId?: string | null
-): Promise<{
-  search: LolaSearch;
-  candidates: LolaCandidate[];
-}> {
   const startTime = Date.now();
   const supabase = createClient();
 
@@ -315,15 +289,16 @@ export async function runLolaProspecting(
         city: params.city,
         state_province: params.state_province || 'Buenos Aires',
         country: params.country || 'Argentina',
-        max_results: params.max_results || 10,
-        web_filter: params.web_filter || 'ALL',
+        max_results: Math.min(Math.max(params.max_results || 20, 1), 20),
+        web_filter: 'ALL',
         status: 'EN_PROCESO',
         total_found: 0,
         with_website: 0,
         without_website: 0,
         investigated_count: 0,
         approved_count: 0,
-        source_used: 'Google Places API (New)',
+        api_calls_count: 1,
+        source_used: 'Google Places API (New) — Text Search (Descubrimiento)',
       },
     ])
     .select()
@@ -334,59 +309,65 @@ export async function runLolaProspecting(
   }
 
   try {
-    // 2. Ejecutar búsqueda real en Google Places API (New)
-    const { places, sourceUsed } = await searchPlacesEngine(params);
+    const textQuery = `${params.industry} en ${params.city}, ${params.state_province || ''} ${params.country || 'Argentina'}`.trim();
+    const maxResultCount = Math.min(Math.max(params.max_results || 20, 1), 20);
 
-    // Filtrar según web_filter si el usuario lo especificó
-    let filteredPlaces = places;
-    if (params.web_filter === 'WITH_WEB') {
-      filteredPlaces = places.filter((p) => Boolean(p.website));
-    } else if (params.web_filter === 'WITHOUT_WEB') {
-      filteredPlaces = places.filter((p) => !p.website);
+    // Field Mask ESTRICTAMENTE BÁSICO (Essentials Tier):
+    // Solo ID, Nombre y Dirección. No solicita campos de contacto para no elevar el costo.
+    const fieldMask = 'places.id,places.displayName,places.formattedAddress';
+
+    const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': apiKey.trim(),
+        'X-Goog-FieldMask': fieldMask,
+      },
+      body: JSON.stringify({
+        textQuery,
+        maxResultCount,
+        languageCode: 'es',
+      }),
+    });
+
+    if (!res.ok) {
+      const errorBody = await res.json().catch(() => null);
+      const errorMsg =
+        errorBody?.error?.message ||
+        `HTTP ${res.status}: ${res.statusText || 'Error en Google Places API'}`;
+
+      throw new Error(`Google Places API respondió con error: ${errorMsg}`);
     }
 
-    // 3. Investigar presencia web de cada candidato real
-    const candidateInserts: any[] = [];
-    let withWebCount = 0;
-    let withoutWebCount = 0;
+    const json = await res.json();
+    const rawPlaces = json.places || [];
 
-    for (const place of filteredPlaces) {
-      if (place.website) {
-        withWebCount++;
-      } else {
-        withoutWebCount++;
-      }
+    // Guardar candidatos descubiertos en lola_candidates con import_status = 'DESCUBIERTO'
+    const candidateInserts: any[] = rawPlaces.map((p: any) => ({
+      search_id: searchSession.id,
+      place_id: p.id,
+      name: p.displayName?.text || 'Comercio sin nombre informado',
+      industry: params.industry,
+      city: params.city,
+      state_province: params.state_province || 'Buenos Aires',
+      country: params.country || 'Argentina',
+      address: p.formattedAddress || `${params.city}, Argentina`,
+      website: null,
+      phone: null,
+      email: null,
+      source: 'Google Places API (New) — Descubrimiento',
+      has_website: false,
+      has_whatsapp: false,
+      has_forms: false,
+      is_mobile_friendly: false,
+      site_title: null,
+      site_description: null,
+      services_detected: [],
+      notes: 'Descubierto en Google Places. Pendiente de selección para investigación en profundidad.',
+      verified_status: 'PENDIENTE',
+      import_status: 'DESCUBIERTO' as LolaCandidateStatus,
+    }));
 
-      // Comprobar si el sitio responde
-      const investigation = await investigateWebsite(place.website);
-
-      candidateInserts.push({
-        search_id: searchSession.id,
-        place_id: place.place_id,
-        name: place.name,
-        industry: params.industry,
-        city: params.city,
-        state_province: params.state_province || 'Buenos Aires',
-        country: params.country || 'Argentina',
-        website: place.website || null,
-        phone: place.phone || null,
-        email: null,
-        source: 'Google Places API (New)',
-        url_origin: place.website || null,
-        has_website: investigation.has_website,
-        has_whatsapp: investigation.has_whatsapp,
-        has_forms: investigation.has_forms,
-        is_mobile_friendly: investigation.is_mobile_friendly,
-        site_title: investigation.site_title,
-        site_description: investigation.site_description,
-        services_detected: investigation.services_detected,
-        notes: investigation.notes,
-        verified_status: investigation.verified_status,
-        import_status: 'PENDIENTE',
-      });
-    }
-
-    // 4. Guardar candidatos en la base de datos
     let insertedCandidates: LolaCandidate[] = [];
     if (candidateInserts.length > 0) {
       const { data: saved, error: candError } = await supabase
@@ -395,24 +376,17 @@ export async function runLolaProspecting(
         .select();
 
       if (candError) {
-        console.error('Error insertando candidatos:', candError);
-        throw new Error(`Error guardando candidatos encontrados: ${candError.message}`);
-      } else {
-        insertedCandidates = (saved as LolaCandidate[]) || [];
+        throw new Error(`Error guardando candidatos descubiertos: ${candError.message}`);
       }
+      insertedCandidates = (saved as LolaCandidate[]) || [];
     }
 
-    // 5. Actualizar sesión de búsqueda como COMPLETADA
     const duration_ms = Date.now() - startTime;
     const { data: updatedSearch } = await supabase
       .from('lola_searches')
       .update({
         status: 'COMPLETADO',
-        total_found: filteredPlaces.length,
-        with_website: withWebCount,
-        without_website: withoutWebCount,
-        investigated_count: filteredPlaces.length,
-        source_used: sourceUsed,
+        total_found: insertedCandidates.length,
         duration_ms,
       })
       .eq('id', searchSession.id)
@@ -428,7 +402,7 @@ export async function runLolaProspecting(
       .from('lola_searches')
       .update({
         status: 'ERROR',
-        error_message: error?.message || 'Error durante la consulta a Google Places API',
+        error_message: error?.message || 'Error durante el descubrimiento con Google Places API',
       })
       .eq('id', searchSession.id);
 
@@ -436,10 +410,183 @@ export async function runLolaProspecting(
   }
 }
 
-/**
- * Aprueba uno o varios candidatos de Lola y los incorpora a `businesses`.
- * Realiza deduplicación por dominio, email o nombre idéntico.
- */
+// ============================================================================
+// ETAPA 3 — INVESTIGACIÓN EN PROFUNDIDAD (Place Details + Web Audit)
+// Solo para los candidatos seleccionados por Daro y Julieta.
+// ============================================================================
+export async function investigateSelectedCandidates(
+  candidateIds: string[]
+): Promise<{
+  investigatedCandidates: LolaCandidate[];
+  apiCallsCount: number;
+}> {
+  if (!candidateIds || candidateIds.length === 0) {
+    return { investigatedCandidates: [], apiCallsCount: 0 };
+  }
+
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+  if (!apiKey || !apiKey.trim()) {
+    throw new Error('Falta configurar GOOGLE_MAPS_API_KEY para realizar la investigación.');
+  }
+
+  const supabase = createClient();
+
+  // 1. Obtener los candidatos seleccionados
+  const { data: candidates, error: fetchErr } = await supabase
+    .from('lola_candidates')
+    .select('*')
+    .in('id', candidateIds);
+
+  if (fetchErr || !candidates || candidates.length === 0) {
+    return { investigatedCandidates: [], apiCallsCount: 0 };
+  }
+
+  const investigatedCandidates: LolaCandidate[] = [];
+  let apiCallsCount = 0;
+
+  for (const cand of candidates as LolaCandidate[]) {
+    let phone = cand.phone;
+    let website = cand.website;
+    let address = cand.address;
+
+    // 2. Si tiene place_id y aún no tiene teléfono/sitio web consultado, consultar Google Place Details
+    if (cand.place_id && (!phone || !website)) {
+      try {
+        const detailsUrl = `https://places.googleapis.com/v1/places/${encodeURIComponent(cand.place_id)}`;
+        const detailsRes = await fetch(detailsUrl, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': apiKey.trim(),
+            'X-Goog-FieldMask': 'id,displayName,nationalPhoneNumber,websiteUri,formattedAddress',
+          },
+        });
+
+        apiCallsCount++;
+
+        if (detailsRes.ok) {
+          const detailsJson = await detailsRes.json();
+          phone = detailsJson.nationalPhoneNumber || phone;
+          website = detailsJson.websiteUri || website;
+          address = detailsJson.formattedAddress || address;
+        } else {
+          console.warn(`Place Details falló para ${cand.place_id}: HTTP ${detailsRes.status}`);
+        }
+      } catch (e) {
+        console.warn(`Error en Place Details para ${cand.place_id}:`, e);
+      }
+    }
+
+    // 3. Investigar sitio web (si existe) desde la fuente oficial del propio negocio
+    const webAudit = await investigateWebsite(website);
+
+    // 4. Actualizar el candidato a estado INVESTIGADO con trazabilidad completa
+    const updatePayload: Partial<LolaCandidate> = {
+      phone: phone || null,
+      website: website || null,
+      email: cand.email || webAudit.email || null,
+      address: address || cand.address,
+      has_website: webAudit.has_website,
+      has_whatsapp: webAudit.has_whatsapp,
+      has_forms: webAudit.has_forms,
+      is_mobile_friendly: webAudit.is_mobile_friendly,
+      site_title: webAudit.site_title,
+      site_description: webAudit.site_description,
+      services_detected: webAudit.services_detected,
+      notes: webAudit.notes,
+      verified_status: webAudit.verified_status,
+      import_status: 'INVESTIGADO' as LolaCandidateStatus,
+      investigated_at: new Date().toISOString(),
+      source: 'Google Places API (New) + Investigación Web WebPilot',
+    };
+
+    const { data: updated, error: updErr } = await supabase
+      .from('lola_candidates')
+      .update(updatePayload)
+      .eq('id', cand.id)
+      .select()
+      .single();
+
+    if (!updErr && updated) {
+      investigatedCandidates.push(updated as LolaCandidate);
+    }
+  }
+
+  // Actualizar contadores en la sesión de búsqueda
+  if (candidates.length > 0) {
+    const searchId = candidates[0].search_id;
+    const { data: searchRow } = await supabase
+      .from('lola_searches')
+      .select('investigated_count, api_calls_count, with_website, without_website')
+      .eq('id', searchId)
+      .single();
+
+    if (searchRow) {
+      const withWeb = investigatedCandidates.filter((c) => Boolean(c.website)).length;
+      const withoutWeb = investigatedCandidates.filter((c) => !c.website).length;
+
+      await supabase
+        .from('lola_searches')
+        .update({
+          investigated_count: (searchRow.investigated_count || 0) + investigatedCandidates.length,
+          api_calls_count: (searchRow.api_calls_count || 1) + apiCallsCount,
+          with_website: (searchRow.with_website || 0) + withWeb,
+          without_website: (searchRow.without_website || 0) + withoutWeb,
+        })
+        .eq('id', searchId);
+    }
+  }
+
+  return {
+    investigatedCandidates,
+    apiCallsCount,
+  };
+}
+
+// ============================================================================
+// EDICIÓN MANUAL DE INFORMACIÓN FALTANTE
+// Permite que el usuario complete teléfono, email, web o notas antes de aprobar
+// ============================================================================
+export async function updateCandidateManualData(
+  candidateId: string,
+  data: {
+    name?: string;
+    phone?: string;
+    email?: string;
+    website?: string;
+    notes?: string;
+  }
+): Promise<LolaCandidate> {
+  const supabase = createClient();
+
+  const payload: any = {
+    manually_edited: true,
+  };
+
+  if (data.name !== undefined) payload.name = data.name.trim();
+  if (data.phone !== undefined) payload.phone = data.phone.trim() || null;
+  if (data.email !== undefined) payload.email = data.email.trim() || null;
+  if (data.website !== undefined) payload.website = data.website.trim() || null;
+  if (data.notes !== undefined) payload.notes = data.notes.trim() || null;
+
+  const { data: updated, error } = await supabase
+    .from('lola_candidates')
+    .update(payload)
+    .eq('id', candidateId)
+    .select()
+    .single();
+
+  if (error || !updated) {
+    throw new Error(`Error al actualizar datos del candidato: ${error?.message}`);
+  }
+
+  return updated as LolaCandidate;
+}
+
+// ============================================================================
+// ETAPA 4 — APROBACIÓN Y DESCARTE
+// Solo los candidatos aprobados explícitamente se incorporan a businesses (CRM)
+// ============================================================================
 export async function approveLolaCandidates(
   candidateIds: string[],
   userId?: string | null
@@ -450,7 +597,7 @@ export async function approveLolaCandidates(
 }> {
   const supabase = createClient();
 
-  // 1. Obtener los candidatos solicitados
+  // 1. Obtener los candidatos seleccionados
   const { data: candidates, error: candError } = await supabase
     .from('lola_candidates')
     .select('*')
@@ -460,7 +607,7 @@ export async function approveLolaCandidates(
     return { approvedCount: 0, duplicateCount: 0, createdBusinesses: [] };
   }
 
-  // 2. Obtener negocios existentes para deduplicación
+  // 2. Obtener negocios existentes para deduplicación estricta
   const { data: existingBusinesses } = await supabase
     .from('businesses')
     .select('id, name, email, website');
@@ -479,7 +626,7 @@ export async function approveLolaCandidates(
   let duplicateCount = 0;
 
   for (const cand of candidates as LolaCandidate[]) {
-    // Si ya fue aprobado, saltear
+    // Si ya fue aprobado y vinculado a un negocio, omitir
     if (cand.import_status === 'APROBADO' && cand.business_id) {
       continue;
     }
@@ -498,7 +645,15 @@ export async function approveLolaCandidates(
       continue;
     }
 
-    // Insertar en businesses con atribución clara
+    // Insertar en businesses con atribución clara de fuente y Place ID
+    const notesWithAttribution = [
+      cand.place_id ? `[Google Place ID: ${cand.place_id}]` : null,
+      cand.manually_edited ? '[Datos completados manualmente]' : null,
+      cand.notes,
+    ]
+      .filter(Boolean)
+      .join(' ');
+
     const { data: newBusiness, error: insertError } = await supabase
       .from('businesses')
       .insert([
@@ -514,7 +669,7 @@ export async function approveLolaCandidates(
           email: cand.email || null,
           source: 'Google Places API (New)',
           status: 'NUEVO',
-          notes: cand.notes ? `[Google Place ID: ${cand.place_id || 'N/A'}] ${cand.notes}` : `Prospectado por Lola con Google Places.`,
+          notes: notesWithAttribution || 'Prospectado e investigado por Lola AI.',
         },
       ])
       .select()
@@ -532,7 +687,7 @@ export async function approveLolaCandidates(
     if (candEmail) existingEmails.add(candEmail);
     existingNames.add(candName);
 
-    // Registrar actividad en CRM con trazabilidad
+    // Registrar actividad en CRM con trazabilidad de Place ID y usuario
     await supabase.from('activities').insert([
       {
         business_id: newBusiness.id,
@@ -548,7 +703,7 @@ export async function approveLolaCandidates(
     await supabase
       .from('lola_candidates')
       .update({
-        import_status: 'APROBADO',
+        import_status: 'APROBADO' as LolaCandidateStatus,
         business_id: newBusiness.id,
       })
       .eq('id', cand.id);
@@ -573,6 +728,24 @@ export async function approveLolaCandidates(
     duplicateCount,
     createdBusinesses,
   };
+}
+
+/**
+ * Descarta candidatos que no califican para la agencia.
+ */
+export async function discardLolaCandidates(candidateIds: string[]): Promise<number> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('lola_candidates')
+    .update({ import_status: 'DESCARTADO' as LolaCandidateStatus })
+    .in('id', candidateIds)
+    .select();
+
+  if (error) {
+    throw new Error(`Error al descartar candidatos: ${error.message}`);
+  }
+
+  return data?.length || 0;
 }
 
 /**

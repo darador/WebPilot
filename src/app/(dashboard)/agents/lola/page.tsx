@@ -15,26 +15,31 @@ import {
   ExternalLink,
   Smartphone,
   MessageSquare,
-  FileText,
   UserCheck,
   RefreshCw,
   Building2,
   MapPin,
   Check,
+  XCircle,
+  Edit3,
+  Layers,
+  HelpCircle,
 } from 'lucide-react';
 import { LolaSearch, LolaCandidate } from '@/types/database.types';
 
 export default function LolaAgentPage() {
-  // Formulario
-  const [industry, setIndustry] = useState('');
+  // Formulario de Búsqueda (Etapa 1: Descubrimiento)
+  const [industry, setIndustry] = useState('Talleres mecánicos');
   const [city, setCity] = useState('Quilmes');
   const [stateProvince, setStateProvince] = useState('Buenos Aires');
   const [country, setCountry] = useState('Argentina');
-  const [maxResults, setMaxResults] = useState(10);
-  const [webFilter, setWebFilter] = useState<'ALL' | 'WITH_WEB' | 'WITHOUT_WEB'>('ALL');
+  const [maxResults, setMaxResults] = useState(20);
 
   // Estados de ejecución
   const [isSearching, setIsSearching] = useState(false);
+  const [isInvestigating, setIsInvestigating] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
+  const [isDiscarding, setIsDiscarding] = useState(false);
   const [searchStep, setSearchStep] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -46,8 +51,21 @@ export default function LolaAgentPage() {
 
   const [currentSearch, setCurrentSearch] = useState<LolaSearch | null>(null);
   const [candidates, setCandidates] = useState<LolaCandidate[]>([]);
+  // IMPORTANTE: Todos comienzan sin seleccionar
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [isApproving, setIsApproving] = useState(false);
+
+  // Modal para edición manual de datos faltantes (Etapa 3)
+  const [editingCandidate, setEditingCandidate] = useState<LolaCandidate | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    website: '',
+    notes: '',
+  });
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  // Feedback de aprobación
   const [approvalFeedback, setApprovalFeedback] = useState<{
     approved: number;
     duplicates: number;
@@ -57,7 +75,6 @@ export default function LolaAgentPage() {
   const [history, setHistory] = useState<LolaSearch[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
-  // Cargar historial inicial
   useEffect(() => {
     fetchHistory();
   }, []);
@@ -77,8 +94,10 @@ export default function LolaAgentPage() {
     }
   };
 
-  // Lanzar prospección con Lola
-  const handleStartSearch = async (e: React.FormEvent) => {
+  // ==========================================================================
+  // ETAPA 1 — DESCUBRIR (Text Search Basic / Essentials)
+  // ==========================================================================
+  const handleStartDiscovery = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!industry.trim() || !city.trim()) {
       setErrorMessage('Por favor ingresá un rubro y una localidad.');
@@ -88,17 +107,17 @@ export default function LolaAgentPage() {
     setErrorMessage(null);
     setIsSearching(true);
     setApprovalFeedback(null);
-    setSelectedIds([]);
+    setSelectedIds([]); // Todos inician deseleccionados
 
     const userPrompt = `Lola, buscame ${industry} en ${city}`;
     setConversation({
       userPrompt,
       lolaReplies: [
-        `¡De una! Voy a rastrear ${industry} en ${city} y revisar qué presencia digital tienen actualmente...`,
+        `¡De una! Voy a consultar Google Places para descubrir ${industry} en ${city} sin solicitar datos de contacto aún...`,
       ],
     });
 
-    setSearchStep('Consultando motor de prospección comercial...');
+    setSearchStep('Etapa 1: Descubriendo comercios en Google Places API (New)...');
 
     try {
       const res = await fetch('/api/lola/search', {
@@ -110,35 +129,29 @@ export default function LolaAgentPage() {
           state_province: stateProvince,
           country,
           max_results: maxResults,
-          web_filter: webFilter,
         }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || 'Error al ejecutar la búsqueda.');
+        throw new Error(data.error || 'Error al ejecutar descubrimiento con Google Places API.');
       }
 
       setCurrentSearch(data.search);
       setCandidates(data.candidates || []);
-      setSelectedIds(data.candidates ? data.candidates.map((c: LolaCandidate) => c.id) : []);
+      setSelectedIds([]); // Estrictamente deseleccionados
 
-      // Respuestas conversacionales de Lola en español argentino
       const total = data.search.total_found;
-      const withWeb = data.search.with_website;
-      const withoutWeb = data.search.without_website;
 
+      // Mensaje exacto requerido por el flujo
       setConversation({
         userPrompt,
         lolaReplies: [
-          `¡Encontré ${total} negocios de ${industry} en ${city}!`,
-          `Analicé cada uno: ${withWeb} tienen sitio web y ${withoutWeb} no registran página propia.`,
-          `Fijate abajo en la tabla de candidatos. Te dejé marcados todos con sus notas técnicas preliminares. Con un clic los sumamos a tus Negocios.`,
+          `Encontré ${total} negocios. Revisá los candidatos y elegí cuáles querés que investigue en profundidad.`,
         ],
       });
 
-      // Refrescar historial
       fetchHistory();
     } catch (err: any) {
       const isMissingApiKey =
@@ -152,10 +165,10 @@ export default function LolaAgentPage() {
         lolaReplies: isMissingApiKey
           ? [
               'Para buscar comercios reales necesito que esté configurada la variable GOOGLE_MAPS_API_KEY en el servidor (.env.local).',
-              'Una vez configurada tu clave de Google Places API (New), podré rastrear negocios reales al instante sin problemas.',
+              'Una vez configurada tu clave de Google Places API (New), podré rastrear negocios reales al instante.',
             ]
           : [
-              `Ocurrió un error al consultar Google Places API: ${err.message || 'error de conexión'}. Verificá tu clave y conexión.`,
+              `Ocurrió un error al consultar Google Places API: ${err.message || 'error de conexión'}.`,
             ],
       }));
     } finally {
@@ -164,7 +177,9 @@ export default function LolaAgentPage() {
     }
   };
 
-  // Toggle de selección
+  // ==========================================================================
+  // ETAPA 2 — SELECCIÓN HUMANA (Manejo de checkboxes y contadores)
+  // ==========================================================================
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
@@ -179,7 +194,98 @@ export default function LolaAgentPage() {
     }
   };
 
-  // Incorporar seleccionados al directorio
+  // ==========================================================================
+  // ETAPA 3 — INVESTIGACIÓN EN PROFUNDIDAD (Place Details + Web Audit)
+  // Solo se ejecuta para los candidatos seleccionados por Daro y Julieta
+  // ==========================================================================
+  const handleInvestigateSelected = async () => {
+    if (selectedIds.length === 0) return;
+
+    setIsInvestigating(true);
+    setSearchStep(`Etapa 3: Investigando ${selectedIds.length} comercios seleccionados...`);
+
+    try {
+      const res = await fetch('/api/lola/investigate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ candidateIds: selectedIds }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Error al investigar candidatos seleccionados.');
+      }
+
+      // Actualizar candidatos locales con la información investigada
+      const updatedMap = new Map<string, LolaCandidate>();
+      data.investigatedCandidates.forEach((c: LolaCandidate) => updatedMap.set(c.id, c));
+
+      setCandidates((prev) =>
+        prev.map((c) => (updatedMap.has(c.id) ? updatedMap.get(c.id)! : c))
+      );
+
+      const count = data.investigatedCandidates.length;
+      setConversation((prev) => ({
+        userPrompt: prev?.userPrompt,
+        lolaReplies: [
+          `Investigué los ${count} negocios seleccionados. Consulté sus datos de contacto en Google Places y audité sus sitios web oficiales.`,
+          `Fijate abajo el diagnóstico preliminar de cada uno. Podés completar datos faltantes antes de incorporarlos al CRM.`,
+        ],
+      }));
+
+      fetchHistory();
+    } catch (err: any) {
+      alert(`Error en la investigación: ${err.message}`);
+    } finally {
+      setIsInvestigating(false);
+      setSearchStep('');
+    }
+  };
+
+  // ==========================================================================
+  // EDICIÓN MANUAL DE INFORMACIÓN FALTANTE
+  // ==========================================================================
+  const openEditModal = (c: LolaCandidate) => {
+    setEditingCandidate(c);
+    setEditForm({
+      name: c.name || '',
+      phone: c.phone || '',
+      email: c.email || '',
+      website: c.website || '',
+      notes: c.notes || '',
+    });
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCandidate) return;
+
+    setIsSavingEdit(true);
+    try {
+      const res = await fetch(`/api/lola/candidate/${editingCandidate.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al guardar cambios.');
+
+      setCandidates((prev) =>
+        prev.map((c) => (c.id === editingCandidate.id ? data.candidate : c))
+      );
+
+      setEditingCandidate(null);
+    } catch (err: any) {
+      alert(`Error al guardar: ${err.message}`);
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  // ==========================================================================
+  // ETAPA 4 — APROBACIÓN Y DESCARTE AL CRM
+  // ==========================================================================
   const handleApproveSelected = async () => {
     if (selectedIds.length === 0) return;
 
@@ -204,12 +310,9 @@ export default function LolaAgentPage() {
         duplicates: data.duplicateCount,
       });
 
-      // Actualizar estado local de los candidatos aprobados
       setCandidates((prev) =>
         prev.map((c) =>
-          selectedIds.includes(c.id)
-            ? { ...c, import_status: 'APROBADO' }
-            : c
+          selectedIds.includes(c.id) ? { ...c, import_status: 'APROBADO' } : c
         )
       );
 
@@ -222,15 +325,48 @@ export default function LolaAgentPage() {
     }
   };
 
+  const handleDiscardSelected = async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`¿Descartar los ${selectedIds.length} candidatos seleccionados?`)) return;
+
+    setIsDiscarding(true);
+    try {
+      const res = await fetch('/api/lola/discard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ candidateIds: selectedIds }),
+      });
+
+      if (!res.ok) throw new Error('Error al descartar candidatos.');
+
+      setCandidates((prev) =>
+        prev.map((c) =>
+          selectedIds.includes(c.id) ? { ...c, import_status: 'DESCARTADO' } : c
+        )
+      );
+
+      setSelectedIds([]);
+    } catch (err: any) {
+      alert(`Error: ${err.message}`);
+    } finally {
+      setIsDiscarding(false);
+    }
+  };
+
   // Sugerencias rápidas de rubros
   const quickIndustries = [
-    'Inmobiliarias',
     'Talleres mecánicos',
+    'Inmobiliarias',
     'Veterinarias',
     'Estudios contables',
     'Odontología',
     'Gimnasios',
   ];
+
+  // Filtros de estado de candidatos
+  const countDiscovered = candidates.filter((c) => c.import_status === 'DESCUBIERTO').length;
+  const countInvestigated = candidates.filter((c) => c.import_status === 'INVESTIGADO').length;
+  const countApproved = candidates.filter((c) => c.import_status === 'APROBADO').length;
 
   return (
     <div className="space-y-8 pb-12">
@@ -261,41 +397,49 @@ export default function LolaAgentPage() {
               </h1>
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
                 <Sparkles className="w-3.5 h-3.5" />
-                Agente Oficial WebPilot
+                Flujo Controlado en 4 Etapas
               </span>
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                Operativa en línea
+                Google Places API (New)
               </span>
             </div>
 
-            <p className="text-slate-300 text-sm md:text-base max-w-3xl">
-              Especialista en encontrar negocios locales, rastrear información comercial, auditar
-              presencia web y preparar oportunidades para la agencia.
+            <p className="text-slate-300 text-sm md:text-base max-w-3xl leading-relaxed">
+              Descubrimiento comercial por etapas optimizado en costos. Lola busca hasta 20 negocios
+              con <strong>Field Mask básico</strong>, permitiendo selección humana previa a la
+              investigación profunda y aprobación en el CRM.
             </p>
 
             <div className="pt-1 flex flex-wrap items-center gap-4 text-xs text-slate-400">
               <span className="italic text-cyan-300 font-medium bg-cyan-950/40 px-3 py-1 rounded-md border border-cyan-800/40">
                 &ldquo;¡Encontré otro que nos puede necesitar!&rdquo;
               </span>
-              <span>• Departamento: Prospección Comercial</span>
-              <span>• Enfoque: Detección de necesidades digitales</span>
+              <span>• Etapa 1: Descubrir</span>
+              <span>• Etapa 2: Selección</span>
+              <span>• Etapa 3: Investigar</span>
+              <span>• Etapa 4: Aprobar</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Grid Principal: Formulario + Área Conversacional */}
+      {/* Grid: Formulario + Área Conversacional */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Formulario de Solicitud a Lola */}
+        {/* Formulario: Etapa 1 Descubrir */}
         <div className="lg:col-span-5 space-y-6">
           <div className="rounded-xl bg-slate-900/80 border border-slate-800 p-6 shadow-md backdrop-blur-sm">
-            <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-800 text-white font-semibold">
-              <Search className="w-4 h-4 text-cyan-400" />
-              <span>Pedirle una nueva búsqueda</span>
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800 text-white font-semibold">
+              <div className="flex items-center gap-2">
+                <Search className="w-4 h-4 text-cyan-400" />
+                <span>Etapa 1 — Descubrir Comercios</span>
+              </div>
+              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800/40">
+                Costo Mínimo
+              </span>
             </div>
 
-            <form onSubmit={handleStartSearch} className="space-y-4">
+            <form onSubmit={handleStartDiscovery} className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1.5">
                   Rubro / Tipo de negocio <span className="text-cyan-400">*</span>
@@ -303,19 +447,18 @@ export default function LolaAgentPage() {
                 <input
                   type="text"
                   required
-                  placeholder="Ej: Inmobiliarias, Talleres, Odontología..."
+                  placeholder="Ej: Talleres mecánicos, Inmobiliarias..."
                   value={industry}
                   onChange={(e) => setIndustry(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-lg bg-slate-950/80 border border-slate-700/80 text-white text-sm focus:outline-none focus:border-cyan-500 transition-colors"
                 />
-                {/* Sugerencias rápidas */}
                 <div className="flex flex-wrap gap-1.5 mt-2">
                   {quickIndustries.map((ind) => (
                     <button
                       key={ind}
                       type="button"
                       onClick={() => setIndustry(ind)}
-                      className="text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 hover:bg-cyan-950 hover:text-cyan-300 border border-slate-700/60 transition-colors"
+                      className="text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 hover:bg-cyan-950 hover:text-cyan-300 border border-slate-700/60 transition-colors cursor-pointer"
                     >
                       {ind}
                     </button>
@@ -364,66 +507,32 @@ export default function LolaAgentPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                    Máximo a buscar
+                    Cantidad a descubrir
                   </label>
                   <select
                     value={maxResults}
                     onChange={(e) => setMaxResults(Number(e.target.value))}
                     className="w-full px-3.5 py-2.5 rounded-lg bg-slate-950/80 border border-slate-700/80 text-white text-sm focus:outline-none focus:border-cyan-500 transition-colors"
                   >
-                    <option value={5}>5 negocios</option>
                     <option value={10}>10 negocios</option>
                     <option value={15}>15 negocios</option>
-                    <option value={20}>20 negocios</option>
+                    <option value={20}>20 negocios (máximo)</option>
                   </select>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                  Filtro de presencia web
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setWebFilter('ALL')}
-                    className={`py-2 px-2 text-xs rounded-lg font-medium border text-center transition-all ${
-                      webFilter === 'ALL'
-                        ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300'
-                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    Todos
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setWebFilter('WITH_WEB')}
-                    className={`py-2 px-2 text-xs rounded-lg font-medium border text-center transition-all ${
-                      webFilter === 'WITH_WEB'
-                        ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300'
-                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    Con web
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setWebFilter('WITHOUT_WEB')}
-                    className={`py-2 px-2 text-xs rounded-lg font-medium border text-center transition-all ${
-                      webFilter === 'WITHOUT_WEB'
-                        ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300'
-                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    Sin web
-                  </button>
-                </div>
+              <div className="p-3 rounded-lg bg-[#080d18] border border-slate-800 text-[11px] text-slate-400 leading-relaxed">
+                <span className="text-cyan-400 font-semibold block mb-0.5">Control de costos:</span>
+                Esta etapa utiliza únicamente los campos <code>places.id</code>, <code>places.displayName</code> y <code>places.formattedAddress</code>. No solicita teléfono ni sitio web hasta que vos elijas cuáles investigar.
               </div>
 
               {errorMessage && (
-                <div className="p-3 rounded-lg bg-red-950/60 border border-red-800 text-red-200 text-xs flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>{errorMessage}</span>
+                <div className="p-3.5 rounded-lg bg-red-950/60 border border-red-800 text-red-200 text-xs flex items-start gap-2.5">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <span className="font-semibold block">Aviso de configuración:</span>
+                    <span className="leading-relaxed block">{errorMessage}</span>
+                  </div>
                 </div>
               )}
 
@@ -435,25 +544,25 @@ export default function LolaAgentPage() {
                 {isSearching ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Lola está investigando...</span>
+                    <span>Descubriendo comercios...</span>
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-4 h-4" />
-                    <span>Pedirle a Lola</span>
+                    <Search className="w-4 h-4" />
+                    <span>Descubrir candidatos con Lola</span>
                   </>
                 )}
               </button>
             </form>
           </div>
 
-          {/* Historial Reciente de Búsquedas */}
+          {/* Historial Reciente */}
           <div className="rounded-xl bg-slate-900/60 border border-slate-800 p-5">
             <div className="flex items-center justify-between mb-3 text-slate-300 text-xs font-semibold uppercase tracking-wider">
               <span>Búsquedas recientes de Lola</span>
               <button
                 onClick={fetchHistory}
-                className="text-slate-500 hover:text-cyan-400 transition-colors"
+                className="text-slate-500 hover:text-cyan-400 transition-colors cursor-pointer"
                 title="Actualizar historial"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${loadingHistory ? 'animate-spin' : ''}`} />
@@ -474,12 +583,14 @@ export default function LolaAgentPage() {
                         {h.industry} en {h.city}
                       </div>
                       <div className="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5">
-                        <span>{h.total_found} hallados</span>
+                        <span>{h.total_found} descubiertos</span>
                         <span>•</span>
-                        <span>{h.approved_count} en Negocios</span>
+                        <span>{h.investigated_count} investigados</span>
+                        <span>•</span>
+                        <span>{h.approved_count} en CRM</span>
                       </div>
                     </div>
-                    <span className="text-[10px] text-slate-500">
+                    <span className="text-[10px] text-slate-500 font-mono">
                       {new Date(h.created_at).toLocaleDateString('es-AR', {
                         day: '2-digit',
                         month: 'short',
@@ -494,8 +605,7 @@ export default function LolaAgentPage() {
 
         {/* Panel Conversacional de Lola + Métricas en Vivo */}
         <div className="lg:col-span-7 space-y-6">
-          {/* Conversación con Lola */}
-          <div className="rounded-xl bg-slate-900/90 border border-slate-800 p-6 flex flex-col justify-between shadow-md min-h-[280px]">
+          <div className="rounded-xl bg-slate-900/90 border border-slate-800 p-6 flex flex-col justify-between shadow-md min-h-[300px]">
             <div>
               <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
                 <div className="flex items-center gap-2 text-sm font-semibold text-white">
@@ -516,14 +626,13 @@ export default function LolaAgentPage() {
                     <Sparkles className="w-6 h-6" />
                   </div>
                   <h3 className="text-white text-base font-medium">Lola está lista</h3>
-                  <p className="text-slate-400 text-xs max-w-md mx-auto">
-                    Indicá un rubro y una localidad en el formulario para que Lola busque
-                    oportunidades, investigue sus sitios web y califique su presencia digital.
+                  <p className="text-slate-400 text-xs max-w-md mx-auto leading-relaxed">
+                    Completá el rubro y localidad para que Lola descubra hasta 20 comercios reales.
+                    Luego podrás seleccionar con precisión cuáles querés que investigue a fondo.
                   </p>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {/* Mensaje del usuario */}
                   {conversation.userPrompt && (
                     <div className="flex items-start gap-3 justify-end">
                       <div className="rounded-2xl rounded-tr-none bg-blue-600/30 border border-blue-500/40 px-4 py-2.5 text-xs text-blue-100 max-w-[80%]">
@@ -535,7 +644,6 @@ export default function LolaAgentPage() {
                     </div>
                   )}
 
-                  {/* Respuestas de Lola */}
                   <div className="flex items-start gap-3">
                     <div className="w-8 h-8 rounded-full overflow-hidden bg-cyan-500/20 border border-cyan-400/50 shrink-0">
                       <Image
@@ -550,7 +658,7 @@ export default function LolaAgentPage() {
                       {conversation.lolaReplies.map((reply, idx) => (
                         <div
                           key={idx}
-                          className="rounded-2xl rounded-tl-none bg-slate-950 border border-cyan-500/30 px-4 py-2.5 text-xs text-slate-200 max-w-[90%] shadow-sm"
+                          className="rounded-2xl rounded-tl-none bg-slate-950 border border-cyan-500/30 px-4 py-2.5 text-xs text-slate-200 max-w-[95%] shadow-sm leading-relaxed"
                         >
                           <span className="font-semibold block text-[10px] text-cyan-400 mb-0.5">
                             Lola:
@@ -564,50 +672,42 @@ export default function LolaAgentPage() {
               )}
             </div>
 
-            {/* Métricas del resultado actual */}
-            {currentSearch && (
+            {/* Métricas del proceso */}
+            {candidates.length > 0 && (
               <div className="mt-6 pt-4 border-t border-slate-800 grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="p-3 rounded-lg bg-slate-950/70 border border-slate-800 text-center">
-                  <div className="text-[11px] text-slate-400">Total hallados</div>
-                  <div className="text-xl font-bold text-white mt-0.5">
-                    {currentSearch.total_found}
-                  </div>
+                  <div className="text-[11px] text-slate-400">Descubiertos</div>
+                  <div className="text-xl font-bold text-white mt-0.5">{candidates.length}</div>
                 </div>
                 <div className="p-3 rounded-lg bg-slate-950/70 border border-slate-800 text-center">
-                  <div className="text-[11px] text-cyan-400">Con sitio web</div>
-                  <div className="text-xl font-bold text-cyan-400 mt-0.5">
-                    {currentSearch.with_website}
-                  </div>
+                  <div className="text-[11px] text-blue-400">Investigados</div>
+                  <div className="text-xl font-bold text-blue-400 mt-0.5">{countInvestigated}</div>
                 </div>
                 <div className="p-3 rounded-lg bg-slate-950/70 border border-slate-800 text-center">
-                  <div className="text-[11px] text-amber-400">Sin sitio web</div>
-                  <div className="text-xl font-bold text-amber-400 mt-0.5">
-                    {currentSearch.without_website}
-                  </div>
+                  <div className="text-[11px] text-amber-400">Por investigar</div>
+                  <div className="text-xl font-bold text-amber-400 mt-0.5">{countDiscovered}</div>
                 </div>
                 <div className="p-3 rounded-lg bg-slate-950/70 border border-slate-800 text-center">
-                  <div className="text-[11px] text-emerald-400">En Negocios</div>
-                  <div className="text-xl font-bold text-emerald-400 mt-0.5">
-                    {currentSearch.approved_count}
-                  </div>
+                  <div className="text-[11px] text-emerald-400">En CRM</div>
+                  <div className="text-xl font-bold text-emerald-400 mt-0.5">{countApproved}</div>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Feedback de incorporación */}
+          {/* Feedback de Aprobación */}
           {approvalFeedback && (
             <div className="p-4 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-200 text-xs flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
                 <div>
                   <p className="font-semibold text-white">
-                    ¡Negocios incorporados con éxito al directorio!
+                    ¡Negocios incorporados al directorio con éxito!
                   </p>
                   <p className="text-emerald-300 text-[11px]">
-                    Se agregaron <strong>{approvalFeedback.approved}</strong> nuevos negocios.{' '}
+                    Se sumaron <strong>{approvalFeedback.approved}</strong> negocios aprobados al CRM.{' '}
                     {approvalFeedback.duplicates > 0 &&
-                      `(${approvalFeedback.duplicates} ya existían por dominio o email y fueron omitidos automáticamente).`}
+                      `(${approvalFeedback.duplicates} duplicados omitidos automáticamente).`}
                   </p>
                 </div>
               </div>
@@ -623,22 +723,30 @@ export default function LolaAgentPage() {
         </div>
       </div>
 
-      {/* Tabla de Candidatos Encontrados */}
+      {/* =====================================================================
+          TABLA DE CANDIDATOS (Etapas 2, 3 y 4)
+      ====================================================================== */}
       {candidates.length > 0 && (
         <div className="rounded-xl bg-slate-900 border border-slate-800 overflow-hidden shadow-xl">
           <div className="p-4 md:p-6 border-b border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div>
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 <Building2 className="w-5 h-5 text-cyan-400" />
-                Candidatos encontrados por Lola ({candidates.length})
-              </h2>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Revisá el análisis preliminar de Lola y seleccioná los negocios que quieras
-                incorporar a tu CRM de WebPilot.
+                <h2 className="text-lg font-bold text-white">
+                  Candidatos de Lola ({candidates.length})
+                </h2>
+                <span className="text-xs px-2.5 py-0.5 rounded-full font-mono font-semibold bg-cyan-950 text-cyan-300 border border-cyan-800/40">
+                  {selectedIds.length} seleccionados
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 mt-1">
+                Seleccioná los comercios que quieras investigar. Solo se consumirán datos adicionales
+                de Google Places para los que vos elijas.
               </p>
             </div>
 
-            <div className="flex items-center gap-3 w-full md:w-auto">
+            {/* Botones de Acción por Etapa */}
+            <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
               <button
                 type="button"
                 onClick={toggleSelectAll}
@@ -649,11 +757,32 @@ export default function LolaAgentPage() {
                   : 'Seleccionar todos'}
               </button>
 
+              {/* Botón ETAPA 3: Investigar seleccionados */}
+              <button
+                type="button"
+                onClick={handleInvestigateSelected}
+                disabled={selectedIds.length === 0 || isInvestigating}
+                className="px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:opacity-50 text-white font-medium text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg shadow-cyan-500/20"
+              >
+                {isInvestigating ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Investigando {selectedIds.length}...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Investigar seleccionados ({selectedIds.length})</span>
+                  </>
+                )}
+              </button>
+
+              {/* Botón ETAPA 4: Incorporar al CRM */}
               <button
                 type="button"
                 onClick={handleApproveSelected}
                 disabled={selectedIds.length === 0 || isApproving}
-                className="flex-1 md:flex-initial px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-medium text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg shadow-emerald-600/20"
+                className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-medium text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg shadow-emerald-600/20"
               >
                 {isApproving ? (
                   <>
@@ -662,10 +791,21 @@ export default function LolaAgentPage() {
                   </>
                 ) : (
                   <>
-                    <UserCheck className="w-4 h-4" />
-                    <span>Incorporar seleccionados ({selectedIds.length})</span>
+                    <UserCheck className="w-3.5 h-3.5" />
+                    <span>Aprobar e incorporar ({selectedIds.length})</span>
                   </>
                 )}
+              </button>
+
+              {/* Botón Descartar */}
+              <button
+                type="button"
+                onClick={handleDiscardSelected}
+                disabled={selectedIds.length === 0 || isDiscarding}
+                className="px-3 py-2 rounded-lg bg-slate-800 hover:bg-red-950 hover:text-red-300 hover:border-red-800 text-xs text-slate-400 font-medium transition-colors border border-slate-700/60 cursor-pointer disabled:opacity-40"
+                title="Descartar candidatos seleccionados"
+              >
+                <XCircle className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
@@ -681,35 +821,39 @@ export default function LolaAgentPage() {
                         selectedIds.length === candidates.length && candidates.length > 0
                       }
                       onChange={toggleSelectAll}
-                      className="rounded border-slate-700 bg-slate-900 text-cyan-500 focus:ring-cyan-500"
+                      className="rounded border-slate-700 bg-slate-900 text-cyan-500 focus:ring-cyan-500 cursor-pointer"
                     />
                   </th>
-                  <th className="p-4">Negocio</th>
-                  <th className="p-4">Ubicación y Contacto</th>
-                  <th className="p-4">Presencia Web</th>
-                  <th className="p-4">Diagnóstico Preliminar de Lola</th>
+                  <th className="p-4">Negocio (Google Place ID)</th>
+                  <th className="p-4">Dirección y Contacto</th>
+                  <th className="p-4">Presencia Web & WhatsApp</th>
+                  <th className="p-4">Diagnóstico / Observaciones</th>
                   <th className="p-4 text-center">Estado</th>
+                  <th className="p-4 text-center">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
                 {candidates.map((c) => {
                   const isSelected = selectedIds.includes(c.id);
                   const isApproved = c.import_status === 'APROBADO';
+                  const isDiscarded = c.import_status === 'DESCARTADO';
+                  const isInvestigated = c.import_status === 'INVESTIGADO';
+                  const isDiscovered = c.import_status === 'DESCUBIERTO';
 
                   return (
                     <tr
                       key={c.id}
                       className={`hover:bg-slate-800/30 transition-colors ${
                         isSelected ? 'bg-cyan-950/20' : ''
-                      }`}
+                      } ${isDiscarded ? 'opacity-40 bg-slate-950/40' : ''}`}
                     >
                       <td className="p-4 text-center">
                         <input
                           type="checkbox"
-                          disabled={isApproved}
+                          disabled={isApproved || isDiscarded}
                           checked={isSelected || isApproved}
                           onChange={() => toggleSelect(c.id)}
-                          className="rounded border-slate-700 bg-slate-900 text-cyan-500 focus:ring-cyan-500 disabled:opacity-40"
+                          className="rounded border-slate-700 bg-slate-900 text-cyan-500 focus:ring-cyan-500 disabled:opacity-40 cursor-pointer"
                         />
                       </td>
 
@@ -718,31 +862,49 @@ export default function LolaAgentPage() {
                         <div className="text-[11px] text-cyan-400 mt-0.5">{c.industry}</div>
                         {c.place_id && (
                           <div className="text-[10px] font-mono text-slate-500 mt-1 flex items-center gap-1">
-                            <span className="text-slate-600">ID:</span>
-                            <span className="truncate max-w-[140px]" title={c.place_id}>
+                            <span className="text-slate-600">Place ID:</span>
+                            <span className="truncate max-w-[150px]" title={c.place_id}>
                               {c.place_id}
                             </span>
                           </div>
+                        )}
+                        {c.manually_edited && (
+                          <span className="inline-block mt-1 text-[10px] px-1.5 py-0.2 rounded bg-amber-950/60 text-amber-300 border border-amber-800/50">
+                            Editado manualmente
+                          </span>
                         )}
                       </td>
 
                       <td className="p-4 space-y-1">
                         <div className="flex items-center gap-1.5 text-slate-300">
                           <MapPin className="w-3 h-3 text-slate-500 shrink-0" />
-                          <span>
-                            {c.city}, {c.state_province}
+                          <span className="max-w-[220px] truncate" title={c.address || `${c.city}, ${c.state_province}`}>
+                            {c.address || `${c.city}, ${c.state_province}`}
                           </span>
                         </div>
-                        {c.phone && (
-                          <div className="flex items-center gap-1.5 text-slate-400">
+                        {c.phone ? (
+                          <div className="flex items-center gap-1.5 text-slate-300">
                             <Phone className="w-3 h-3 text-slate-500 shrink-0" />
                             <span>{c.phone}</span>
+                          </div>
+                        ) : (
+                          <div className="text-[11px] text-slate-500 italic">
+                            {isDiscovered ? 'Pendiente de investigar' : 'Sin teléfono informado'}
+                          </div>
+                        )}
+                        {c.email && (
+                          <div className="text-[11px] text-cyan-300 truncate max-w-[200px]" title={c.email}>
+                            ✉ {c.email}
                           </div>
                         )}
                       </td>
 
                       <td className="p-4 space-y-1.5">
-                        {c.verified_status === 'SIN_SITIO_WEB' || !c.website ? (
+                        {isDiscovered ? (
+                          <span className="inline-flex items-center gap-1 text-slate-400 bg-slate-950 px-2 py-0.5 rounded border border-slate-800 text-[11px]">
+                            <Clock className="w-3 h-3 text-slate-500" /> Web no consultada
+                          </span>
+                        ) : c.verified_status === 'SIN_SITIO_WEB' || !c.website ? (
                           <span className="inline-flex items-center gap-1 text-amber-400 bg-amber-950/40 px-2.5 py-1 rounded border border-amber-800/40 text-[11px] font-medium">
                             <AlertCircle className="w-3 h-3 shrink-0" /> Sin sitio web informado
                           </span>
@@ -807,26 +969,157 @@ export default function LolaAgentPage() {
 
                       <td className="p-4 max-w-xs">
                         <div className="text-slate-300 text-xs leading-relaxed bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80">
-                          {c.notes || 'Sin observaciones'}
+                          {c.notes || 'Descubierto en Google Places.'}
                         </div>
                       </td>
 
                       <td className="p-4 text-center">
                         {isApproved ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                            <Check className="w-3 h-3" /> En Negocios
+                            <Check className="w-3 h-3" /> En CRM
+                          </span>
+                        ) : isDiscarded ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-red-950/40 text-red-400 border border-red-800/40">
+                            <XCircle className="w-3 h-3" /> Descartado
+                          </span>
+                        ) : isInvestigated ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/30">
+                            <Sparkles className="w-3 h-3" /> Investigado
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-800 text-slate-400 border border-slate-700">
-                            <Clock className="w-3 h-3" /> Pendiente
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-800 text-slate-300 border border-slate-700">
+                            <Layers className="w-3 h-3 text-cyan-400" /> Descubierto
                           </span>
                         )}
+                      </td>
+
+                      <td className="p-4 text-center">
+                        <button
+                          type="button"
+                          onClick={() => openEditModal(c)}
+                          className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer inline-flex items-center justify-center"
+                          title="Completar o editar datos manualmente"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
                       </td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* =====================================================================
+          MODAL DE EDICIÓN MANUAL DE DATOS (Etapa 3)
+      ====================================================================== */}
+      {editingCandidate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
+          <div className="relative w-full max-w-lg rounded-2xl bg-slate-900 border border-slate-800 p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <Edit3 className="w-4 h-4 text-cyan-400" />
+                  Completar información manualmente
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Podés cargar teléfono, email o notas antes de incorporarlo al CRM.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingCandidate(null)}
+                className="text-slate-400 hover:text-white transition-colors cursor-pointer text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block text-slate-300 font-medium mb-1">Nombre del Negocio</label>
+                <input
+                  type="text"
+                  required
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">Teléfono / WhatsApp</label>
+                  <input
+                    type="text"
+                    placeholder="+54 11 ..."
+                    value={editForm.phone}
+                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">Email de Contacto</label>
+                  <input
+                    type="email"
+                    placeholder="contacto@..."
+                    value={editForm.email}
+                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-medium mb-1">Sitio Web</label>
+                <input
+                  type="text"
+                  placeholder="https://..."
+                  value={editForm.website}
+                  onChange={(e) => setEditForm({ ...editForm, website: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-medium mb-1">Notas y Observaciones</label>
+                <textarea
+                  rows={3}
+                  value={editForm.notes}
+                  onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white focus:outline-none focus:border-cyan-500 resize-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setEditingCandidate(null)}
+                  className="px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingEdit}
+                  className="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-md shadow-cyan-600/20"
+                >
+                  {isSavingEdit ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Guardando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Guardar cambios</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
