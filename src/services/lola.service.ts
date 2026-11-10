@@ -645,14 +645,36 @@ export async function approveLolaCandidates(
       continue;
     }
 
-    // Insertar en businesses con atribución clara de fuente y Place ID
-    const notesWithAttribution = [
-      cand.place_id ? `[Google Place ID: ${cand.place_id}]` : null,
-      cand.manually_edited ? '[Datos completados manualmente]' : null,
-      cand.notes,
-    ]
-      .filter(Boolean)
-      .join(' ');
+    // Separación explícita de capas de datos (Google Places, Sitio Oficial y Aporte Manual)
+    const notesParts: string[] = [];
+
+    // 1. Capa Google Places (Place ID canónico de Google)
+    if (cand.place_id) {
+      notesParts.push(`[Google Places]: ID ${cand.place_id}.`);
+    }
+
+    // 2. Capa Sitio Oficial del negocio
+    if (cand.website) {
+      const details = [];
+      if (cand.has_whatsapp) details.push('WhatsApp detectado');
+      if (cand.is_mobile_friendly) details.push('Responsive móvil');
+      if (cand.site_title) details.push(`Título: "${cand.site_title}"`);
+      notesParts.push(`[Sitio Oficial]: ${cand.website} (${details.join(', ') || 'Web analizada'}).`);
+    } else {
+      notesParts.push('[Sitio Oficial]: Sin sitio web registrado en Google Places.');
+    }
+
+    // 3. Capa Aporte Manual (completado por Daro o Julieta)
+    if (cand.manually_edited) {
+      notesParts.push('[Aporte Manual]: Información de contacto o notas completadas por el operador.');
+    }
+
+    // 4. Observaciones comerciales
+    if (cand.notes && !cand.notes.startsWith('Sin sitio web')) {
+      notesParts.push(`[Diagnóstico]: ${cand.notes}`);
+    }
+
+    const structuredNotes = notesParts.join(' ');
 
     const { data: newBusiness, error: insertError } = await supabase
       .from('businesses')
@@ -669,7 +691,7 @@ export async function approveLolaCandidates(
           email: cand.email || null,
           source: 'Google Places API (New)',
           status: 'NUEVO',
-          notes: notesWithAttribution || 'Prospectado e investigado por Lola AI.',
+          notes: structuredNotes || 'Prospectado e investigado por Lola AI.',
         },
       ])
       .select()

@@ -1,10 +1,15 @@
 import { NextResponse } from 'next/server';
 import { discardLolaCandidates } from '@/services/lola.service';
+import { createClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
+    // Verificación básica de sesión
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
     const body = await req.json();
     const { candidateIds } = body;
 
