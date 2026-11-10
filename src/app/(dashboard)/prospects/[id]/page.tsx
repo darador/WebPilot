@@ -89,7 +89,7 @@ export default function ProspectDetailPage() {
   if (isLoading) {
     return (
       <div>
-        <Topbar title="Detalle de Prospecto" />
+        <Topbar title="Ficha del Negocio" />
         <div className="p-8 max-w-5xl mx-auto space-y-4 animate-pulse">
           <div className="h-24 bg-slate-800/40 rounded-xl" />
           <div className="h-64 bg-slate-800/40 rounded-xl" />
@@ -101,9 +101,9 @@ export default function ProspectDetailPage() {
   if (!prospect) {
     return (
       <div>
-        <Topbar title="Detalle de Prospecto" />
+        <Topbar title="Ficha del Negocio" />
         <div className="p-12 text-center">
-          <p className="text-slate-400 text-sm">Prospecto no encontrado.</p>
+          <p className="text-slate-400 text-sm">Negocio no encontrado.</p>
           <Link
             href="/prospects"
             className="mt-4 inline-flex items-center gap-2 text-cyan-400 hover:underline text-xs"
@@ -135,7 +135,7 @@ export default function ProspectDetailPage() {
             className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-cyan-400 transition-colors"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
-            <span>Volver al directorio de prospectos</span>
+            <span>Volver al directorio de negocios</span>
           </Link>
 
           <div className="flex items-center gap-2">
@@ -144,7 +144,7 @@ export default function ProspectDetailPage() {
               className="inline-flex items-center gap-1.5 rounded-lg border border-[#1e2a42] bg-[#0c1220] px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-[#152037] hover:text-white transition-colors"
             >
               <Edit2 className="h-3.5 w-3.5 text-blue-400" />
-              <span>Editar Prospecto</span>
+              <span>Editar negocio</span>
             </button>
 
             <button
@@ -388,7 +388,7 @@ export default function ProspectDetailPage() {
 
       <ConfirmDialog
         isOpen={isDeleteDialogOpen}
-        title="Eliminar Prospecto"
+        title="Eliminar Negocio"
         message={`¿Estás seguro de que deseás eliminar a "${prospect.name}"? Se perderán todas sus actividades y datos registrados.`}
         confirmLabel="Eliminar Definitivamente"
         isProcessing={isDeleting}

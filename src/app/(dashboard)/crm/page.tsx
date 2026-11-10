@@ -55,7 +55,7 @@ export default function CrmPage() {
     <div>
       <Topbar
         title="CRM Pipeline Comercial"
-        subtitle={`Tablero de control interactivo (${totalInPipeline} prospectos en ciclo activo)`}
+        subtitle={`Tablero de control interactivo (${totalInPipeline} negocios en ciclo activo)`}
         onRefresh={handleRefresh}
         isRefreshing={isRefreshing}
       />
@@ -65,7 +65,7 @@ export default function CrmPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-400">
-              Desplazá prospectos entre etapas o registrá llamadas y notas directamente desde cada tarjeta.
+              Desplazá negocios entre etapas o registrá llamadas y notas directamente desde cada tarjeta.
             </span>
           </div>
 
@@ -83,7 +83,7 @@ export default function CrmPage() {
               className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-md shadow-cyan-500/20 hover:from-cyan-400 hover:to-blue-500 transition-all"
             >
               <Plus className="h-3.5 w-3.5" />
-              <span>Nuevo Prospecto</span>
+              <span>Agregar negocio</span>
             </button>
           </div>
         </div>

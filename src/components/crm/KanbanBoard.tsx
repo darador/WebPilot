@@ -108,7 +108,7 @@ export function KanbanBoard({ pipeline, isLoading, onRefresh }: KanbanBoardProps
                   ))
                 ) : businesses.length === 0 ? (
                   <div className="py-8 text-center text-[11px] text-slate-500">
-                    Sin prospectos en esta etapa
+                    Sin negocios en esta etapa
                   </div>
                 ) : (
                   businesses.map((business) => {

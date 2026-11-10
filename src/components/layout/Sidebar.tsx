@@ -25,7 +25,7 @@ const NAV_ITEMS = [
     badge: null,
   },
   {
-    label: 'Prospectos',
+    label: 'Negocios',
     href: '/prospects',
     icon: Users,
     badge: null,

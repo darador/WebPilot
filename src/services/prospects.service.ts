@@ -165,7 +165,7 @@ export async function createProspect(
       business_id: data.id,
       user_id: resolvedUserId,
       type: 'NOTA',
-      description: 'Prospecto dado de alta en la plataforma',
+      description: 'Negocio dado de alta en la plataforma',
       from_stage: null,
       to_stage: data.status,
     },

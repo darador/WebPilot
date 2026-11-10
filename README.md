@@ -71,8 +71,8 @@ Para ejecutar la migración en Supabase:
 
 ### 4.1 Dashboard Operativo
 - Indicadores en tiempo real conectados a Supabase:
-  - Total de prospectos (`COUNT(*)`)
-  - Prospectos nuevos (`COUNT(*) WHERE status = 'NUEVO'`)
+  - Total de negocios (`COUNT(*)`)
+  - Negocios nuevos (`COUNT(*) WHERE status = 'NUEVO'`)
   - Negocios auditados (`COUNT(*)`)
   - Oportunidades calificadas (`COUNT(*)`)
   - Clientes ganados (`COUNT(*) WHERE status = 'GANADO'`)
@@ -80,11 +80,11 @@ Para ejecutar la migración en Supabase:
 - Muestra cero en indicadores sin registros, sin datos ficticios.
 - Sección de actividad comercial reciente en vivo.
 
-### 4.2 Módulo de Prospectos (CRUD Completo)
+### 4.2 Módulo de Negocios (CRUD Completo)
 - **Campos**: Nombre del negocio, rubro, localidad, provincia, país, sitio web, teléfono, email, fuente, estado comercial, observaciones y fecha de creación.
 - **Búsqueda y Filtros**: Búsqueda textual reactiva, filtro por rubro, localidad y estado comercial.
 - **Paginación y Ordenamiento**: Navegación por páginas y ordenamiento por fecha.
-- **Operaciones**: Modal de alta rápida, modal de edición, eliminación con confirmación destructiva y vista de detalle integral por ID (`/prospects/[id]`).
+- **Operaciones**: Modal para agregar negocio, modal de edición, eliminación con confirmación destructiva y vista de detalle integral por ID (`/prospects/[id]`).
 
 ### 4.3 Asistente de Importación CSV
 - Mapeo inteligente y flexible de columnas (español e inglés).
@@ -93,7 +93,7 @@ Para ejecutar la migración en Supabase:
   2. Dentro del propio archivo CSV.
 - Pestañas de previsualización: válidos, duplicados omitidos y errores de estructura.
 - **Confirmación explícita obligatoria** antes de insertar en base de datos.
-- Generador y descarga directa de plantilla CSV de ejemplo (`webpilot_prospectos_ejemplo.csv`).
+- Generador y descarga directa de plantilla CSV de ejemplo (`webpilot_negocios_ejemplo.csv`).
 
 ### 4.4 Tablero CRM y Actividades
 - Tablero visual organizado por las 8 etapas comerciales.

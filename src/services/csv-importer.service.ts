@@ -247,7 +247,7 @@ export async function importValidRows(
       business_id: b.id,
       user_id: resolvedUserId,
       type: 'IMPORTACION' as const,
-      description: `Prospecto importado mediante carga masiva CSV (${rows.length} registros)`,
+      description: `Negocio importado mediante carga masiva CSV (${rows.length} registros)`,
       from_stage: null,
       to_stage: 'NUEVO' as const,
     }));

@@ -198,7 +198,7 @@ export function ProspectsTable({
             ) : prospects.length === 0 ? (
               <tr>
                 <td colSpan={7} className="py-8 text-center text-slate-500">
-                  No se encontraron prospectos con los filtros seleccionados.
+                  No se encontraron negocios con los filtros seleccionados.
                 </td>
               </tr>
             ) : (
@@ -289,14 +289,14 @@ export function ProspectsTable({
                       <button
                         onClick={() => onEdit(p)}
                         className="p-1 rounded text-slate-400 hover:text-blue-400 hover:bg-[#19243d]"
-                        title="Editar prospecto"
+                        title="Editar negocio"
                       >
                         <Edit2 className="h-3.5 w-3.5" />
                       </button>
                       <button
                         onClick={() => onDelete(p)}
                         className="p-1 rounded text-slate-400 hover:text-red-400 hover:bg-[#19243d]"
-                        title="Eliminar prospecto"
+                        title="Eliminar negocio"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -347,7 +347,7 @@ export function ProspectsTable({
       <div className="flex items-center justify-between px-3 py-2 text-xs text-slate-400">
         <div>
           Mostrando <span className="font-semibold text-white">{prospects.length}</span> de{' '}
-          <span className="font-semibold text-white">{totalCount}</span> prospectos
+          <span className="font-semibold text-white">{totalCount}</span> negocios
         </div>
 
         <div className="flex items-center gap-2">

@@ -46,7 +46,7 @@ export function CsvWizard() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', 'webpilot_prospectos_ejemplo.csv');
+    link.setAttribute('download', 'webpilot_negocios_ejemplo.csv');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -441,8 +441,8 @@ export function CsvWizard() {
             ¡Importación completada con éxito!
           </h3>
           <p className="mt-1 text-xs text-slate-300 max-w-md">
-            Se han insertado <strong className="text-emerald-400 font-mono">{importedCount}</strong> prospectos
-            en Supabase y se ha registrado la trazabilidad de la actividad comercial.
+            Se insertaron <strong className="text-emerald-400 font-mono">{importedCount}</strong> negocios
+            en Supabase y se registró la trazabilidad de la actividad comercial.
           </p>
 
           <div className="mt-6 flex items-center gap-3">
@@ -456,7 +456,7 @@ export function CsvWizard() {
               onClick={() => router.push('/prospects')}
               className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-md shadow-cyan-500/20 hover:from-cyan-400 hover:to-blue-500 transition-all"
             >
-              <span>Ver listado de prospectos</span>
+              <span>Ver listado de negocios</span>
               <ArrowRight className="h-3.5 w-3.5" />
             </button>
           </div>

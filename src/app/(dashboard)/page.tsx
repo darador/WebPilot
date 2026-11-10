@@ -124,9 +124,9 @@ export default function DashboardPage() {
           </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5">
-            {/* 1. Total de prospectos */}
+            {/* 1. Total de negocios */}
             <MetricCard
-              title="Total Prospectos"
+              title="Total de negocios"
               value={metrics.totalProspects}
               icon={Users}
               description="Registros en base"
@@ -134,9 +134,9 @@ export default function DashboardPage() {
               isLoading={isLoading}
             />
 
-            {/* 2. Prospectos nuevos */}
+            {/* 2. Negocios nuevos */}
             <MetricCard
-              title="Prospectos Nuevos"
+              title="Negocios nuevos"
               value={metrics.newProspects}
               icon={UserPlus}
               description="Sin contactar aún"
@@ -215,7 +215,7 @@ export default function DashboardPage() {
                 icon={Clock}
                 title="Sin actividad registrada todavía"
                 description="Las actividades se generan automáticamente al cambiar de estado en el CRM o al registrar llamadas, emails y notas."
-                actionLabel="Ir a Prospectos"
+                actionLabel="Ir a Negocios"
                 actionHref="/prospects"
               />
             ) : (
@@ -274,7 +274,7 @@ export default function DashboardPage() {
                   href="/prospects?action=new"
                   className="flex items-center justify-between p-2.5 rounded-lg border border-[#172238] bg-[#090e1a] text-slate-300 hover:border-cyan-500/40 hover:text-white transition-all group"
                 >
-                  <span className="font-medium">Crear prospecto manual</span>
+                  <span className="font-medium">Agregar negocio manualmente</span>
                   <ArrowRight className="h-3.5 w-3.5 text-slate-500 group-hover:text-cyan-400 group-hover:translate-x-0.5 transition-all" />
                 </Link>
 

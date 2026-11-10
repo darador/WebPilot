@@ -121,7 +121,7 @@ function ProspectsContent() {
   return (
     <div>
       <Topbar
-        title="Directorio de Prospectos"
+        title="Directorio de Negocios"
         subtitle="Gestión comercial de negocios, datos de contacto y estado comercial"
         onRefresh={handleRefresh}
         isRefreshing={isRefreshing}
@@ -133,10 +133,10 @@ function ProspectsContent() {
           <div>
             <h2 className="text-lg font-bold tracking-tight text-white flex items-center gap-2">
               <Users className="h-5 w-5 text-cyan-400" />
-              <span>Prospectos Registrados</span>
+              <span>Negocios registrados</span>
             </h2>
             <p className="text-xs text-slate-400">
-              Administrá los prospectos capturados antes de iniciar auditorías y propuestas.
+              Administrá los negocios capturados antes de iniciar auditorías y propuestas.
             </p>
           </div>
 
@@ -154,7 +154,7 @@ function ProspectsContent() {
               className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-md shadow-cyan-500/20 hover:from-cyan-400 hover:to-blue-500 transition-all hover:scale-[1.01]"
             >
               <Plus className="h-3.5 w-3.5" />
-              <span>Nuevo Prospecto</span>
+              <span>Agregar negocio</span>
             </button>
           </div>
         </div>
@@ -208,7 +208,7 @@ function ProspectsContent() {
       {/* Dialog Confirmación Eliminación */}
       <ConfirmDialog
         isOpen={Boolean(prospectToDelete)}
-        title="Eliminar Prospecto"
+        title="Eliminar Negocio"
         message={`¿Estás seguro de que deseás eliminar a "${prospectToDelete?.name}"? Se eliminarán también sus contactos, actividades registradas y registros asociados. Esta acción no se puede deshacer.`}
         confirmLabel="Eliminar Definitivamente"
         isProcessing={isDeleting}
@@ -221,7 +221,7 @@ function ProspectsContent() {
 
 export default function ProspectsPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-xs text-slate-400">Cargando prospectos...</div>}>
+    <Suspense fallback={<div className="p-8 text-xs text-slate-400">Cargando negocios...</div>}>
       <ProspectsContent />
     </Suspense>
   );

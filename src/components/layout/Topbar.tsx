@@ -43,7 +43,7 @@ export function Topbar({ title, subtitle, onRefresh, isRefreshing }: TopbarProps
           className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-md shadow-cyan-500/20 hover:from-cyan-400 hover:to-blue-500 transition-all hover:scale-[1.02] active:scale-[0.98]"
         >
           <Plus className="h-3.5 w-3.5" />
-          <span>Nuevo Prospecto</span>
+          <span>Agregar negocio</span>
         </Link>
       </div>
     </header>

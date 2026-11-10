@@ -14,7 +14,7 @@ export const CRM_STAGES: StageDefinition[] = [
   {
     id: 'NUEVO',
     label: 'Nuevo',
-    description: 'Prospectos ingresados pendientes de evaluación',
+    description: 'Negocios ingresados pendientes de evaluación',
     color: '#94a3b8',
     bgColor: 'bg-slate-500/10',
     borderColor: 'border-slate-500/30',

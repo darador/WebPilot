@@ -99,7 +99,7 @@ export function ProspectModal({
       onClose();
     } catch (err: any) {
       console.error('Error saving prospect:', err);
-      setErrorMessage(err.message || 'Error al guardar el prospecto.');
+      setErrorMessage(err.message || 'Error al guardar el negocio.');
     } finally {
       setIsSubmitting(false);
     }
@@ -116,10 +116,10 @@ export function ProspectModal({
             </div>
             <div>
               <h2 className="text-sm font-semibold text-white">
-                {isEditing ? `Editar Prospecto: ${prospectToEdit?.name}` : 'Nuevo Prospecto Comercial'}
+                {isEditing ? `Editar negocio: ${prospectToEdit?.name}` : 'Agregar negocio'}
               </h2>
               <p className="text-xs text-slate-400">
-                {isEditing ? 'Actualizá los datos del negocio' : 'Completá la información del prospecto'}
+                {isEditing ? 'Actualizá los datos del negocio' : 'Completá la información del negocio'}
               </p>
             </div>
           </div>
@@ -305,7 +305,7 @@ export function ProspectModal({
               className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-md shadow-cyan-500/20 hover:from-cyan-400 hover:to-blue-500 transition-all disabled:opacity-50"
             >
               <Save className="h-3.5 w-3.5" />
-              <span>{isSubmitting ? 'Guardando...' : isEditing ? 'Guardar Cambios' : 'Crear Prospecto'}</span>
+              <span>{isSubmitting ? 'Guardando...' : isEditing ? 'Guardar Cambios' : 'Agregar negocio'}</span>
             </button>
           </div>
         </form>

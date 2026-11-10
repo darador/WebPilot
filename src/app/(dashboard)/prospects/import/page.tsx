@@ -20,7 +20,7 @@ export default function ImportProspectsPage() {
             className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-cyan-400 transition-colors"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
-            <span>Volver al directorio de prospectos</span>
+            <span>Volver al directorio de negocios</span>
           </Link>
         </div>
 
@@ -30,7 +30,7 @@ export default function ImportProspectsPage() {
               <UploadCloud className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white">Importación Segura de Prospectos</h2>
+              <h2 className="text-base font-bold text-white">Importación Segura de Negocios</h2>
               <p className="text-xs text-slate-400">
                 Los registros se validan previamente contra la base de datos para no generar duplicados por email o dominio web.
               </p>
