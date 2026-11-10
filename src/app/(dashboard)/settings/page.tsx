@@ -1,17 +1,43 @@
 'use client';
 
-import { useState } from 'react';
-import { Settings, Database, ShieldCheck, Key, CheckCircle2, Copy, AlertCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Settings, Database, ShieldCheck, Key, CheckCircle2, Copy, AlertCircle, Wifi } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
+import { createClient } from '@/lib/supabase/client';
 
 export default function SettingsPage() {
   const [copied, setCopied] = useState(false);
+  const [dbStatus, setDbStatus] = useState<'checking' | 'connected' | 'error'>('checking');
+  const [latencyMs, setLatencyMs] = useState<number | null>(null);
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'No configurada';
   const isConfigured = Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL &&
       !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('your-project-id')
   );
+
+  useEffect(() => {
+    async function checkDb() {
+      if (!isConfigured) {
+        setDbStatus('error');
+        return;
+      }
+      const start = Date.now();
+      try {
+        const supabase = createClient();
+        const { error } = await supabase.from('businesses').select('*', { count: 'exact', head: true });
+        if (error) {
+          setDbStatus('error');
+        } else {
+          setDbStatus('connected');
+          setLatencyMs(Date.now() - start);
+        }
+      } catch {
+        setDbStatus('error');
+      }
+    }
+    checkDb();
+  }, [isConfigured]);
 
   const handleCopySchemaPath = () => {
     navigator.clipboard.writeText('supabase/migrations/20261110000001_initial_schema.sql');
@@ -42,17 +68,23 @@ export default function SettingsPage() {
 
             <span
               className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono font-medium border ${
-                isConfigured
+                dbStatus === 'connected'
                   ? 'bg-emerald-950/40 text-emerald-300 border-emerald-700/50'
+                  : dbStatus === 'checking'
+                  ? 'bg-blue-950/40 text-blue-300 border-blue-700/50'
                   : 'bg-amber-950/40 text-amber-300 border-amber-700/50'
               }`}
             >
               <span
                 className={`h-1.5 w-1.5 rounded-full ${
-                  isConfigured ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
+                  dbStatus === 'connected' ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
                 }`}
               />
-              {isConfigured ? 'Conectado a Producción' : 'Credenciales Pendientes en .env'}
+              {dbStatus === 'connected'
+                ? `PostgreSQL Conectado (${latencyMs}ms)`
+                : dbStatus === 'checking'
+                ? 'Comprobando conexión...'
+                : 'Credenciales Pendientes en .env'}
             </span>
           </div>
 
