@@ -819,7 +819,7 @@ export async function getLolaCandidates(searchId: string, client?: any): Promise
     .from('lola_candidates')
     .select('*')
     .eq('search_id', searchId)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: true });
 
   if (error) {
     console.error('Error fetching Lola candidates:', error);
@@ -827,4 +827,41 @@ export async function getLolaCandidates(searchId: string, client?: any): Promise
   }
 
   return (data as LolaCandidate[]) || [];
+}
+
+/**
+ * Obtiene una búsqueda específica junto con todos sus candidatos para reanudar el trabajo.
+ */
+export async function getLolaSearchWithCandidates(
+  searchId: string,
+  client?: any
+): Promise<{ search: LolaSearch | null; candidates: LolaCandidate[] }> {
+  const supabase = client || createClient();
+
+  const { data: search, error: sErr } = await supabase
+    .from('lola_searches')
+    .select('*')
+    .eq('id', searchId)
+    .single();
+
+  if (sErr || !search) {
+    console.error('Error fetching search session:', sErr);
+    return { search: null, candidates: [] };
+  }
+
+  const { data: candidates, error: cErr } = await supabase
+    .from('lola_candidates')
+    .select('*')
+    .eq('search_id', searchId)
+    .order('created_at', { ascending: true });
+
+  if (cErr) {
+    console.error('Error fetching Lola candidates for search:', cErr);
+    return { search: search as LolaSearch, candidates: [] };
+  }
+
+  return {
+    search: search as LolaSearch,
+    candidates: (candidates as LolaCandidate[]) || [],
+  };
 }

@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { LolaSearch, LolaCandidate } from '@/types/database.types';
 import { createClient } from '@/lib/supabase/client';
+import { cn } from '@/lib/utils';
 
 async function fetchWithAuth(url: string, options: RequestInit = {}) {
   const supabase = createClient();
@@ -105,6 +106,7 @@ export default function LolaAgentPage() {
   // Historial de búsquedas
   const [history, setHistory] = useState<LolaSearch[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [loadingSearchId, setLoadingSearchId] = useState<string | null>(null);
 
   useEffect(() => {
     const checkInitialSession = async () => {
@@ -116,16 +118,77 @@ export default function LolaAgentPage() {
       if (error) console.error('[Lola Page Mount] - Error al chequear sesión:', error.message);
     };
     checkInitialSession();
-    fetchHistory();
+    fetchHistory(true);
   }, []);
 
-  const fetchHistory = async () => {
+  const handleSelectSearch = async (searchId: string) => {
+    if (loadingSearchId) return;
+    setLoadingSearchId(searchId);
+    setErrorMessage(null);
+    setApprovalFeedback(null);
+    setSelectedIds([]);
+
+    try {
+      const res = await fetchWithAuth(`/api/lola/search/${searchId}`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Error al recuperar candidatos de la búsqueda.');
+      }
+
+      const search: LolaSearch = data.search;
+      const cands: LolaCandidate[] = data.candidates || [];
+
+      setCurrentSearch(search);
+      setCandidates(cands);
+      setSelectedIds([]);
+
+      // Sincronizar formulario
+      setIndustry(search.industry);
+      setCity(search.city);
+      if (search.state_province) setStateProvince(search.state_province);
+      if (search.country) setCountry(search.country);
+      if (search.max_results) setMaxResults(search.max_results);
+
+      const investigated = cands.filter(
+        (c) => c.verified_status !== 'PENDIENTE' && c.verified_status !== 'DESCUBIERTO'
+      ).length;
+      const approved = cands.filter((c) => c.import_status === 'APROBADO').length;
+
+      setConversation({
+        userPrompt: `Lola, mostrame la búsqueda de ${search.industry} en ${search.city}`,
+        lolaReplies: [
+          `Recuperé los ${cands.length} negocios de la búsqueda guardada del ${new Date(
+            search.created_at
+          ).toLocaleDateString('es-AR')}.`,
+          investigated > 0
+            ? `Hay ${investigated} comercios investigados con datos y diagnósticos. ${
+                approved > 0
+                  ? `${approved} ya fueron incorporados al CRM.`
+                  : 'Podés seleccionar cuáles incorporar al CRM o completar datos faltantes.'
+              }`
+            : 'Todos los comercios están listos. Seleccioná cuáles querés que investigue a fondo.',
+        ],
+      });
+    } catch (err: any) {
+      console.error('Error al recuperar búsqueda:', err);
+      setErrorMessage(err.message || 'No se pudo cargar la búsqueda seleccionada.');
+    } finally {
+      setLoadingSearchId(null);
+    }
+  };
+
+  const fetchHistory = async (autoLoadLatest = false) => {
     setLoadingHistory(true);
     try {
       const res = await fetchWithAuth('/api/lola/history?limit=6');
       if (res.ok) {
         const json = await res.json();
-        setHistory(json.searches || []);
+        const searches: LolaSearch[] = json.searches || [];
+        setHistory(searches);
+        if (autoLoadLatest && searches.length > 0) {
+          handleSelectSearch(searches[0].id);
+        }
       }
     } catch (e) {
       console.error('Error fetching history:', e);
@@ -601,7 +664,8 @@ export default function LolaAgentPage() {
             <div className="flex items-center justify-between mb-3 text-slate-300 text-xs font-semibold uppercase tracking-wider">
               <span>Búsquedas recientes de Lola</span>
               <button
-                onClick={fetchHistory}
+                type="button"
+                onClick={() => fetchHistory(false)}
                 className="text-slate-500 hover:text-cyan-400 transition-colors cursor-pointer"
                 title="Actualizar historial"
               >
@@ -613,31 +677,64 @@ export default function LolaAgentPage() {
               <p className="text-xs text-slate-500 italic">No hay búsquedas registradas aún.</p>
             ) : (
               <div className="space-y-2.5">
-                {history.map((h) => (
-                  <div
-                    key={h.id}
-                    className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80 text-xs flex items-center justify-between"
-                  >
-                    <div>
-                      <div className="font-medium text-slate-200">
-                        {h.industry} en {h.city}
+                {history.map((h) => {
+                  const isCurrent = currentSearch?.id === h.id;
+                  const isLoadingThis = loadingSearchId === h.id;
+
+                  return (
+                    <button
+                      key={h.id}
+                      type="button"
+                      onClick={() => handleSelectSearch(h.id)}
+                      disabled={isLoadingThis || isSearching || isInvestigating}
+                      className={cn(
+                        'w-full text-left p-2.5 rounded-lg border text-xs transition-all flex items-center justify-between group cursor-pointer disabled:opacity-50',
+                        isCurrent
+                          ? 'bg-cyan-950/40 border-cyan-500/50 shadow-sm text-cyan-200 ring-1 ring-cyan-500/20'
+                          : 'bg-slate-950/60 border-slate-800/80 hover:bg-slate-900/90 hover:border-slate-700 text-slate-300'
+                      )}
+                      title={`Hacé clic para cargar los candidatos de ${h.industry} en ${h.city}`}
+                    >
+                      <div className="flex-1 min-w-0 pr-2">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={cn(
+                              'font-medium truncate',
+                              isCurrent ? 'text-white' : 'text-slate-200 group-hover:text-white'
+                            )}
+                          >
+                            {h.industry} en {h.city}
+                          </span>
+                          {isCurrent && (
+                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-medium shrink-0">
+                              Activa
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5">
+                          <span>{h.total_found} descubiertos</span>
+                          <span>•</span>
+                          <span>{h.investigated_count} investigados</span>
+                          <span>•</span>
+                          <span>{h.approved_count} en CRM</span>
+                        </div>
                       </div>
-                      <div className="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5">
-                        <span>{h.total_found} descubiertos</span>
-                        <span>•</span>
-                        <span>{h.investigated_count} investigados</span>
-                        <span>•</span>
-                        <span>{h.approved_count} en CRM</span>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {isLoadingThis ? (
+                          <RefreshCw className="w-3.5 h-3.5 text-cyan-400 animate-spin" />
+                        ) : (
+                          <span className="text-[10px] text-slate-500 font-mono group-hover:text-slate-400">
+                            {new Date(h.created_at).toLocaleDateString('es-AR', {
+                              day: '2-digit',
+                              month: 'short',
+                            })}
+                          </span>
+                        )}
                       </div>
-                    </div>
-                    <span className="text-[10px] text-slate-500 font-mono">
-                      {new Date(h.created_at).toLocaleDateString('es-AR', {
-                        day: '2-digit',
-                        month: 'short',
-                      })}
-                    </span>
-                  </div>
-                ))}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
