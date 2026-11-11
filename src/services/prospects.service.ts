@@ -71,8 +71,22 @@ export async function getProspects({
   const totalCount = count || 0;
   const totalPages = Math.ceil(totalCount / pageSize);
 
+  const mappedData = ((data as Business[]) || []).map((b) => {
+    let placeId = (b as any).google_place_id || null;
+    if (!placeId && b.notes) {
+      const match = b.notes.match(/\[Google Places\]:\s*ID\s+([A-Za-z0-9_\-]+)/);
+      if (match && match[1]) {
+        placeId = match[1];
+      }
+    }
+    return {
+      ...b,
+      google_place_id: placeId,
+    };
+  });
+
   return {
-    data: (data as Business[]) || [],
+    data: mappedData,
     count: totalCount,
     totalPages: totalPages > 0 ? totalPages : 1,
     currentPage: page,

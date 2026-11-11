@@ -39,7 +39,7 @@ import {
 } from '@/services/prospects.service';
 import { updateBusinessStage } from '@/services/crm.service';
 import { CRM_STAGES, ACTIVITY_TYPE_LABELS } from '@/lib/constants/crm';
-import { formatDate } from '@/lib/utils';
+import { formatDate, buildGoogleMapsUrl } from '@/lib/utils';
 import { CRMStage } from '@/types/database.types';
 
 export default function ProspectDetailPage() {
@@ -155,17 +155,8 @@ export default function ProspectDetailPage() {
     CRM_STAGES.find((s) => s.id === prospect.status) || CRM_STAGES[0];
 
   // Construcción del enlace oficial a Google Maps
-  // Si tiene Place ID: query=NOMBRE_DEL_NEGOCIO&query_place_id=GOOGLE_PLACE_ID
-  // Si no tiene Place ID: alternativa de búsqueda por nombre y dirección
   const hasSpecificGoogleProfile = Boolean(prospect.google_place_id);
-  const googleMapsUrl = hasSpecificGoogleProfile
-    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(prospect.name.trim())}&query_place_id=${encodeURIComponent(prospect.google_place_id!.trim())}`
-    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-        [prospect.name, prospect.address, prospect.city, prospect.state_province, prospect.country]
-          .map((p) => p?.trim())
-          .filter(Boolean)
-          .join(', ')
-      )}`;
+  const googleMapsUrl = buildGoogleMapsUrl(prospect);
 
   return (
     <div>

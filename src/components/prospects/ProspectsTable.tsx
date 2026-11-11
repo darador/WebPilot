@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { Business, CRMStage } from '@/types/database.types';
 import { CRM_STAGES } from '@/lib/constants/crm';
-import { formatDate } from '@/lib/utils';
+import { formatDate, buildGoogleMapsUrl } from '@/lib/utils';
 import { updateBusinessStage } from '@/services/crm.service';
 
 interface ProspectsTableProps {
@@ -219,17 +219,28 @@ export function ProspectsTable({
                     </div>
                   </td>
 
-                  {/* Ubicación */}
+                  {/* Ubicación con enlace a Google Maps */}
                   <td className="py-3 px-4 text-slate-300">
-                    <div className="flex items-center gap-1.5">
-                      <MapPin className="h-3 w-3 text-slate-500 shrink-0" />
-                      <span>{p.city || '-'}</span>
-                    </div>
-                    {p.state_province && (
-                      <span className="text-[10px] text-slate-500 block pl-4.5">
-                        {p.state_province}
-                      </span>
-                    )}
+                    <a
+                      href={buildGoogleMapsUrl(p)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex flex-col group/loc hover:text-emerald-400 transition-colors"
+                      title={`Ver "${p.name}" en Google Maps`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <MapPin className="h-3 w-3 text-slate-500 group-hover/loc:text-emerald-400 shrink-0 transition-colors" />
+                        <span className="font-medium text-slate-300 group-hover/loc:text-emerald-300 group-hover/loc:underline flex items-center gap-1">
+                          {p.city || '-'}
+                          <ExternalLink className="h-2.5 w-2.5 opacity-0 group-hover/loc:opacity-100 transition-opacity text-emerald-400 shrink-0" />
+                        </span>
+                      </div>
+                      {p.state_province && (
+                        <span className="text-[10px] text-slate-500 block pl-4.5 group-hover/loc:text-slate-400 transition-colors">
+                          {p.state_province}
+                        </span>
+                      )}
+                    </a>
                   </td>
 
                   {/* Contacto */}
