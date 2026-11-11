@@ -217,18 +217,18 @@ export function DemoPreviewModal({
         {/* Viewport Frame Container */}
         <div className="flex-1 bg-[#050810] overflow-y-auto flex items-center justify-center p-2 sm:p-4">
           <div
-            className={`transition-all duration-300 h-full bg-[#070b14] overflow-hidden shadow-2xl ${
+            className={`transition-all duration-300 h-full bg-white overflow-hidden shadow-2xl ${
               deviceMode === 'desktop'
-                ? 'w-full rounded-xl border border-[#162035]'
+                ? 'w-full rounded-xl border border-slate-700'
                 : deviceMode === 'tablet'
-                ? 'w-[768px] rounded-2xl border-4 border-slate-800'
+                ? 'w-[768px] rounded-2xl border-8 border-slate-800'
                 : 'w-[390px] rounded-[36px] border-8 border-slate-800 ring-1 ring-slate-700'
             }`}
           >
             <iframe
               src={previewUrl}
               title={`Vista previa demo ${demo.title}`}
-              className="w-full h-full border-0 bg-[#070b14]"
+              className="w-full h-full border-0 bg-white"
             />
           </div>
         </div>

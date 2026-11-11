@@ -84,26 +84,30 @@ export async function getEligibleBusinessesForDemo(client?: any): Promise<{
  * Determina el tema y paleta adecuados según el rubro del negocio
  */
 function determineThemeForIndustry(industry: string | null | undefined): {
-  primaryColor: 'cyan' | 'blue' | 'emerald' | 'indigo' | 'purple' | 'amber';
-  style: 'clean-medical' | 'modern-business' | 'warm-service' | 'minimalist';
+  primaryColor: 'cyan' | 'blue' | 'emerald' | 'indigo' | 'purple' | 'amber' | 'teal';
+  style: 'clean-medical' | 'modern-business' | 'warm-service' | 'minimalist' | 'warm-pet' | 'corporate-trust' | 'beauty-wellness';
+  mode: 'light' | 'dark';
 } {
   const ind = (industry || '').toLowerCase();
-  if (ind.includes('odontol') || ind.includes('dental') || ind.includes('medic') || ind.includes('salud') || ind.includes('doctor')) {
-    return { primaryColor: 'cyan', style: 'clean-medical' };
+  if (ind.includes('odontol') || ind.includes('dental') || ind.includes('medic') || ind.includes('salud') || ind.includes('doctor') || ind.includes('clinic')) {
+    return { primaryColor: 'cyan', style: 'clean-medical', mode: 'light' };
   }
   if (ind.includes('veterinari') || ind.includes('mascot')) {
-    return { primaryColor: 'emerald', style: 'warm-service' };
+    return { primaryColor: 'emerald', style: 'warm-pet', mode: 'light' };
   }
-  if (ind.includes('inmobiliari') || ind.includes('propied')) {
-    return { primaryColor: 'blue', style: 'modern-business' };
+  if (ind.includes('inmobiliari') || ind.includes('propied') || ind.includes('real estate')) {
+    return { primaryColor: 'blue', style: 'corporate-trust', mode: 'light' };
   }
-  if (ind.includes('gastronom') || ind.includes('restauran') || ind.includes('cafe')) {
-    return { primaryColor: 'amber', style: 'warm-service' };
+  if (ind.includes('gastronom') || ind.includes('restauran') || ind.includes('cafe') || ind.includes('bar')) {
+    return { primaryColor: 'amber', style: 'warm-service', mode: 'light' };
   }
-  if (ind.includes('contab') || ind.includes('abogad') || ind.includes('estudio') || ind.includes('profesional')) {
-    return { primaryColor: 'indigo', style: 'minimalist' };
+  if (ind.includes('estet') || ind.includes('belleza') || ind.includes('peluquer') || ind.includes('spa')) {
+    return { primaryColor: 'purple', style: 'beauty-wellness', mode: 'light' };
   }
-  return { primaryColor: 'blue', style: 'modern-business' };
+  if (ind.includes('contab') || ind.includes('abogad') || ind.includes('estudio') || ind.includes('profesional') || ind.includes('legal')) {
+    return { primaryColor: 'indigo', style: 'corporate-trust', mode: 'light' };
+  }
+  return { primaryColor: 'blue', style: 'modern-business', mode: 'light' };
 }
 
 /**
@@ -265,6 +269,133 @@ export async function generateDemoForBusiness(
   const theme = determineThemeForIndustry(business.industry);
   const productType = options?.productType || veraStrategy?.recommendedServices?.[0]?.serviceId || 'landing-express';
 
+  // 5.1 Síntesis de textos especializados y humanos
+  let professionalName: string | undefined = undefined;
+  const matchDr = business.name.match(/(Dra?\.\s+[A-Za-zÁÉÍÓÚáéíóúñÑ\s]+)/i);
+  if (matchDr) {
+    professionalName = matchDr[1].trim();
+  }
+
+  const ind = (business.industry || '').toLowerCase();
+  const isDental = ind.includes('odontol') || ind.includes('dental') || ind.includes('medic') || ind.includes('salud');
+  const isPet = ind.includes('veterinari') || ind.includes('mascot');
+  const isLegal = ind.includes('abogad') || ind.includes('estudio') || ind.includes('legal');
+  const isGastro = ind.includes('restauran') || ind.includes('cafe') || ind.includes('gastro');
+
+  let heroTitle = `Cuidamos lo que más te importa con atención profesional`;
+  let heroSubtitle = `Conocé nuestros tratamientos y servicios en ${city || 'la zona'}. Coordiná tu consulta directamente por WhatsApp.`;
+
+  if (isDental) {
+    heroTitle = `Cuidamos tu sonrisa con atención personalizada y tecnología de avanzada`;
+    heroSubtitle = `Atención odontológica integral en ${city || 'Quilmes'}. Tratamientos modernos, confort y turnos puntuales para vos y tu familia.`;
+  } else if (isPet) {
+    heroTitle = `La mejor atención médica y cariño para la salud de tu mascota`;
+    heroSubtitle = `Clínica veterinaria, vacunación y cirugías en ${city || 'la zona'}. Cuidamos a tu compañero con profesionalismo y vocación.`;
+  } else if (isLegal) {
+    heroTitle = `Asesoramiento legal y estratégico con solidez y compromiso`;
+    heroSubtitle = `Soluciones jurídicas eficientes para proteger tus derechos y patrimonio en ${city || 'la región'}.`;
+  } else if (isGastro) {
+    heroTitle = `Sabores auténticos e ingredientes seleccionados en cada plato`;
+    heroSubtitle = `Vení a disfrutar de una experiencia gastronómica única en ${city || 'la zona'}. Hacé tu reserva directa por WhatsApp.`;
+  }
+
+  const about = {
+    heading: isDental ? 'Sobre el Consultorio' : isPet ? 'Sobre la Veterinaria' : 'Sobre Nosotros',
+    title: isDental
+      ? 'Atención odontológica de confianza y calidad humana'
+      : isPet
+      ? 'Dedicación absoluta por el bienestar de los animales'
+      : 'Compromiso profesional y atención de excelencia',
+    professionalName: professionalName || business.name,
+    role: isDental ? 'Especialista en Odontología Integral' : isPet ? 'Médico Veterinario' : 'Equipo Profesional',
+    description: isDental
+      ? `En ${business.name} nos dedicamos a cuidar tu salud bucal con un trato cercano, empático y libre de dolor. Combinamos tecnología de última generación con instalaciones confortables para que te sientas a gusto en cada consulta.`
+      : `En ${business.name} priorizamos la cercanía, la excelencia y la confianza para brindarte un servicio transparente y a la altura de tus expectativas.`,
+    highlights: isDental
+      ? [
+          'Diagnóstico integral y sin dolor con equipamiento moderno',
+          'Atención personalizada para niños, jóvenes y adultos',
+          'Puntualidad en los turnos para cuidar tu tiempo',
+        ]
+      : [
+          'Atención personalizada orientada a resultados',
+          'Tecnología y métodos actualizados',
+          'Canales ágiles de contacto directo vía WhatsApp',
+        ],
+  };
+
+  const testimonials = isDental
+    ? [
+        {
+          patientName: 'Mariana G.',
+          comment: `Excelente atención de ${professionalName || 'la profesional'}. Me explicó todo el tratamiento con paciencia y no sentí ningún dolor. ¡Súper recomendable en ${city || 'la zona'}!`,
+          stars: 5,
+          treatment: 'Odontología General',
+        },
+        {
+          patientName: 'Lucas B.',
+          comment: 'El consultorio es moderno e impecable. Puntualidad inglesa en los turnos y excelente predisposición por WhatsApp.',
+          stars: 5,
+          treatment: 'Limpieza y Estética',
+        },
+        {
+          patientName: 'Florencia R.',
+          comment: 'Muy conforme con la atención y el seguimiento. Te hacen sentir cómodo desde el primer momento.',
+          stars: 5,
+          treatment: 'Consulta y Tratamiento',
+        },
+      ]
+    : [
+        {
+          patientName: 'Carlos M.',
+          comment: 'Gran profesionalismo y calidez. Destaco la rapidez para responder y la claridad en todo momento.',
+          stars: 5,
+          treatment: 'Atención General',
+        },
+        {
+          patientName: 'Valeria S.',
+          comment: 'Muy recomendable. El servicio superó mis expectativas y los canales de comunicación son impecables.',
+          stars: 5,
+          treatment: 'Servicio Personalizado',
+        },
+        {
+          patientName: 'Martín P.',
+          comment: 'Excelente experiencia. Cumplieron con los tiempos y el trato fue de primer nivel.',
+          stars: 5,
+          treatment: 'Atención Profesional',
+        },
+      ];
+
+  const faqs = isDental
+    ? [
+        {
+          question: '¿Cómo solicito un turno o primera consulta?',
+          answer: 'Podés hacer clic en cualquiera de los botones de WhatsApp de la página o llamarnos. Te responderemos a la brevedad con los días y horarios disponibles.',
+        },
+        {
+          question: '¿Atienden urgencias o dolores agudos?',
+          answer: 'Sí. Si tenés una urgencia o molestia, envianos un mensaje por WhatsApp detallando tu caso para darte prioridad de atención.',
+        },
+        {
+          question: '¿Qué medios de pago aceptan?',
+          answer: 'Aceptamos transferencias bancarias, tarjetas de débito/crédito y efectivo. Consultanos por opciones para tratamientos integrales.',
+        },
+      ]
+    : [
+        {
+          question: '¿Cómo puedo coordinar una consulta?',
+          answer: 'Escribinos directamente por WhatsApp o comunicate a nuestros teléfonos de contacto para agendar tu cita.',
+        },
+        {
+          question: '¿Cuáles son los horarios de atención?',
+          answer: `Atendemos de lunes a viernes en horarios comerciales y coordinamos turnos con cita previa en ${city || 'nuestra sede'}.`,
+        },
+        {
+          question: '¿Qué formas de pago reciben?',
+          answer: 'Recibimos transferencias bancarias, tarjetas de débito/crédito y efectivo.',
+        },
+      ];
+
   // 6. Construir contenido de la Demo
   const content: DemoContent = {
     businessName: business.name.trim(),
@@ -272,8 +403,8 @@ export async function generateDemoForBusiness(
     industry: business.industry || 'Servicios Profesionales',
     subindustry: lolaCandidate?.subindustry || null,
     hero: {
-      title: `Cuidamos lo que más te importa con atención profesional`,
-      subtitle: `Conocé nuestros tratamientos y servicios en ${city || 'la zona'}. Coordiná tu consulta directamente por WhatsApp.`,
+      title: heroTitle,
+      subtitle: heroSubtitle,
       badgeText: `Propuesta de presencia digital • ${city || 'Atención local'}`,
       ctaPrimary: {
         label: hasPhone ? 'Consultar por WhatsApp' : 'Contactar ahora',
@@ -284,28 +415,46 @@ export async function generateDemoForBusiness(
         action: '#servicios',
       },
     },
+    about,
     services: {
-      heading: 'Nuestros Tratamientos y Servicios',
+      heading: isDental ? 'Tratamientos y Especialidades' : 'Nuestros Servicios',
       subheading: 'Soluciones integrales pensadas para brindarte la mejor experiencia y resultados.',
       items: servicesItems,
     },
     features: {
       heading: '¿Por qué elegirnos?',
-      items: [
-        {
-          title: 'Atención Personalizada',
-          description: 'Escuchamos tus necesidades para ofrecerte el tratamiento o solución adecuada.',
-        },
-        {
-          title: 'Tecnología y Confort',
-          description: 'Equipamiento moderno e instalaciones pensadas para que te sientas a gusto.',
-        },
-        {
-          title: 'Puntualidad y Respeto',
-          description: 'Compromiso con los horarios coordinados para cuidar tu tiempo.',
-        },
-      ],
+      items: isDental
+        ? [
+            {
+              title: 'Atención Sin Dolor',
+              description: 'Técnicas y cuidados modernos para una experiencia cómoda, tranquila y sin estrés.',
+            },
+            {
+              title: 'Tecnología y Precisión',
+              description: 'Equipamiento digital e instrumental de última generación para diagnósticos certeros.',
+            },
+            {
+              title: 'Turnos Puntuales',
+              description: 'Respetamos tu tiempo coordinando turnos directos y sin largas esperas.',
+            },
+          ]
+        : [
+            {
+              title: 'Atención Personalizada',
+              description: 'Escuchamos tus necesidades para ofrecerte la solución adecuada.',
+            },
+            {
+              title: 'Tecnología y Confort',
+              description: 'Equipamiento moderno e instalaciones pensadas para que te sientas a gusto.',
+            },
+            {
+              title: 'Puntualidad y Respeto',
+              description: 'Compromiso con los horarios coordinados para cuidar tu tiempo.',
+            },
+          ],
     },
+    testimonials,
+    faqs,
     contact: {
       heading: 'Ubicación y Canales de Contacto',
       phone: phone || 'A coordinar',

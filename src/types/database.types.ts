@@ -258,6 +258,14 @@ export interface DemoContent {
       action: string;
     };
   };
+  about?: {
+    heading?: string;
+    title: string;
+    description: string;
+    professionalName?: string;
+    role?: string;
+    highlights?: string[];
+  };
   services: {
     heading: string;
     subheading?: string;
@@ -267,6 +275,16 @@ export interface DemoContent {
     heading: string;
     items: { title: string; description: string; icon?: string }[];
   };
+  testimonials?: {
+    patientName: string;
+    comment: string;
+    stars: number;
+    treatment?: string;
+  }[];
+  faqs?: {
+    question: string;
+    answer: string;
+  }[];
   contact: {
     heading: string;
     phone?: string | null;
@@ -280,8 +298,9 @@ export interface DemoContent {
     hours?: string | null;
   };
   theme: {
-    primaryColor: 'cyan' | 'blue' | 'emerald' | 'indigo' | 'purple' | 'amber';
-    style: 'clean-medical' | 'modern-business' | 'warm-service' | 'minimalist';
+    primaryColor: 'cyan' | 'blue' | 'emerald' | 'indigo' | 'purple' | 'amber' | 'teal';
+    style: 'clean-medical' | 'modern-business' | 'warm-service' | 'minimalist' | 'warm-pet' | 'corporate-trust' | 'beauty-wellness';
+    mode?: 'light' | 'dark';
   };
   provisionalFlags: string[];
   benchmarkNotice?: string;
