@@ -35,18 +35,40 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isAuthRoute = request.nextUrl.pathname.startsWith('/login');
-  const isPublicAsset =
-    request.nextUrl.pathname.startsWith('/_next') ||
-    request.nextUrl.pathname.startsWith('/favicon.ico') ||
-    request.nextUrl.pathname.startsWith('/api');
+  const pathname = request.nextUrl.pathname;
 
-  if (!user && !isAuthRoute && !isPublicAsset) {
+  // Rutas públicas de páginas (acceso sin login)
+  const isAuthRoute = pathname.startsWith('/login');
+  const isPublicDemo = pathname.startsWith('/demo');
+  const isPublicRoute = isAuthRoute || isPublicDemo;
+
+  // Rutas de API interna
+  const isApiRoute = pathname.startsWith('/api');
+
+  // 1. Manejo de peticiones a la API interna
+  if (isApiRoute) {
+    // Si no hay sesión en cookies ni token Bearer en el encabezado Authorization
+    const authHeader = request.headers.get('authorization') || request.headers.get('Authorization');
+    const hasBearer = authHeader?.toLowerCase().startsWith('bearer ');
+
+    if (!user && !hasBearer) {
+      return NextResponse.json(
+        { error: 'No autorizado. Sesión requerida para acceder a WebPilot AI.' },
+        { status: 401 }
+      );
+    }
+
+    return supabaseResponse;
+  }
+
+  // 2. Manejo de páginas del panel (proteger todas las rutas excepto públicas)
+  if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);
   }
 
+  // 3. Si el usuario ya está autenticado e intenta ir a /login, redirigir al panel
   if (user && isAuthRoute) {
     const url = request.nextUrl.clone();
     url.pathname = '/';

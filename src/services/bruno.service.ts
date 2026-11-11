@@ -447,7 +447,7 @@ export async function getDemoByIdOrSlug(
 
     const query = supabase
       .from('client_demos')
-      .select('*, business:businesses(*)');
+      .select('*');
 
     const { data, error } = isUuid
       ? await query.eq('id', idOrSlug).maybeSingle()

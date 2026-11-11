@@ -1,13 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { getAuthenticatedUser } from '@/lib/supabase/server';
 import { updateReference, deleteReference } from '@/services/references.service';
+
+export const dynamic = 'force-dynamic';
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = await createClient();
+    const { user, supabase } = await getAuthenticatedUser(req);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'Sesión no iniciada. Por favor iniciá sesión.' },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json();
     const updated = await updateReference(params.id, body, supabase);
     return NextResponse.json({ success: true, data: updated });
@@ -25,7 +34,14 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const supabase = await createClient();
+    const { user, supabase } = await getAuthenticatedUser(req);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'Sesión no iniciada. Por favor iniciá sesión.' },
+        { status: 401 }
+      );
+    }
+
     await deleteReference(params.id, supabase);
     return NextResponse.json({ success: true });
   } catch (error: any) {

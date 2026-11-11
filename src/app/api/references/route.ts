@@ -1,11 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { getAuthenticatedUser } from '@/lib/supabase/server';
 import { getReferences, createReference } from '@/services/references.service';
 import { ReferenceStatus } from '@/types/database.types';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   try {
-    const supabase = await createClient();
+    const { user, supabase } = await getAuthenticatedUser(req);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'Sesión no iniciada. Por favor iniciá sesión.' },
+        { status: 401 }
+      );
+    }
+
     const { searchParams } = new URL(req.url);
 
     const industry = searchParams.get('industry') || undefined;
@@ -25,7 +34,14 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createClient();
+    const { user, supabase } = await getAuthenticatedUser(req);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'Sesión no iniciada. Por favor iniciá sesión.' },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json();
 
     if (!body.name || !body.industry || !body.website_url) {
