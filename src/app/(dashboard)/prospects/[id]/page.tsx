@@ -37,6 +37,8 @@ import {
   ThumbsDown,
   MessageSquare,
   PhoneCall,
+  RotateCw,
+  CreditCard,
 } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { ActivityModal } from '@/components/crm/ActivityModal';
@@ -78,6 +80,105 @@ export default function ProspectDetailPage() {
     businessResponse: '',
   });
   const [isSavingReview, setIsSavingReview] = useState(false);
+  const [isMaintenanceModalOpen, setIsMaintenanceModalOpen] = useState(false);
+  const [isSavingMaintenance, setIsSavingMaintenance] = useState(false);
+  const [maintenanceForm, setMaintenanceForm] = useState<{
+    status: 'ACTIVO' | 'PAUSADO' | 'CANCELADO';
+    monthlyFeeARS: number;
+    monthlyFeeUSD: number;
+    startDate: string;
+    commitmentMonths: number;
+    commitmentEndDate: string;
+    notes: string;
+  }>({
+    status: 'ACTIVO',
+    monthlyFeeARS: 19000,
+    monthlyFeeUSD: 19,
+    startDate: new Date().toISOString().split('T')[0],
+    commitmentMonths: 12,
+    commitmentEndDate: (() => {
+      const d = new Date();
+      d.setFullYear(d.getFullYear() + 1);
+      return d.toISOString().split('T')[0];
+    })(),
+    notes: 'Hosting web, SSL, copias de seguridad y mantenimiento técnico mensual.',
+  });
+
+  const handleOpenMaintenanceModal = () => {
+    const existing = (prospect?.audit?.ai_insights as any)?.maintenance_subscription;
+    const veraMonthlyARS = prospect?.audit?.ai_insights?.vera_strategy?.suggestedPricing?.monthlyMaintenanceARS || 19000;
+    const veraMonthlyUSD = prospect?.audit?.ai_insights?.vera_strategy?.suggestedPricing?.monthlyMaintenanceUSD || 19;
+
+    if (existing) {
+      setMaintenanceForm({
+        status: existing.status || 'ACTIVO',
+        monthlyFeeARS: existing.monthlyFeeARS || veraMonthlyARS,
+        monthlyFeeUSD: existing.monthlyFeeUSD || veraMonthlyUSD,
+        startDate: existing.startDate || new Date().toISOString().split('T')[0],
+        commitmentMonths: existing.commitmentMonths || 12,
+        commitmentEndDate: existing.commitmentEndDate || (() => {
+          const d = new Date();
+          d.setFullYear(d.getFullYear() + 1);
+          return d.toISOString().split('T')[0];
+        })(),
+        notes: existing.notes || '',
+      });
+    } else {
+      const today = new Date().toISOString().split('T')[0];
+      const nextYear = new Date();
+      nextYear.setFullYear(nextYear.getFullYear() + 1);
+      setMaintenanceForm({
+        status: 'ACTIVO',
+        monthlyFeeARS: veraMonthlyARS,
+        monthlyFeeUSD: veraMonthlyUSD,
+        startDate: today,
+        commitmentMonths: 12,
+        commitmentEndDate: nextYear.toISOString().split('T')[0],
+        notes: 'Hosting web, SSL, copias de seguridad y mantenimiento técnico mensual.',
+      });
+    }
+    setIsMaintenanceModalOpen(true);
+  };
+
+  const handleSaveMaintenanceSubscription = async () => {
+    if (!prospect?.id || isSavingMaintenance) return;
+    setIsSavingMaintenance(true);
+    try {
+      const supabase = createClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+
+      const res = await fetch('/api/crm/maintenance', {
+        method: 'POST',
+        headers,
+        credentials: 'include',
+        body: JSON.stringify({
+          businessId: prospect.id,
+          subscription: {
+            ...maintenanceForm,
+            updatedAt: new Date().toISOString(),
+          },
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Error al guardar suscripción de mantenimiento.');
+      }
+
+      await loadProspect();
+      setIsMaintenanceModalOpen(false);
+    } catch (err: any) {
+      alert(`Error al registrar mantenimiento: ${err.message}`);
+    } finally {
+      setIsSavingMaintenance(false);
+    }
+  };
 
   const handleRunVeraAnalysis = async () => {
     if (!prospect?.id || isAnalyzingVera) return;
@@ -808,16 +909,35 @@ export default function ProspectDetailPage() {
               {prospect.audit?.ai_insights?.vera_strategy ? (
                 <div className="space-y-3.5 text-xs">
                   {/* Paquete e inversión */}
-                  <div className="p-3.5 rounded-lg border border-purple-500/30 bg-purple-950/20 space-y-1.5">
+                  <div className="p-3.5 rounded-lg border border-purple-500/30 bg-purple-950/20 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] uppercase font-bold tracking-wider text-purple-400">
                         Propuesta Sugerida
                       </span>
-                      <span className="text-base font-bold font-mono text-emerald-400">
-                        {formatCurrency(prospect.audit.ai_insights.vera_strategy.suggestedPricing?.bundleFinalARS || 0)}
-                      </span>
+                      <div className="text-right">
+                        <span className="text-[10px] text-slate-400 mr-1">Desarrollo:</span>
+                        <span className="text-base font-bold font-mono text-emerald-400">
+                          {formatCurrency(prospect.audit.ai_insights.vera_strategy.suggestedPricing?.bundleFinalARS || 0)}
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-xs font-semibold text-white">
+                    {prospect.audit.ai_insights.vera_strategy.suggestedPricing?.monthlyMaintenanceARS ? (
+                      <div className="flex items-center justify-between pt-1 border-t border-purple-500/20 text-[11px] font-mono">
+                        <span className="text-slate-400">Mantenimiento mensual:</span>
+                        <span className="font-semibold text-cyan-300">
+                          +{formatCurrency(prospect.audit.ai_insights.vera_strategy.suggestedPricing.monthlyMaintenanceARS)}/mes
+                        </span>
+                      </div>
+                    ) : null}
+                    {prospect.audit.ai_insights.vera_strategy.suggestedPricing?.firstYearTotalARS ? (
+                      <div className="flex items-center justify-between text-[11px] font-mono text-amber-300/90">
+                        <span>Total estimado 1° año:</span>
+                        <span className="font-semibold">
+                          {formatCurrency(prospect.audit.ai_insights.vera_strategy.suggestedPricing.firstYearTotalARS)}
+                        </span>
+                      </div>
+                    ) : null}
+                    <div className="text-xs font-semibold text-white pt-1">
                       {prospect.audit.ai_insights.vera_strategy.suggestedPricing?.bundleName}
                     </div>
                     <div className="text-[11px] text-slate-300 line-clamp-2">
@@ -1022,6 +1142,111 @@ export default function ProspectDetailPage() {
               );
             })()}
 
+            {/* Tarjeta de Abono de Mantenimiento Recurrente */}
+            {(() => {
+              const sub = (prospect.audit?.ai_insights as any)?.maintenance_subscription;
+              const hasActiveSub = sub && (sub.status === 'ACTIVO' || sub.status === 'PAUSADO' || sub.status === 'CANCELADO');
+
+              return (
+                <div className="rounded-xl border border-cyan-500/30 bg-[#0c1220] p-5 shadow-lg shadow-cyan-950/10">
+                  <div className="flex items-center justify-between border-b border-[#182238] pb-3 mb-4">
+                    <div className="flex items-center gap-2">
+                      <div className="h-7 w-7 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+                        <RotateCw className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-semibold text-white">Abono de Mantenimiento</h3>
+                        <p className="text-[10px] text-cyan-300">Ingreso recurrente y soporte mensual</p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleOpenMaintenanceModal}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/30 px-2.5 py-1 text-[11px] font-semibold text-cyan-300 hover:bg-cyan-500/20 transition-colors"
+                    >
+                      <Wrench className="h-3 w-3" />
+                      <span>{hasActiveSub ? 'Gestionar' : 'Activar'}</span>
+                    </button>
+                  </div>
+
+                  {hasActiveSub ? (
+                    <div className="space-y-3 text-xs">
+                      {/* Estado y Cuota Mensual */}
+                      <div className="p-3 rounded-lg border border-cyan-500/30 bg-cyan-950/20 flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] text-slate-400 uppercase font-bold block mb-0.5">
+                            Estado del Abono
+                          </span>
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${
+                              sub.status === 'ACTIVO'
+                                ? 'border-emerald-500/40 bg-emerald-500/20 text-emerald-300'
+                                : sub.status === 'PAUSADO'
+                                ? 'border-amber-500/40 bg-amber-500/20 text-amber-300'
+                                : 'border-rose-500/40 bg-rose-500/20 text-rose-300'
+                            }`}
+                          >
+                            {sub.status}
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[10px] text-slate-400 uppercase font-bold block mb-0.5">
+                            Cuota Mensual
+                          </span>
+                          <span className="text-base font-bold font-mono text-cyan-300">
+                            {formatCurrency(sub.monthlyFeeARS || 0)}/mes
+                          </span>
+                          {sub.monthlyFeeUSD ? (
+                            <span className="text-[10px] text-slate-500 block font-mono">
+                              (US$ {sub.monthlyFeeUSD}/mes)
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      {/* Plazo y Compromiso */}
+                      <div className="grid grid-cols-2 gap-2 text-[11px] bg-[#080d18] p-2.5 rounded-lg border border-[#172238]">
+                        <div>
+                          <span className="text-slate-400 block text-[10px]">Fecha de inicio:</span>
+                          <span className="text-white font-medium">{sub.startDate || '-'}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 block text-[10px]">Compromiso 12 meses:</span>
+                          <span className="text-amber-300 font-medium">{sub.commitmentEndDate || '12 meses'}</span>
+                        </div>
+                      </div>
+
+                      {sub.notes && (
+                        <div className="text-[11px] text-slate-400 bg-[#080d18] p-2 rounded-lg border border-[#172238]">
+                          <strong className="text-slate-300 block mb-0.5">Alcance acordado:</strong>
+                          {sub.notes}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-slate-800 bg-[#080d18] p-4 text-xs text-slate-300 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] uppercase font-bold text-slate-500">Estado</span>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border border-slate-700 bg-slate-800 text-slate-400">
+                          SIN ABONO ACTIVO
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 leading-relaxed">
+                        Este cliente aún no tiene un abono de mantenimiento recurrente activo. Podés darlo de alta cuando contrate el desarrollo ($19.000, $24.000 o $29.000 mensuales) con compromiso inicial de 12 meses.
+                      </p>
+                      <button
+                        onClick={handleOpenMaintenanceModal}
+                        className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 px-3 py-2 text-xs font-semibold text-white shadow-md transition-all"
+                      >
+                        <RotateCw className="h-3.5 w-3.5" />
+                        <span>Activar Abono de Mantenimiento</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
             {/* Información del Sistema */}
             <div className="rounded-xl border border-[#1a2336] bg-[#090e1a] p-5 text-xs space-y-2">
               <h4 className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
@@ -1090,20 +1315,43 @@ export default function ProspectDetailPage() {
             </div>
 
             {/* Inversión y paquete */}
-            <div className="p-4 rounded-xl border border-emerald-500/30 bg-[#0c1424] flex items-center justify-between">
+            <div className="p-4 rounded-xl border border-emerald-500/30 bg-[#0c1424] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <span className="text-xs text-slate-400 uppercase font-bold block">Propuesta Sugerida</span>
                 <span className="text-sm font-bold text-white">
                   {prospect.audit.ai_insights.vera_strategy.suggestedPricing?.bundleName}
                 </span>
+                {prospect.audit.ai_insights.vera_strategy.suggestedPricing?.commitmentMonths ? (
+                  <span className="text-[10px] text-emerald-400 font-medium block mt-0.5">
+                    • Compromiso inicial sugerido: {prospect.audit.ai_insights.vera_strategy.suggestedPricing.commitmentMonths} meses
+                  </span>
+                ) : null}
               </div>
-              <div className="text-right">
-                <span className="text-xl font-bold font-mono text-emerald-400">
-                  {formatCurrency(prospect.audit.ai_insights.vera_strategy.suggestedPricing?.bundleFinalARS || 0)}
-                </span>
-                <span className="text-xs text-cyan-400 block font-mono">
-                  US$ {prospect.audit.ai_insights.vera_strategy.suggestedPricing?.bundleFinalUSD}
-                </span>
+              <div className="text-left sm:text-right">
+                <div className="flex items-baseline sm:justify-end gap-1.5">
+                  <span className="text-xs text-slate-400">Desarrollo:</span>
+                  <span className="text-lg font-bold font-mono text-emerald-400">
+                    {formatCurrency(prospect.audit.ai_insights.vera_strategy.suggestedPricing?.bundleFinalARS || 0)}
+                  </span>
+                  <span className="text-[11px] text-slate-500 font-mono">
+                    (US$ {prospect.audit.ai_insights.vera_strategy.suggestedPricing?.bundleFinalUSD})
+                  </span>
+                </div>
+                {prospect.audit.ai_insights.vera_strategy.suggestedPricing?.monthlyMaintenanceARS ? (
+                  <div className="text-xs font-semibold text-cyan-300 font-mono mt-0.5">
+                    + {formatCurrency(prospect.audit.ai_insights.vera_strategy.suggestedPricing.monthlyMaintenanceARS)}/mes mantenimiento
+                    {prospect.audit.ai_insights.vera_strategy.suggestedPricing?.monthlyMaintenanceUSD ? (
+                      <span className="text-[10px] text-slate-400 ml-1">
+                        (US$ {prospect.audit.ai_insights.vera_strategy.suggestedPricing.monthlyMaintenanceUSD}/mes)
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
+                {prospect.audit.ai_insights.vera_strategy.suggestedPricing?.firstYearTotalARS ? (
+                  <div className="text-[11px] text-amber-300/90 font-mono mt-0.5">
+                    Total 1° año (Desarrollo + 12m): {formatCurrency(prospect.audit.ai_insights.vera_strategy.suggestedPricing.firstYearTotalARS)}
+                  </div>
+                ) : null}
               </div>
             </div>
 
@@ -1490,6 +1738,194 @@ export default function ProspectDetailPage() {
                 className="px-4 py-2 rounded-lg bg-[#152037] text-white hover:bg-[#1e2e4f] text-xs font-medium"
               >
                 Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Gestión de Abono de Mantenimiento */}
+      {isMaintenanceModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+          <div className="relative w-full max-w-lg rounded-2xl border border-cyan-500/40 bg-[#0a0f1d] p-6 shadow-2xl text-slate-200 space-y-5">
+            <div className="flex items-start justify-between border-b border-[#172238] pb-3">
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+                  <RotateCw className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">
+                    Abono de Mantenimiento — {prospect.name}
+                  </h3>
+                  <p className="text-[11px] text-cyan-300">
+                    Ingresos mensuales recurrentes y soporte continuo
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsMaintenanceModalOpen(false)}
+                className="text-slate-400 hover:text-white text-xs font-mono px-2 py-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              {/* Estado */}
+              <div>
+                <label className="text-slate-400 font-semibold block mb-1.5">
+                  Estado de la Suscripción:
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['ACTIVO', 'PAUSADO', 'CANCELADO'] as const).map((st) => (
+                    <button
+                      key={st}
+                      type="button"
+                      onClick={() => setMaintenanceForm((prev) => ({ ...prev, status: st }))}
+                      className={`py-2 px-3 rounded-lg border text-xs font-semibold transition-all ${
+                        maintenanceForm.status === st
+                          ? st === 'ACTIVO'
+                            ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 shadow-md shadow-emerald-500/20'
+                            : st === 'PAUSADO'
+                            ? 'bg-amber-500/20 border-amber-500 text-amber-300 shadow-md shadow-amber-500/20'
+                            : 'bg-rose-500/20 border-rose-500 text-rose-300 shadow-md shadow-rose-500/20'
+                          : 'bg-[#080d18] border-[#1a2336] text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {st}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Importes mensual ARS y USD */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-slate-400 font-semibold block mb-1">
+                    Cuota mensual (ARS $):
+                  </label>
+                  <input
+                    type="number"
+                    value={maintenanceForm.monthlyFeeARS}
+                    onChange={(e) =>
+                      setMaintenanceForm((prev) => ({
+                        ...prev,
+                        monthlyFeeARS: parseInt(e.target.value, 10) || 0,
+                      }))
+                    }
+                    className="w-full bg-[#080d18] border border-[#1e2a42] rounded-lg px-3 py-2 text-xs font-mono text-emerald-400 font-bold focus:outline-none focus:border-cyan-500"
+                    placeholder="19000"
+                  />
+                  <span className="text-[10px] text-slate-500 block mt-0.5">
+                    Express: $19k • Pro: $24k • Inst: $29k
+                  </span>
+                </div>
+
+                <div>
+                  <label className="text-slate-400 font-semibold block mb-1">
+                    Cuota mensual (USD $):
+                  </label>
+                  <input
+                    type="number"
+                    value={maintenanceForm.monthlyFeeUSD}
+                    onChange={(e) =>
+                      setMaintenanceForm((prev) => ({
+                        ...prev,
+                        monthlyFeeUSD: parseInt(e.target.value, 10) || 0,
+                      }))
+                    }
+                    className="w-full bg-[#080d18] border border-[#1e2a42] rounded-lg px-3 py-2 text-xs font-mono text-cyan-400 font-bold focus:outline-none focus:border-cyan-500"
+                    placeholder="19"
+                  />
+                </div>
+              </div>
+
+              {/* Fechas de inicio y compromiso inicial */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-slate-400 font-semibold block mb-1">
+                    Fecha de Inicio:
+                  </label>
+                  <input
+                    type="date"
+                    value={maintenanceForm.startDate}
+                    onChange={(e) => {
+                      const newStart = e.target.value;
+                      setMaintenanceForm((prev) => {
+                        try {
+                          const d = new Date(newStart);
+                          d.setMonth(d.getMonth() + (prev.commitmentMonths || 12));
+                          return {
+                            ...prev,
+                            startDate: newStart,
+                            commitmentEndDate: d.toISOString().split('T')[0],
+                          };
+                        } catch {
+                          return { ...prev, startDate: newStart };
+                        }
+                      });
+                    }}
+                    className="w-full bg-[#080d18] border border-[#1e2a42] rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-slate-400 font-semibold block mb-1">
+                    Fin de Compromiso (12m):
+                  </label>
+                  <input
+                    type="date"
+                    value={maintenanceForm.commitmentEndDate}
+                    onChange={(e) =>
+                      setMaintenanceForm((prev) => ({
+                        ...prev,
+                        commitmentEndDate: e.target.value,
+                      }))
+                    }
+                    className="w-full bg-[#080d18] border border-[#1e2a42] rounded-lg px-3 py-2 text-xs text-amber-300 focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+              </div>
+
+              {/* Notas y alcance */}
+              <div>
+                <label className="text-slate-400 font-semibold block mb-1">
+                  Alcance y Observaciones:
+                </label>
+                <textarea
+                  rows={2}
+                  value={maintenanceForm.notes}
+                  onChange={(e) =>
+                    setMaintenanceForm((prev) => ({
+                      ...prev,
+                      notes: e.target.value,
+                    }))
+                  }
+                  className="w-full bg-[#080d18] border border-[#1e2a42] rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
+                  placeholder="Hosting web, SSL, actualizaciones periódicas..."
+                />
+              </div>
+
+              <div className="p-3 bg-cyan-950/20 border border-cyan-500/20 rounded-lg text-[11px] text-cyan-200/90 leading-relaxed">
+                💡 <strong>Compromiso inicial:</strong> el modelo de negocio contempla 12 meses de compromiso inicial. Pasado el primer año, la renovación es mensual automática.
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#172238]">
+              <button
+                type="button"
+                onClick={() => setIsMaintenanceModalOpen(false)}
+                className="px-3 py-1.5 rounded-lg border border-slate-700 bg-[#121c2e] text-slate-300 text-xs hover:text-white"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={isSavingMaintenance}
+                onClick={handleSaveMaintenanceSubscription}
+                className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-xs font-semibold shadow-md shadow-cyan-500/20 hover:from-cyan-400 hover:to-blue-500 disabled:opacity-50"
+              >
+                {isSavingMaintenance ? 'Guardando...' : 'Guardar Abono'}
               </button>
             </div>
           </div>

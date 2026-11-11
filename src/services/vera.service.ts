@@ -52,6 +52,9 @@ export interface VeraCommercialStrategy {
     bundleFinalUSD: number;
     monthlyMaintenanceARS: number;
     monthlyMaintenanceUSD: number;
+    firstYearTotalARS?: number;
+    firstYearTotalUSD?: number;
+    commitmentMonths?: number;
     isCustomQuote: boolean;
     notes: string;
   };
@@ -249,6 +252,19 @@ export async function analyzeBusiness(
         justification: `La estructura de "${business.name}" amerita páginas individuales para cada especialidad con presencia institucional completa.`,
         urgency: 'ALTA',
       });
+
+      const sMantInst = findService('mantenimiento-institucional');
+      recommendedServices.push({
+        serviceId: sMantInst.id,
+        serviceName: sMantInst.name,
+        category: sMantInst.category,
+        suggestedPriceARS: sMantInst.suggestedPriceARS,
+        suggestedPriceUSD: sMantInst.suggestedPriceUSD,
+        isMonthly: true,
+        reason: 'Hosting multipágina de alta disponibilidad, certificado SSL y soporte técnico prioritario.',
+        justification: 'Abono mensual de $29.000 ARS/mes con compromiso inicial de 12 meses.',
+        urgency: 'MEDIA',
+      });
     } else if (isComplexClinic) {
       const sPro = findService('landing-profesional');
       recommendedServices.push({
@@ -261,8 +277,21 @@ export async function analyzeBusiness(
         justification: `Permite a "${business.name}" exhibir sus servicios en profundidad con un diseño visual elaborado y 2 rondas de modificaciones.`,
         urgency: 'ALTA',
       });
+
+      const sMantPro = findService('mantenimiento-profesional');
+      recommendedServices.push({
+        serviceId: sMantPro.id,
+        serviceName: sMantPro.name,
+        category: sMantPro.category,
+        suggestedPriceARS: sMantPro.suggestedPriceARS,
+        suggestedPriceUSD: sMantPro.suggestedPriceUSD,
+        isMonthly: true,
+        reason: 'Hosting optimizado, certificado SSL, copias de seguridad semanales y soporte técnico.',
+        justification: 'Abono mensual de $24.000 ARS/mes con compromiso inicial de 12 meses.',
+        urgency: 'MEDIA',
+      });
     } else {
-      // 3. PRODUCTO PRINCIPAL DE VOLUMEN COMERCIAL: Landing Express ($99.000)
+      // 3. PRODUCTO PRINCIPAL DE VOLUMEN COMERCIAL: Landing Express ($69.000)
       const sExp = findService('landing-express');
       recommendedServices.push({
         serviceId: sExp.id,
@@ -270,25 +299,24 @@ export async function analyzeBusiness(
         category: sExp.category,
         suggestedPriceARS: sExp.suggestedPriceARS,
         suggestedPriceUSD: sExp.suggestedPriceUSD,
-        reason: 'Landing page ágil de 5 secciones y entrega rápida (3 a 5 días) orientada al volumen y captación directa por WhatsApp.',
-        justification: `Excelente relación costo-beneficio ($99.000 ARS): diseño profesional adaptable a celulares, botón directo a WhatsApp, datos de contacto e integración con Google Maps.`,
+        reason: 'Landing page ágil de 5 secciones y entrega rápida (3 a 5 días) orientada a volumen y captación directa por WhatsApp.',
+        justification: `Precio de desarrollo sumamente accesible ($69.000 ARS) y rápido retorno de inversión: diseño profesional adaptable a celulares, botón directo a WhatsApp y Google Maps.`,
         urgency: 'ALTA',
       });
-    }
 
-    // Mantenimiento mensual accesible
-    const sMant = findService('mantenimiento-mensual');
-    recommendedServices.push({
-      serviceId: sMant.id,
-      serviceName: sMant.name,
-      category: sMant.category,
-      suggestedPriceARS: sMant.suggestedPriceARS,
-      suggestedPriceUSD: sMant.suggestedPriceUSD,
-      isMonthly: true,
-      reason: 'Garantizar hosting de alta velocidad, soporte continuo y certificado SSL sin complicaciones técnicas para el cliente.',
-      justification: 'Servicio accesible ($29.000 ARS/mes) para delegar completamente la administración y seguridad de la página web.',
-      urgency: 'MEDIA',
-    });
+      const sMantExp = findService('mantenimiento-express');
+      recommendedServices.push({
+        serviceId: sMantExp.id,
+        serviceName: sMantExp.name,
+        category: sMantExp.category,
+        suggestedPriceARS: sMantExp.suggestedPriceARS,
+        suggestedPriceUSD: sMantExp.suggestedPriceUSD,
+        isMonthly: true,
+        reason: 'Hosting de alta velocidad, certificado SSL, supervisión de disponibilidad y soporte ante problemas.',
+        justification: 'Abono mensual muy accesible ($19.000 ARS/mes) con compromiso inicial de 12 meses. WebPilot se ocupa de todo.',
+        urgency: 'MEDIA',
+      });
+    }
   } else {
     // CASO 2: NEGOCIOS CON SITIO WEB
     if (!titoAuditCompleted) {
@@ -456,10 +484,15 @@ export async function analyzeBusiness(
   const monthlyTotalARS = monthlyServices.reduce((sum, s) => sum + s.suggestedPriceARS, 0);
   const monthlyTotalUSD = monthlyServices.reduce((sum, s) => sum + s.suggestedPriceUSD, 0);
 
-  // Paquete bonificado: 15% de descuento al contratar en conjunto
+  // Paquete bonificado: 0% si es producto individual express/pro, o 15% si son múltiples servicios de desarrollo
   const bundleDiscountPercentage = nonMonthlyServices.length > 1 ? 15 : 0;
   const bundleFinalARS = Math.round(individualTotalARS * (1 - bundleDiscountPercentage / 100));
   const bundleFinalUSD = Math.round(individualTotalUSD * (1 - bundleDiscountPercentage / 100));
+
+  // Inversión total del primer año (Desarrollo inicial + 12 meses de abono de mantenimiento)
+  const commitmentMonths = 12;
+  const firstYearTotalARS = bundleFinalARS + monthlyTotalARS * commitmentMonths;
+  const firstYearTotalUSD = bundleFinalUSD + monthlyTotalUSD * commitmentMonths;
 
   let bundleName = 'Plan WebPilot Estándar';
   if (!hasWebsite) {
@@ -491,7 +524,7 @@ export async function analyzeBusiness(
     : `La lentitud o la falta de un canal directo como WhatsApp provoca que los visitantes abandonen la página antes de consultar, desaprovechando las visitas que llegan desde Google Maps.`;
 
   const ourSolution = !hasWebsite
-    ? `Desde WebPilot desarrollamos soluciones web profesionales muy ágiles y accesibles desde ${formatCurrency(bundleFinalARS)}, optimizadas para celulares y conectadas directamente a su WhatsApp en 3 a 5 días hábiles, sin complicaciones técnicas.`
+    ? `Desde WebPilot desarrollamos soluciones web profesionales muy ágiles y accesibles desde ${formatCurrency(bundleFinalARS)}, optimizadas para celulares y conectadas directamente a su WhatsApp en 3 a 5 días hábiles, con abono de mantenimiento de ${formatCurrency(monthlyTotalARS)}/mes para que no tengan preocupaciones técnicas.`
     : `En WebPilot realizamos una intervención técnica puntual para resolver la velocidad, seguridad e integrar canales directos de WhatsApp y formularios, dejando la web funcionando a máxima capacidad de conversión.`;
 
   const whyNow = `El rubro de ${business.industry || 'servicios profesionales'} en ${business.city || 'la zona'} tiene una alta demanda de búsqueda en Google. Resolver esto ahora permite captar los pacientes antes que los consultorios de la competencia.`;
@@ -501,14 +534,14 @@ export async function analyzeBusiness(
   const cityName = business.city || 'su zona';
 
   const whatsappMessage = !hasWebsite
-    ? `Hola! 👋 Me contacto del equipo de WebPilot con respecto a ${business.name}.\n\nEstuvimos analizando la presencia digital de los profesionales de ${cityName} y notamos que actualmente no cuentan con un sitio web propio para que los pacientes puedan conocer sus especialidades y solicitar turnos por WhatsApp.\n\nContamos con opciones muy accesibles desde ${formatCurrency(bundleFinalARS)} llave en mano (Landing Express con entrega en 3 a 5 días y botón directo a WhatsApp). ¿Tendrían 5 minutos esta semana para mostrarles una propuesta simple y sin compromiso?\n\n¡Muchas gracias y que tengan un excelente día!`
+    ? `Hola! 👋 Me contacto del equipo de WebPilot con respecto a ${business.name}.\n\nEstuvimos analizando la presencia digital de los profesionales de ${cityName} y notamos que actualmente no cuentan con un sitio web propio para que los pacientes puedan conocer sus especialidades y solicitar turnos por WhatsApp.\n\nDesarrollamos una *Landing Express profesional* por solo *${formatCurrency(bundleFinalARS)} iniciales*, lista en 3 a 5 días y adaptada a celulares. Además, nos ocupamos de mantenerla online, actualizada y funcionando por un abono mensual accesible de *${formatCurrency(monthlyTotalARS)}/mes* (compromiso inicial de 12 meses).\n\n¿Tendrían 5 minutos esta semana para mostrarles una propuesta simple y sin compromiso?\n\n¡Muchas gracias y que tengan un excelente día!`
     : `Hola! 👋 Me contacto del equipo de WebPilot con respecto a ${business.name}.\n\nEstuvimos revisando su sitio web (${websiteUrl}) y notamos un par de detalles puntuales que están haciendo que potenciales pacientes de ${cityName} se pierdan antes de consultar (${opportunities[0]?.title.toLowerCase() || 'oportunidades de mejora'}).\n\nPreparamos un breve diagnóstico gratuito con las recomendaciones para optimizarlo y sumar más consultas por WhatsApp. ¿A quién podríamos compartirle este informe para que lo puedan evaluar?\n\n¡Saludos cordiales!`;
 
   const emailSubject = !hasWebsite
     ? `Propuesta de presencia web y captación de pacientes para ${business.name}`
     : `Diagnóstico y optimización web para ${business.name}`;
 
-  const emailBody = `Estimado equipo de ${business.name},\n\nMi nombre es parte del equipo de WebPilot AI. Nos especializamos en potenciar la presencia digital y la captación de clientes de consultorios y empresas en ${cityName}.\n\n${painPoint}\n\nPara solucionar esto, preparamos una propuesta orientativa que incluye:\n${recommendedServices.map((s) => `• ${s.serviceName}: ${s.reason}`).join('\n')}\n\nInversión sugerida en paquete bonificado: ${formatCurrency(bundleFinalARS)} (o US$ ${bundleFinalUSD}).\n\nNos encantaría coordinar una breve llamada de 10 minutos para presentarles el diagnóstico completo sin ningún tipo de compromiso.\n\nQuedamos a su total disposición.\n\nAtentamente,\nEquipo WebPilot AI\nwww.webpilot.ai`;
+  const emailBody = `Estimado equipo de ${business.name},\n\nMi nombre es parte del equipo de WebPilot AI. Nos especializamos en potenciar la presencia digital y la captación de clientes de consultorios y empresas en ${cityName}.\n\n${painPoint}\n\nPara solucionar esto, preparamos una propuesta orientativa:\n${recommendedServices.map((s) => `• ${s.serviceName}: ${s.reason}`).join('\n')}\n\nEstructura de inversión transparente:\n• Desarrollo inicial: ${formatCurrency(bundleFinalARS)} (pago único)\n• Mantenimiento y hosting continuo: ${formatCurrency(monthlyTotalARS)}/mes (compromiso inicial de 12 meses)\n• Inversión total estimada del primer año: ${formatCurrency(firstYearTotalARS)}\n\nNos ocupamos de que su web esté siempre online, rápida, segura y lista para captar pacientes sin que el consultorio tenga que preocuparse por cuestiones técnicas.\n\n¿Tienen 5 minutos esta semana para que conversemos sin ningún compromiso?\n\nAtentamente,\nEquipo WebPilot AI\nDaro & Julieta`;
 
   // 11. Estructura completa de la estrategia de Vera
   const strategy: VeraCommercialStrategy = {
@@ -547,8 +580,11 @@ export async function analyzeBusiness(
       bundleFinalUSD,
       monthlyMaintenanceARS: monthlyTotalARS,
       monthlyMaintenanceUSD: monthlyTotalUSD,
+      firstYearTotalARS,
+      firstYearTotalUSD,
+      commitmentMonths,
       isCustomQuote: false,
-      notes: `Precios calculados con el catálogo de servicios de WebPilot. Paquete "${bundleName}" con ${bundleDiscountPercentage}% de bonificación en contratación conjunta.`,
+      notes: `Desarrollo inicial: ${formatCurrency(bundleFinalARS)} (pago único). Mantenimiento y hosting: ${formatCurrency(monthlyTotalARS)}/mes (compromiso inicial 12 meses). Inversión total 1.er año: ${formatCurrency(firstYearTotalARS)}.`,
     },
     commercialArguments: {
       painPoint,

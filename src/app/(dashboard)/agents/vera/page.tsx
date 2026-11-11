@@ -108,13 +108,18 @@ export default function VeraAgentPage() {
   const [isSavingReview, setIsSavingReview] = useState(false);
 
   useEffect(() => {
-    // Cargar catálogo de localStorage si existe y está actualizado con la estrategia de volumen
+    // Cargar catálogo de localStorage si existe y está actualizado con la estrategia de volumen y abono recurrente
     try {
       const saved = localStorage.getItem('webpilot_services_catalog');
       if (saved) {
         const parsed = JSON.parse(saved);
-        // Si el catálogo guardado contiene 'landing-express', respetamos las ediciones; de lo contrario actualizamos al nuevo catálogo oficial
-        if (Array.isArray(parsed) && parsed.some((s: any) => s.id === 'landing-express')) {
+        // Si el catálogo guardado contiene 'landing-express' con el precio de $69.000 y el abono 'mantenimiento-express', respetamos las ediciones
+        const isUpToDate =
+          Array.isArray(parsed) &&
+          parsed.some((s: any) => s.id === 'landing-express' && s.suggestedPriceARS === 69000) &&
+          parsed.some((s: any) => s.id === 'mantenimiento-express');
+
+        if (isUpToDate) {
           setServicesCatalog(parsed);
         } else {
           setServicesCatalog(DEFAULT_SERVICES_CATALOG);
@@ -1767,28 +1772,48 @@ export default function VeraAgentPage() {
                     </div>
 
                     {/* Caja de Paquete / Bundle Bonificado */}
-                    <div className="pt-3 border-t border-[#1a2942] flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div className="pt-3 border-t border-[#1a2942] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                       <div>
                         <span className="text-xs font-bold text-white block">
                           {selectedStrategy.suggestedPricing.bundleName}
                         </span>
-                        <span className="text-[11px] text-slate-400">
+                        <span className="text-[11px] text-slate-400 block">
                           {selectedStrategy.suggestedPricing.bundleDiscountPercentage > 0
                             ? `Incluye ${selectedStrategy.suggestedPricing.bundleDiscountPercentage}% de bonificación por paquete integral`
-                            : 'Cotización según catálogo oficial'}
+                            : 'Estrategia de volumen: desarrollo accesible + mantenimiento'}
                         </span>
+                        {selectedStrategy.suggestedPricing.commitmentMonths ? (
+                          <span className="text-[10px] text-emerald-400 font-medium block mt-0.5">
+                            • Compromiso inicial sugerido: {selectedStrategy.suggestedPricing.commitmentMonths} meses
+                          </span>
+                        ) : null}
                       </div>
 
-                      <div className="text-right">
-                        <span className="text-xs text-slate-400 line-through mr-2 font-mono">
-                          {formatCurrency(selectedStrategy.suggestedPricing.individualServicesTotalARS)}
-                        </span>
-                        <span className="text-xl font-bold font-mono text-emerald-400">
-                          {formatCurrency(selectedStrategy.suggestedPricing.bundleFinalARS)}
-                        </span>
-                        <span className="text-xs text-cyan-400 block font-mono">
-                          US$ {selectedStrategy.suggestedPricing.bundleFinalUSD}
-                        </span>
+                      <div className="text-left sm:text-right w-full sm:w-auto">
+                        <div className="flex items-baseline sm:justify-end gap-2">
+                          <span className="text-xs text-slate-400">Desarrollo:</span>
+                          <span className="text-lg font-bold font-mono text-emerald-400">
+                            {formatCurrency(selectedStrategy.suggestedPricing.bundleFinalARS)}
+                          </span>
+                          <span className="text-[11px] text-slate-500 font-mono">
+                            (US$ {selectedStrategy.suggestedPricing.bundleFinalUSD})
+                          </span>
+                        </div>
+                        {selectedStrategy.suggestedPricing.monthlyMaintenanceARS ? (
+                          <div className="text-xs font-medium text-cyan-300 font-mono mt-0.5">
+                            + {formatCurrency(selectedStrategy.suggestedPricing.monthlyMaintenanceARS)}/mes abono mensual
+                            {selectedStrategy.suggestedPricing.monthlyMaintenanceUSD ? (
+                              <span className="text-[11px] text-slate-400 ml-1">
+                                (US$ {selectedStrategy.suggestedPricing.monthlyMaintenanceUSD}/mes)
+                              </span>
+                            ) : null}
+                          </div>
+                        ) : null}
+                        {selectedStrategy.suggestedPricing.firstYearTotalARS ? (
+                          <div className="text-[11px] text-amber-300/90 font-mono mt-0.5">
+                            Total 1° año (Desarrollo + 12m): {formatCurrency(selectedStrategy.suggestedPricing.firstYearTotalARS)}
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                   </div>

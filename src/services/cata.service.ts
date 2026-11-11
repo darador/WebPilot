@@ -43,6 +43,11 @@ export interface CataOpportunity {
   recommendedService: string;
   suggestedPriceARS: number;
   suggestedPriceUSD: number;
+  monthlyMaintenanceARS: number;
+  monthlyMaintenanceUSD: number;
+  firstYearTotalARS: number;
+  firstYearTotalUSD: number;
+  commitmentMonths: number;
   opportunityReason: string;
   priority: 'ALTA' | 'MEDIA' | 'BAJA';
   commercialStage: CRMStage;
@@ -193,7 +198,7 @@ export async function getCataOpportunities(
     const primaryContact = contactsByBusiness.get(business.id) || null;
     const lastActivity = latestActivityByBusiness.get(business.id) || null;
 
-    // Calcular servicio y precio sugerido
+    // Calcular servicio, precio de desarrollo y mantenimiento mensual
     const recommendedService =
       veraStrategy?.recommendedServices?.[0]?.serviceName ||
       (!business.website ? 'Landing Express' : 'Optimización Web y Conversión');
@@ -201,18 +206,35 @@ export async function getCataOpportunities(
     const suggestedPriceARS =
       veraStrategy?.suggestedPricing?.bundleFinalARS ||
       veraStrategy?.recommendedServices?.[0]?.suggestedPriceARS ||
-      (!business.website ? 99000 : 79000);
+      (!business.website ? 69000 : 59000);
 
     const suggestedPriceUSD =
       veraStrategy?.suggestedPricing?.bundleFinalUSD ||
       veraStrategy?.recommendedServices?.[0]?.suggestedPriceUSD ||
-      (!business.website ? 85 : 65);
+      (!business.website ? 60 : 50);
+
+    const monthlyMaintenanceARS =
+      veraStrategy?.suggestedPricing?.monthlyMaintenanceARS ||
+      (!business.website ? 19000 : 19000);
+
+    const monthlyMaintenanceUSD =
+      veraStrategy?.suggestedPricing?.monthlyMaintenanceUSD ||
+      (!business.website ? 16 : 16);
+
+    const commitmentMonths = veraStrategy?.suggestedPricing?.commitmentMonths || 12;
+    const firstYearTotalARS =
+      veraStrategy?.suggestedPricing?.firstYearTotalARS ||
+      (suggestedPriceARS + monthlyMaintenanceARS * commitmentMonths);
+
+    const firstYearTotalUSD =
+      veraStrategy?.suggestedPricing?.firstYearTotalUSD ||
+      (suggestedPriceUSD + monthlyMaintenanceUSD * commitmentMonths);
 
     const opportunityReason =
       veraStrategy?.summary ||
       veraStrategy?.opportunities?.[0]?.commercialImpact ||
       (!business.website
-        ? 'Negocio sin sitio web oficial: oportunidad para implementar Landing Express ($99.000 ARS) y captar turnos por WhatsApp.'
+        ? 'Negocio sin sitio web oficial: oportunidad para implementar Landing Express ($69.000 + $19.000/mes) y captar turnos por WhatsApp.'
         : 'Sitio web con oportunidades técnicas de velocidad y conversión móvil.');
 
     // Prioridad comercial
@@ -250,6 +272,11 @@ export async function getCataOpportunities(
       recommendedService,
       suggestedPriceARS,
       suggestedPriceUSD,
+      monthlyMaintenanceARS,
+      monthlyMaintenanceUSD,
+      firstYearTotalARS,
+      firstYearTotalUSD,
+      commitmentMonths,
       opportunityReason,
       priority,
       commercialStage: business.status,
@@ -333,9 +360,20 @@ export function generateCataMessages(
 ): Record<MessageSituation, CataMessageDraft> {
   const name = business.name.trim();
   const city = business.city ? ` de ${business.city}` : '';
-  const priceFormatted = veraStrategy?.suggestedPricing?.bundleFinalARS
-    ? formatCurrency(veraStrategy.suggestedPricing.bundleFinalARS)
-    : formatCurrency(!business.website ? 99000 : 79000);
+  const devPrice =
+    veraStrategy?.suggestedPricing?.bundleFinalARS ||
+    (!business.website ? 69000 : 59000);
+  const monthlyPrice =
+    veraStrategy?.suggestedPricing?.monthlyMaintenanceARS ||
+    (!business.website ? 19000 : 19000);
+  const commitmentMonths = veraStrategy?.suggestedPricing?.commitmentMonths || 12;
+  const firstYearTotal =
+    veraStrategy?.suggestedPricing?.firstYearTotalARS ||
+    (devPrice + monthlyPrice * commitmentMonths);
+
+  const devPriceFormatted = formatCurrency(devPrice);
+  const monthlyPriceFormatted = formatCurrency(monthlyPrice);
+  const firstYearFormatted = formatCurrency(firstYearTotal);
 
   const mainServiceName =
     veraStrategy?.recommendedServices?.[0]?.serviceName ||
@@ -355,13 +393,13 @@ export function generateCataMessages(
       situation: 'SIN_WEB',
       situationLabel: 'Ofrecer sitio web desde cero',
       situationDescription: 'Para negocios que no cuentan con página web oficial y dependen solo de redes o mapas.',
-      whatsappMessage: `Hola, ¿cómo están? Les escribo de WebPilot. 
+      whatsappMessage: `Hola, ¿cómo están? Les escribo de WebPilot con respecto a *${name}*${city}.
 
-Estuvimos conociendo a *${name}*${city} y nos pareció excelente la propuesta que tienen para sus pacientes. Notamos que hoy no cuentan con un sitio web oficial propio, lo que hace que muchas personas que buscan odontólogos en la zona por Google no los encuentren de inmediato.
+Estuvimos conociendo su trabajo y notamos que hoy no cuentan con un sitio web oficial para que los pacientes los encuentren directamente en Google.
 
-Contamos con nuestra *Landing Express* pensada específicamente para consultorios: inversión sumamente accesible de ${priceFormatted} llave en mano, entrega en 3 a 5 días hábiles, botón directo a WhatsApp, mapa y adaptación completa a celulares.
+Desarrollamos una *Landing Express profesional* por solo *${devPriceFormatted} iniciales*, lista en 3 a 5 días y adaptada a celulares con botón directo a WhatsApp. Además, nos ocupamos de mantenerla online, actualizada y funcionando por una cuota mensual accesible de *${monthlyPriceFormatted}/mes* (compromiso inicial de 12 meses).
 
-¿Les gustaría que les comparta una propuesta breve de 1 minuto sin ningún compromiso? ¡Muchas gracias y buena semana!`,
+¿Les gustaría que les comparta una propuesta breve de 1 minuto sin ningún compromiso? ¡Muchas gracias y que tengan un excelente día!`,
       emailSubject: `${name}: propuesta para sumar su sitio web oficial y captar más pacientes`,
       emailBody: `Estimado equipo de ${name},
 
@@ -375,7 +413,12 @@ En WebPilot diseñamos sitios web modernos, ultrarrápidos y optimizados para sa
 • Ubicación exacta, integración con Google Maps y datos de contacto.
 • Carga instantánea y adaptable a celulares.
 
-Diseñamos una propuesta inicial para ustedes con nuestra Landing Express por una inversión muy accesible de ${priceFormatted} llave en mano (entrega estimada de 3 a 5 días hábiles).
+Estructura de inversión transparente:
+• Desarrollo inicial: ${devPriceFormatted} (pago único llave en mano, entrega en 3 a 5 días hábiles).
+• Mantenimiento y hosting continuo: ${monthlyPriceFormatted}/mes (compromiso inicial de 12 meses).
+• Inversión total estimada del primer año: ${firstYearFormatted}.
+
+Nos ocupamos de que la página web esté siempre online, protegida con SSL y funcionando sin que el consultorio tenga que dedicar tiempo a cuestiones técnicas.
 
 ¿Tienen 5 minutos esta semana para que les enviemos el bosquejo interactivo sin ningún costo ni compromiso?
 
@@ -389,13 +432,15 @@ Daro & Julieta`,
       situation: 'FALLAS_TITO',
       situationLabel: 'Mejoras técnicas (Fallas de Tito)',
       situationDescription: 'Para negocios con web activa donde Tito detectó lentitud, problemas mobile o falta de contacto.',
-      whatsappMessage: `Hola, ¿cómo están? Les escribo de WebPilot.
+      whatsappMessage: `Hola, ¿cómo están? Les escribo de WebPilot con respecto a *${name}*.
 
-Estuvimos revisando la web de *${name}* (${business.website || ''}) y encontramos detalles muy interesantes en los servicios que brindan. Sin embargo, en un análisis técnico rápido notamos que ${titoSummary}.
+Estuvimos revisando la web de su consultorio (${business.website || ''}) y notamos que ${titoSummary}.
 
 Hoy más del 80% de los pacientes entra desde el teléfono, y cualquier demora hace que cierren la pestaña y elijan otro consultorio.
 
-Preparamos un informe técnico gratuito de 2 minutos con los 3 puntos exactos a corregir. ¿A qué teléfono o email les quedaría cómodo que se los enviemos?`,
+Podemos optimizar su sitio para que cargue al instante y cuente con WhatsApp directo por solo ${devPriceFormatted} iniciales, con abono de mantenimiento de ${monthlyPriceFormatted}/mes para que nunca vuelva a fallar.
+
+Preparamos un informe técnico gratuito con los puntos exactos a corregir. ¿A qué teléfono o email les quedaría cómodo que se los enviemos?`,
       emailSubject: `Informe técnico breve sobre el sitio web de ${name}`,
       emailBody: `Hola equipo de ${name},
 
@@ -406,6 +451,8 @@ Realizamos una auditoría técnica superficial sobre su sitio web (${business.we
 1. Velocidad de carga y respuesta en celulares.
 2. Accesibilidad de los canales de contacto (WhatsApp y solicitud de turnos).
 3. Indexación local en Google para búsquedas odontológicas.
+
+Podemos solucionar estos puntos por una inversión inicial de ${devPriceFormatted} y un abono mensual de soporte y mantenimiento de ${monthlyPriceFormatted}/mes.
 
 Nos gustaría compartirles sin cargo el diagnóstico detallado elaborado por nuestro inspector técnico para que puedan revisarlo con su equipo.
 
@@ -426,6 +473,8 @@ Estuvimos viendo el sitio web de *${name}* y sabemos el esfuerzo que lleva mante
 
 En WebPilot rediseñamos sitios web médicos y odontológicos para transformarlos en una verdadera herramienta de captación: estética limpia, velocidad instantánea y botones directos para reservar turnos.
 
+Inversión: ${devPriceFormatted} de desarrollo inicial y abono de mantenimiento y hosting de ${monthlyPriceFormatted}/mes (compromiso inicial 12 meses) para que la web esté siempre actualizada y segura.
+
 ¿Les gustaría ver un ejemplo interactivo de cómo podría verse la web renovada de ${name}? ¡Un saludo cordial!`,
       emailSubject: `Modernización y rediseño digital para ${name}`,
       emailBody: `Estimados profesionales de ${name},
@@ -437,7 +486,10 @@ Su trayectoria médica merece una presencia digital que transmita confianza inme
 • Carga instantánea en cualquier smartphone.
 • Botón flotante de WhatsApp siempre visible para consultas espontáneas.
 
-Armamos una propuesta de rediseño llave en mano (${mainServiceName}) pensada para implementar en menos de 10 días hábiles.
+Estructura de inversión:
+• Desarrollo de rediseño: ${devPriceFormatted} (llave en mano, entrega en 5 a 7 días hábiles).
+• Mantenimiento y hosting continuo: ${monthlyPriceFormatted}/mes (compromiso inicial 12 meses).
+• Inversión total estimada del primer año: ${firstYearFormatted}.
 
 ¿Cuándo les quedaría cómodo coordinar una breve llamada de 5 minutos para evaluar si se ajusta a sus planes?
 
@@ -452,7 +504,7 @@ Daro & Julieta • WebPilot`,
       situationDescription: 'Mensaje sumamente breve y no invasivo para romper el hielo y validar interés.',
       whatsappMessage: `Hola, ¿cómo están? Les hago una consulta rápida: ¿quién coordina la comunicación o página web de *${name}*?
 
-Les escribimos de WebPilot${city}. Tenemos una propuesta breve y muy concreta para mejorar la captación de turnos online y nos gustaría hacérsela llegar a la persona adecuada.
+Les escribimos de WebPilot${city}. Tenemos una propuesta accesible y muy concreta (${devPriceFormatted} inicial + abono mensual de mantenimiento) para mejorar la captación de turnos online y nos gustaría hacérsela llegar a la persona adecuada.
 
 ¡Muchas gracias por su tiempo!`,
       emailSubject: `Consulta para el área de comunicación / dirección de ${name}`,
@@ -460,7 +512,7 @@ Les escribimos de WebPilot${city}. Tenemos una propuesta breve y muy concreta pa
 
 Buenos días. Quería hacerles una consulta breve: ¿quién es la persona indicada en ${name} para coordinar temas vinculados al sitio web y la atracción de nuevos pacientes?
 
-Desde WebPilot preparamos una propuesta orientada a optimizar la captación de consultas digitales para consultorios de la zona.
+Desde WebPilot preparamos una propuesta orientada a optimizar la captación de consultas digitales para consultorios de la zona con esquemas de desarrollo accesibles desde ${devPriceFormatted} y abonos de soporte mensual.
 
 Agradezco si me pueden indicar el contacto o si podemos coordinar unos minutos por esta vía.
 
@@ -473,7 +525,7 @@ Daro • WebPilot AI`,
       situation: 'SEGUIMIENTO',
       situationLabel: 'Retomar conversación / Seguimiento',
       situationDescription: 'Para cuando ya hubo un contacto previo o se envió presupuesto y se aguarda respuesta.',
-      whatsappMessage: `Hola, ¿cómo están? Les escribo para consultarles si pudieron revisar la propuesta que les enviamos para *${name}*.
+      whatsappMessage: `Hola, ¿cómo están? Les escribo para consultarles si pudieron revisar la propuesta que les enviamos para *${name}* (${devPriceFormatted} iniciales + abono mensual de ${monthlyPriceFormatted}/mes con hosting y soporte incluido).
 
 Cualquier duda que tengan sobre el alcance del servicio, los tiempos o las formas de pago, estamos a total disposición para adaptarlo a lo que necesiten en este momento.
 
@@ -483,9 +535,9 @@ Cualquier duda que tengan sobre el alcance del servicio, los tiempos o las forma
 
 Espero que se encuentren muy bien.
 
-Les escribo simplemente para saber si tuvieron oportunidad de revisar la propuesta que les acercamos para ${name}.
+Les escribo simplemente para saber si tuvieron oportunidad de revisar la propuesta que les acercamos para ${name} (${devPriceFormatted} de desarrollo inicial y ${monthlyPriceFormatted}/mes de mantenimiento integral).
 
-Entendemos que los tiempos en la clínica suelen ser muy intensos, por lo que quedamos a su entera disposición si necesitan que aclaremos algún punto técnico o evaluemos un esquema de pago por etapas.
+Entendemos que los tiempos en la clínica suelen ser muy intensos, por lo que quedamos a su entera disposición si necesitan que aclaremos algún punto técnico o evaluemos el cronograma de entrega.
 
 ¿Les viene bien que conversemos unos minutos esta semana?
 

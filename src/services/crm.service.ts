@@ -141,3 +141,85 @@ export async function getBusinessActivities(businessId: string): Promise<Activit
 
   return (data as Activity[]) || [];
 }
+
+export type MaintenanceStatus = 'ACTIVO' | 'PAUSADO' | 'CANCELADO';
+
+export interface MaintenanceSubscription {
+  status: MaintenanceStatus;
+  monthlyFeeARS: number;
+  monthlyFeeUSD?: number;
+  startDate: string;
+  commitmentEndDate: string;
+  commitmentMonths: number;
+  notes?: string;
+  updatedAt: string;
+}
+
+export async function saveMaintenanceSubscription(
+  businessId: string,
+  subscription: MaintenanceSubscription,
+  client?: any
+): Promise<MaintenanceSubscription> {
+  const supabase = client || createClient();
+
+  const { data: audits } = await supabase
+    .from('audits')
+    .select('*')
+    .eq('business_id', businessId)
+    .order('audit_date', { ascending: false })
+    .limit(1);
+
+  const existingAudit = audits && audits.length > 0 ? audits[0] : null;
+
+  if (existingAudit) {
+    const prevInsights = (existingAudit.ai_insights as any) || {};
+    const updatedInsights = {
+      ...prevInsights,
+      maintenance_subscription: subscription,
+    };
+
+    const { error: updateErr } = await supabase
+      .from('audits')
+      .update({
+        ai_insights: updatedInsights,
+      })
+      .eq('id', existingAudit.id);
+
+    if (updateErr) {
+      console.error('Error updating maintenance subscription in audit:', updateErr);
+      throw new Error('No se pudo guardar la suscripción de mantenimiento en la auditoría.');
+    }
+  } else {
+    // Si no hay auditoría previa, creamos un registro de auditoría base para almacenar la suscripción
+    const { error: insertErr } = await supabase
+      .from('audits')
+      .insert([
+        {
+          business_id: businessId,
+          audit_date: new Date().toISOString(),
+          performance_score: null,
+          seo_score: null,
+          mobile_score: null,
+          security_score: null,
+          load_time_ms: null,
+          detected_technologies: [],
+          ai_insights: {
+            maintenance_subscription: subscription,
+          },
+        },
+      ]);
+
+    if (insertErr) {
+      console.error('Error creating audit for maintenance subscription:', insertErr);
+      throw new Error('No se pudo inicializar el registro de suscripción de mantenimiento.');
+    }
+  }
+
+  // Refrescar updated_at en el negocio
+  await supabase
+    .from('businesses')
+    .update({ updated_at: new Date().toISOString() })
+    .eq('id', businessId);
+
+  return subscription;
+}

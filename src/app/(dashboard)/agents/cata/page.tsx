@@ -696,10 +696,16 @@ export default function CataSalesPage() {
                           <td className="py-3.5 px-4">
                             <div className="font-mono font-bold text-emerald-400 text-sm">
                               {formatCurrency(opp.suggestedPriceARS)}
+                              <span className="text-[10px] font-sans font-normal text-slate-400 ml-1">desarrollo</span>
                             </div>
-                            {opp.veraStrategy?.suggestedPricing?.monthlyMaintenanceARS ? (
-                              <div className="text-[10px] text-slate-400 font-mono">
-                                + {formatCurrency(opp.veraStrategy.suggestedPricing.monthlyMaintenanceARS)}/mes
+                            {opp.monthlyMaintenanceARS ? (
+                              <div className="text-[11px] text-cyan-300 font-mono mt-0.5 font-medium">
+                                + {formatCurrency(opp.monthlyMaintenanceARS)}/mes
+                              </div>
+                            ) : null}
+                            {opp.firstYearTotalARS ? (
+                              <div className="text-[10px] text-slate-400 font-mono mt-0.5" title="Desarrollo + 12 meses de abono de mantenimiento">
+                                1.er año: <span className="text-slate-300 font-semibold">{formatCurrency(opp.firstYearTotalARS)}</span>
                               </div>
                             ) : null}
                           </td>
@@ -1498,17 +1504,32 @@ export default function CataSalesPage() {
               <div className="space-y-4 text-xs">
                 {/* Resumen */}
                 <div className="p-3.5 rounded-xl border border-purple-500/30 bg-purple-950/20 space-y-2">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <span className="text-[10px] uppercase font-bold tracking-wider text-purple-300">
                       Paquete Sugerido: {selectedOppForVera.veraStrategy.suggestedPricing?.bundleName}
                     </span>
-                    <span className="text-base font-bold font-mono text-emerald-400">
-                      {formatCurrency(selectedOppForVera.suggestedPriceARS)}
-                    </span>
+                    <div className="text-right">
+                      <div className="text-base font-bold font-mono text-emerald-400">
+                        {formatCurrency(selectedOppForVera.suggestedPriceARS)}
+                        <span className="text-[10px] font-sans font-normal text-slate-400 ml-1">desarrollo</span>
+                      </div>
+                      {selectedOppForVera.monthlyMaintenanceARS ? (
+                        <div className="text-xs font-mono text-cyan-300 font-semibold">
+                          + {formatCurrency(selectedOppForVera.monthlyMaintenanceARS)}/mes (mantenimiento)
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                   <p className="text-[11px] text-slate-300 leading-relaxed">
                     {selectedOppForVera.veraStrategy.summary}
                   </p>
+                  {selectedOppForVera.firstYearTotalARS ? (
+                    <div className="text-[10px] text-slate-400 bg-[#080d18] p-2 rounded border border-purple-900/40 font-mono">
+                      💰 <strong>Inversión total estimada del primer año:</strong>{' '}
+                      <span className="text-white font-bold">{formatCurrency(selectedOppForVera.firstYearTotalARS)}</span>{' '}
+                      (Desarrollo inicial + 12 meses de abono de mantenimiento integral).
+                    </div>
+                  ) : null}
                 </div>
 
                 {/* Servicios recomendados */}
