@@ -97,7 +97,7 @@ export const TEAM_MEMBERS: AgentMember[] = [
     personality: 'Creativo, entusiasta y perfeccionista.',
     quote: 'Dame una idea y te la convierto en una web.',
     avatar: '/avatars/bruno.png',
-    status: 'proximamente',
+    status: 'operativo',
     color: '#f97316',
     bgColor: 'bg-orange-500/10',
     borderColor: 'border-orange-500/30',

@@ -225,3 +225,83 @@ export interface IndustryReference {
   created_at: string;
   updated_at: string;
 }
+
+export type DemoStatus =
+  | 'EN_PREPARACION'
+  | 'PENDIENTE_REVISION'
+  | 'APROBADA'
+  | 'RECHAZADA'
+  | 'ENVIADA';
+
+export interface DemoServiceItem {
+  title: string;
+  description: string;
+  icon?: string;
+  isProvisional?: boolean;
+}
+
+export interface DemoContent {
+  businessName: string;
+  tagline: string;
+  industry: string;
+  subindustry?: string | null;
+  hero: {
+    title: string;
+    subtitle: string;
+    badgeText?: string;
+    ctaPrimary: {
+      label: string;
+      action: 'whatsapp' | 'call' | 'contact_form';
+    };
+    ctaSecondary?: {
+      label: string;
+      action: string;
+    };
+  };
+  services: {
+    heading: string;
+    subheading?: string;
+    items: DemoServiceItem[];
+  };
+  features: {
+    heading: string;
+    items: { title: string; description: string; icon?: string }[];
+  };
+  contact: {
+    heading: string;
+    phone?: string | null;
+    whatsappPhone?: string | null;
+    whatsappMessage?: string;
+    email?: string | null;
+    address?: string | null;
+    city?: string | null;
+    state?: string | null;
+    mapQuery?: string | null;
+    hours?: string | null;
+  };
+  theme: {
+    primaryColor: 'cyan' | 'blue' | 'emerald' | 'indigo' | 'purple' | 'amber';
+    style: 'clean-medical' | 'modern-business' | 'warm-service' | 'minimalist';
+  };
+  provisionalFlags: string[];
+  benchmarkNotice?: string;
+  generatedBy: string;
+}
+
+export interface ClientDemo {
+  id: string;
+  business_id: string;
+  title: string;
+  slug: string;
+  status: DemoStatus;
+  product_type: string;
+  reference_id?: string | null;
+  reference_name?: string | null;
+  content: DemoContent;
+  feedback_notes?: string | null;
+  created_at: string;
+  updated_at: string;
+  // Joined field for convenience
+  business?: Business;
+}
+

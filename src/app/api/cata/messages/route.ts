@@ -52,16 +52,37 @@ export async function GET(req: Request) {
     const latestAudit = audits?.[0] as Audit | undefined;
     const veraStrategy = (latestAudit?.ai_insights?.vera_strategy as VeraCommercialStrategy) || null;
 
+    // Obtener demo aprobada de Bruno si existe
+    let demo = null;
+    try {
+      const { data: demoData } = await supabase
+        .from('client_demos')
+        .select('id, slug, status, title')
+        .eq('business_id', businessId)
+        .eq('status', 'APROBADA')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (demoData) {
+        demo = { ...demoData, previewUrl: `/demo/${demoData.slug}` };
+      }
+    } catch {
+      // client_demos aún no migrado o sin demos
+    }
+
     const messages = generateCataMessages(
       business as Business,
       veraStrategy,
-      latestAudit || null
+      latestAudit || null,
+      demo
     );
 
     return NextResponse.json({
       success: true,
       business,
       veraStrategy,
+      demo,
       messages,
     });
   } catch (error: any) {

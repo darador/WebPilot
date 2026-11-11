@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
-import { Business, Audit, Contact, Activity, CRMStage } from '@/types/database.types';
+import { Business, Audit, Contact, Activity, CRMStage, DemoStatus } from '@/types/database.types';
 import { VeraCommercialStrategy } from '@/services/vera.service';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
@@ -53,6 +53,13 @@ export interface CataOpportunity {
   commercialStage: CRMStage;
   lastActivity: Activity | null;
   cataSales: CataFollowUpData | null;
+  demo?: {
+    id: string;
+    slug: string;
+    status: DemoStatus;
+    title: string;
+    previewUrl: string;
+  } | null;
   followUp: {
     date: string;
     nextAction: string;
@@ -186,6 +193,30 @@ export async function getCataOpportunities(
     }
   });
 
+  // 4.5. Obtener demos asociadas generadas por Bruno
+  const demosByBusiness = new Map<string, any>();
+  try {
+    const { data: demosData } = await supabase
+      .from('client_demos')
+      .select('id, business_id, title, slug, status')
+      .in('business_id', businessIds);
+
+    (demosData || []).forEach((demo: any) => {
+      const current = demosByBusiness.get(demo.business_id);
+      if (!current || demo.status === 'APROBADA') {
+        demosByBusiness.set(demo.business_id, {
+          id: demo.id,
+          slug: demo.slug,
+          status: demo.status,
+          title: demo.title,
+          previewUrl: `/demo/${demo.slug}`,
+        });
+      }
+    });
+  } catch (err) {
+    console.warn('client_demos no disponible en getCataOpportunities:', err);
+  }
+
   // Fecha de hoy en formato YYYY-MM-DD (hora local)
   const todayStr = new Date().toISOString().split('T')[0];
   const todayDate = new Date(todayStr);
@@ -305,6 +336,8 @@ export async function getCataOpportunities(
       };
     }
 
+    const demo = demosByBusiness.get(business.id) || null;
+
     return {
       id: business.id,
       business,
@@ -325,6 +358,7 @@ export async function getCataOpportunities(
       lastActivity,
       cataSales,
       followUp,
+      demo,
     };
   });
 
@@ -398,7 +432,8 @@ function getEmptyMetrics(): CataMetrics {
 export function generateCataMessages(
   business: Business,
   veraStrategy: VeraCommercialStrategy | null,
-  audit?: Audit | null
+  audit?: Audit | null,
+  demo?: { slug: string; status: DemoStatus; previewUrl: string } | null
 ): Record<MessageSituation, CataMessageDraft> {
   const name = business.name.trim();
   const city = business.city ? ` de ${business.city}` : '';
@@ -429,6 +464,11 @@ export function generateCataMessages(
       ? `notamos detalles puntuales como ${titoIssues[0].title.toLowerCase()}${titoSpeed > 1000 ? ` y tiempos de respuesta de ${(titoSpeed / 1000).toFixed(1)}s` : ''}`
       : 'notamos que la experiencia de navegación en celulares tiene aspectos clave para potenciar turnos';
 
+  const demoAddon =
+    demo && demo.status === 'APROBADA'
+      ? `\n\n🎨 Además, para que puedan visualizar la idea, nuestro diseñador Bruno preparó una propuesta conceptual preliminar:\nhttps://webpilot.ar/demo/${demo.slug}`
+      : '';
+
   return {
     // Situación 1: Sin sitio web
     SIN_WEB: {
@@ -439,7 +479,7 @@ export function generateCataMessages(
 
 Estuvimos conociendo su trabajo y notamos que hoy no cuentan con un sitio web oficial para que los pacientes los encuentren directamente en Google.
 
-Desarrollamos una *Landing Express profesional* por solo *${devPriceFormatted} iniciales*, lista en 3 a 5 días y adaptada a celulares con botón directo a WhatsApp. Además, nos ocupamos de mantenerla online, actualizada y funcionando por una cuota mensual accesible de *${monthlyPriceFormatted}/mes* (compromiso inicial de 12 meses).
+Desarrollamos una *Landing Express profesional* por solo *${devPriceFormatted} iniciales*, lista en 3 a 5 días y adaptada a celulares con botón directo a WhatsApp. Además, nos ocupamos de mantenerla online, actualizada y funcionando por una cuota mensual accesible de *${monthlyPriceFormatted}/mes* (compromiso inicial de 12 meses).${demoAddon}
 
 ¿Les gustaría que les comparta una propuesta breve de 1 minuto sin ningún compromiso? ¡Muchas gracias y que tengan un excelente día!`,
       emailSubject: `${name}: propuesta para sumar su sitio web oficial y captar más pacientes`,

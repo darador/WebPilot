@@ -690,6 +690,27 @@ export default function CataSalesPage() {
                                 Paquete: {opp.veraStrategy.suggestedPricing.bundleName}
                               </div>
                             )}
+                            {opp.demo && (
+                              <div className="mt-1">
+                                {opp.demo.status === 'APROBADA' ? (
+                                  <a
+                                    href={`/demo/${opp.demo.slug}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-orange-500/15 text-orange-300 border border-orange-500/30 hover:bg-orange-500/25 transition-colors"
+                                    title="Demo conceptual aprobada por Bruno"
+                                  >
+                                    <Sparkles className="h-2.5 w-2.5 text-orange-400" />
+                                    <span>Demo Aprobada</span>
+                                    <ExternalLink className="h-2 w-2" />
+                                  </a>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium bg-slate-800 text-slate-400 border border-slate-700">
+                                    Demo en revisión
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </td>
 
                           {/* Inversión Sugerida */}
