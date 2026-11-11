@@ -16,6 +16,7 @@ import {
   Search,
   SearchCode,
   Target,
+  PhoneCall,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
@@ -44,6 +45,12 @@ const NAV_ITEMS = [
     label: 'Vera — Estrategia',
     href: '/agents/vera',
     icon: Target,
+    badge: 'Agente',
+  },
+  {
+    label: 'Cata — Ventas',
+    href: '/agents/cata',
+    icon: PhoneCall,
     badge: 'Agente',
   },
   {

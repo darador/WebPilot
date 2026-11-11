@@ -120,7 +120,7 @@ export const TEAM_MEMBERS: AgentMember[] = [
     personality: 'Extrovertida, persuasiva y organizada.',
     quote: 'Bueno, ¿y a este cuándo le presentamos la propuesta?',
     avatar: '/avatars/cata.png',
-    status: 'proximamente',
+    status: 'operativo',
     color: '#f43f5e',
     bgColor: 'bg-rose-500/10',
     borderColor: 'border-rose-500/30',

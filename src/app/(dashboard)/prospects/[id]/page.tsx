@@ -36,6 +36,7 @@ import {
   ThumbsUp,
   ThumbsDown,
   MessageSquare,
+  PhoneCall,
 } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { ActivityModal } from '@/components/crm/ActivityModal';
@@ -840,14 +841,23 @@ export default function ProspectDetailPage() {
                   </div>
 
                   {/* Botones de acción */}
-                  <div className="pt-2 flex items-center gap-2">
+                  <div className="pt-2 flex flex-wrap items-center gap-2">
                     <button
                       onClick={() => setIsVeraModalOpen(true)}
                       className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#152037] hover:bg-[#1e2e4f] border border-purple-500/30 px-3 py-2 text-xs font-medium text-white transition-colors"
                     >
                       <FileText className="h-3.5 w-3.5 text-purple-400" />
-                      <span>Ver Estrategia Completa</span>
+                      <span>Ver Estrategia</span>
                     </button>
+
+                    <Link
+                      href={`/agents/cata?search=${encodeURIComponent(prospect.name)}`}
+                      className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 px-3 py-2 text-xs font-semibold text-white transition-colors shadow-sm"
+                      title="Gestionar propuesta y seguimiento con Cata"
+                    >
+                      <PhoneCall className="h-3.5 w-3.5" />
+                      <span>Gestionar con Cata</span>
+                    </Link>
 
                     <a
                       href={`https://wa.me/?text=${encodeURIComponent(
