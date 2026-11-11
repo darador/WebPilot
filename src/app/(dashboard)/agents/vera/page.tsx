@@ -39,6 +39,9 @@ import {
   ThumbsDown,
   User,
   Plus,
+  BookOpen,
+  Compass,
+  Eye,
 } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { createClient } from '@/lib/supabase/client';
@@ -2098,7 +2101,120 @@ export default function VeraAgentPage() {
                   </div>
                 </div>
 
-                {/* 5. Mensajes Iniciales de Contacto (WhatsApp y Email) */}
+                {/* 5. Comparación Orientativa con Referencia del Rubro */}
+                {selectedStrategy.referenceBenchmark?.hasReference && (
+                  <div className="rounded-xl border border-blue-500/30 bg-[#0c162d]/70 p-4 space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-blue-900/40 pb-3">
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-blue-400 flex items-center gap-1">
+                            <BookOpen className="h-3.5 w-3.5" />
+                            <span>Biblioteca de Referencias • Comparación Orientativa</span>
+                          </span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                            Rubro: {selectedStrategy.referenceBenchmark.industry}
+                          </span>
+                        </div>
+                        <h4 className="text-sm font-bold text-white">
+                          Referente Benchmark: {selectedStrategy.referenceBenchmark.referenceName}
+                        </h4>
+                      </div>
+
+                      <a
+                        href={selectedStrategy.referenceBenchmark.referenceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-blue-500/40 bg-blue-950/40 hover:bg-blue-900/50 text-blue-200 text-xs font-semibold transition-colors shrink-0"
+                      >
+                        <span>Inspeccionar Referencia</span>
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </div>
+
+                    {/* 4 Cuadrantes Comparativos */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                      {/* Cuadrante 1: Aspectos que el negocio ya resuelve correctamente */}
+                      <div className="p-3 rounded-lg bg-[#080d18] border border-emerald-900/40 space-y-2">
+                        <div className="flex items-center gap-1.5 text-emerald-400 font-bold text-[11px] uppercase tracking-wider">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                          <span>1. Ya Resuelve Correctamente</span>
+                        </div>
+                        <ul className="space-y-1 text-slate-200 text-[11px]">
+                          {selectedStrategy.referenceBenchmark.solvedWell.map((item, idx) => (
+                            <li key={idx} className="flex items-start gap-1.5">
+                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0 mt-1.5" />
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {/* Cuadrante 2: Diferencias observables respecto de la referencia */}
+                      <div className="p-3 rounded-lg bg-[#080d18] border border-blue-900/40 space-y-2">
+                        <div className="flex items-center gap-1.5 text-blue-400 font-bold text-[11px] uppercase tracking-wider">
+                          <Eye className="h-3.5 w-3.5 text-blue-400 shrink-0" />
+                          <span>2. Diferencias Observables</span>
+                        </div>
+                        <ul className="space-y-1 text-slate-200 text-[11px]">
+                          {selectedStrategy.referenceBenchmark.observableDifferences.map((item, idx) => (
+                            <li key={idx} className="flex items-start gap-1.5">
+                              <span className="h-1.5 w-1.5 rounded-full bg-blue-400 shrink-0 mt-1.5" />
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {/* Cuadrante 3: Mejoras que podrían tener valor comercial */}
+                      <div className="p-3 rounded-lg bg-[#080d18] border border-amber-900/40 space-y-2">
+                        <div className="flex items-center gap-1.5 text-amber-400 font-bold text-[11px] uppercase tracking-wider">
+                          <Sparkles className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                          <span>3. Mejoras con Valor Comercial</span>
+                        </div>
+                        <ul className="space-y-1 text-slate-200 text-[11px]">
+                          {selectedStrategy.referenceBenchmark.commercialImprovements.map((item, idx) => (
+                            <li key={idx} className="flex items-start gap-1.5">
+                              <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0 mt-1.5" />
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {/* Cuadrante 4: Aspectos que no se pudieron verificar */}
+                      <div className="p-3 rounded-lg bg-[#080d18] border border-slate-800 space-y-2">
+                        <div className="flex items-center gap-1.5 text-slate-400 font-bold text-[11px] uppercase tracking-wider">
+                          <HelpCircle className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                          <span>4. No Verificados Externamente</span>
+                        </div>
+                        <ul className="space-y-1 text-slate-300 text-[11px]">
+                          {selectedStrategy.referenceBenchmark.unverifiedAspects.map((item, idx) => (
+                            <li key={idx} className="flex items-start gap-1.5">
+                              <span className="h-1.5 w-1.5 rounded-full bg-slate-500 shrink-0 mt-1.5" />
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+
+                    {/* Conclusión del Benchmark */}
+                    <div className="p-3 rounded-lg bg-[#080d18]/90 border border-blue-500/20 text-xs space-y-1">
+                      <div className="font-semibold text-blue-300 flex items-center gap-1.5">
+                        <Compass className="h-3.5 w-3.5 text-blue-400" />
+                        <span>Conclusión Orientativa de Vera:</span>
+                      </div>
+                      <p className="text-slate-300 text-[11px] leading-relaxed">
+                        {selectedStrategy.referenceBenchmark.benchmarkConclusion}
+                      </p>
+                      <span className="text-[10px] text-slate-500 block pt-1 border-t border-slate-800/80">
+                        * Regla fundamental: Tener diferencias respecto de una web de referencia no significa automáticamente que exista una oportunidad de venta.
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* 6. Mensajes Iniciales de Contacto (WhatsApp y Email) */}
                 <div className="space-y-4">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                     <MessageCircle className="h-4 w-4 text-emerald-400" />

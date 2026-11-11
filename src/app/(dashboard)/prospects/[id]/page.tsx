@@ -995,6 +995,27 @@ export default function ProspectDetailPage() {
                     </div>
                   </div>
 
+                  {/* Referencia Benchmark del Rubro */}
+                  {prospect.audit.ai_insights.vera_strategy.referenceBenchmark?.hasReference && (
+                    <div className="p-2.5 rounded-lg bg-blue-950/25 border border-blue-500/25 text-[11px] space-y-1">
+                      <div className="flex items-center justify-between text-blue-300 font-semibold text-[10px] uppercase tracking-wider">
+                        <span>Referente Benchmark ({prospect.audit.ai_insights.vera_strategy.referenceBenchmark.industry})</span>
+                        <a
+                          href={prospect.audit.ai_insights.vera_strategy.referenceBenchmark.referenceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-cyan-400 hover:underline inline-flex items-center gap-0.5"
+                        >
+                          <span>Ver sitio</span>
+                          <ExternalLink className="h-2.5 w-2.5" />
+                        </a>
+                      </div>
+                      <p className="text-slate-300">
+                        {prospect.audit.ai_insights.vera_strategy.referenceBenchmark.referenceName}
+                      </p>
+                    </div>
+                  )}
+
                   {/* Botones de acción */}
                   <div className="pt-2 flex flex-wrap items-center gap-2">
                     <button

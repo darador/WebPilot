@@ -2,6 +2,11 @@ import { createClient } from '@/lib/supabase/client';
 import { Business, Audit, AuditIssue, CRMStage } from '@/types/database.types';
 import { DEFAULT_SERVICES_CATALOG, ServiceItem } from '@/lib/constants/services';
 import { formatCurrency } from '@/lib/utils';
+import {
+  getApprovedReferencesByIndustry,
+  compareBusinessWithReference,
+  VeraReferenceComparison,
+} from '@/services/references.service';
 
 export interface VeraOpportunity {
   category: 'DESARROLLO_WEB' | 'REDISENO_WEB' | 'OPTIMIZACION_VELOCIDAD' | 'SEO_LOCAL' | 'CANAL_CONVERSION' | 'MANTENIMIENTO' | 'REPUTACION';
@@ -90,6 +95,7 @@ export interface VeraCommercialStrategy {
     emailSubject: string;
     emailBody: string;
   };
+  referenceBenchmark?: VeraReferenceComparison | null;
   missingDataAlerts: string[];
   analyzedAt: string;
 }
@@ -738,6 +744,32 @@ export async function analyzeBusiness(
       : `Oportunidad comercial clara de modernización técnica para ${business.name}. Foco en resolver ${opportunities.map((o) => o.title).join(' y ')}.`;
   }
 
+  // 12.5. Comparación orientativa con Referencias Aprobadas de la Biblioteca
+  let referenceBenchmark: VeraReferenceComparison | null = null;
+  try {
+    const approvedRefs = await getApprovedReferencesByIndustry(business.industry || '', supabase);
+    if (approvedRefs && approvedRefs.length > 0) {
+      referenceBenchmark = compareBusinessWithReference(
+        business,
+        latestAudit
+          ? {
+              score: latestAudit.score,
+              hasHttps: !isHttpInsecure,
+              hasViewport,
+              hasWhatsapp: hasWhatsAppDetected,
+              hasForms: hasFormsDetected,
+              responseTimeMs,
+              title: titoSeo.title,
+              description: titoSeo.description,
+            }
+          : null,
+        approvedRefs[0]
+      );
+    }
+  } catch (err) {
+    console.warn('Error benchmarking against industry references in Vera:', err);
+  }
+
   // 13. Estructura completa de la estrategia de Vera
   const strategy: VeraCommercialStrategy = {
     businessId: business.id,
@@ -746,6 +778,7 @@ export async function analyzeBusiness(
     commercialOutcome,
     commercialOutcomeLabel,
     actionRecommendation,
+    referenceBenchmark,
     digitalPresence: {
       tier,
       tierLabel,

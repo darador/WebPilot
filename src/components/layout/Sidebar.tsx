@@ -17,6 +17,7 @@ import {
   SearchCode,
   Target,
   PhoneCall,
+  BookOpen,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
@@ -58,6 +59,12 @@ const NAV_ITEMS = [
     href: '/team',
     icon: Bot,
     badge: '6 IA',
+  },
+  {
+    label: 'Biblioteca de Referencias',
+    href: '/references',
+    icon: BookOpen,
+    badge: 'Rubros',
   },
   {
     label: 'Negocios',

@@ -201,3 +201,27 @@ export interface LolaCandidate {
   business_id: string | null;
   created_at: string;
 }
+
+export type ReferenceStatus = 'PENDIENTE' | 'APROBADA' | 'DESCARTADA';
+
+export interface IndustryReference {
+  id: string;
+  user_id?: string | null;
+  name: string;
+  industry: string;
+  subindustry?: string | null;
+  website_url: string;
+  city?: string | null;
+  country: string;
+  description: string;
+  image_url?: string | null;
+  strengths: string[];
+  structure: string[];
+  features: string[];
+  design_aspects: string[];
+  selection_reason: string;
+  notes?: string | null;
+  status: ReferenceStatus;
+  created_at: string;
+  updated_at: string;
+}
