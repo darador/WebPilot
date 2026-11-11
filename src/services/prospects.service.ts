@@ -132,8 +132,30 @@ export async function getProspectById(id: string): Promise<ProspectDetail | null
     auditIssues = (issues as AuditIssue[]) || [];
   }
 
+  // Obtener google_place_id guardado por Lola (en lola_candidates o en business)
+  let googlePlaceId: string | null = (business as any).google_place_id || null;
+
+  if (!googlePlaceId) {
+    const { data: candidate } = await supabase
+      .from('lola_candidates')
+      .select('place_id')
+      .eq('business_id', id)
+      .limit(1)
+      .maybeSingle();
+
+    if (candidate?.place_id) {
+      googlePlaceId = candidate.place_id;
+    } else if (business.notes) {
+      const match = business.notes.match(/\[Google Places\]:\s*ID\s+([A-Za-z0-9_\-]+)/);
+      if (match && match[1]) {
+        googlePlaceId = match[1];
+      }
+    }
+  }
+
   return {
     ...(business as Business),
+    google_place_id: googlePlaceId,
     contacts: (contacts as Contact[]) || [],
     activities: (activities as Activity[]) || [],
     audit: latestAudit,

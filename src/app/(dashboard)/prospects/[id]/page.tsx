@@ -224,6 +224,22 @@ export default function ProspectDetailPage() {
                       </span>
                     </span>
                   )}
+                  {prospect.google_place_id && (
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query_place_id=${encodeURIComponent(prospect.google_place_id)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/30 bg-emerald-950/30 px-2 py-0.5 text-xs font-medium text-emerald-300 hover:bg-emerald-900/40 hover:border-emerald-500/50 hover:text-white transition-all shadow-sm"
+                      title="Abrir perfil del negocio en Google Maps"
+                    >
+                      <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#EA4335" />
+                        <circle cx="12" cy="9" r="2.5" fill="#FFFFFF" />
+                      </svg>
+                      <span>Ver perfil en Google</span>
+                      <ExternalLink className="h-3 w-3 opacity-70" />
+                    </a>
+                  )}
                   <span className="flex items-center gap-1">
                     <Calendar className="h-3 w-3 text-slate-500" />
                     <span>Alta: {formatDate(prospect.created_at)}</span>
@@ -250,7 +266,7 @@ export default function ProspectDetailPage() {
           </div>
 
           {/* Quick Contact & Info Grid */}
-          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 border-t border-[#172238] pt-4 text-xs">
+          <div className={`mt-6 grid grid-cols-1 sm:grid-cols-2 ${prospect.google_place_id ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-4 border-t border-[#172238] pt-4 text-xs`}>
             {/* Sitio Web */}
             <div>
               <span className="text-slate-500 uppercase text-[10px] font-semibold">Sitio Web</span>
@@ -289,6 +305,29 @@ export default function ProspectDetailPage() {
                 <span>{prospect.phone || 'Sin teléfono'}</span>
               </div>
             </div>
+
+            {/* Perfil en Google Maps */}
+            {prospect.google_place_id && (
+              <div>
+                <span className="text-slate-500 uppercase text-[10px] font-semibold">Google Maps</span>
+                <div className="mt-1">
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query_place_id=${encodeURIComponent(prospect.google_place_id)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-emerald-400 hover:text-emerald-300 hover:underline font-medium truncate max-w-full"
+                    title="Ver perfil del negocio en Google Maps"
+                  >
+                    <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#EA4335" />
+                      <circle cx="12" cy="9" r="2.5" fill="#FFFFFF" />
+                    </svg>
+                    <span>Ver perfil en Google</span>
+                    <ExternalLink className="h-3 w-3 shrink-0 opacity-75" />
+                  </a>
+                </div>
+              </div>
+            )}
 
             {/* Fuente */}
             <div>
