@@ -10,6 +10,7 @@ import {
 } from '@/types/database.types';
 import { getApprovedReferencesByIndustry } from '@/services/references.service';
 import { formatCurrency } from '@/lib/utils';
+import { getIndustryVisuals } from '@/lib/constants/industryVisuals';
 
 // Memoria local de respaldo para demos si la tabla aún no fue creada en Supabase remoto
 const LOCAL_DEMOS_CACHE: ClientDemo[] = [];
@@ -267,7 +268,14 @@ export async function generateDemoForBusiness(
   const locationLabel = [address, city].filter(Boolean).join(', ') || 'Zona de atención comercial';
 
   const theme = determineThemeForIndustry(business.industry);
+  const visuals = getIndustryVisuals(business.industry);
   const productType = options?.productType || veraStrategy?.recommendedServices?.[0]?.serviceId || 'landing-express';
+
+  // Asociar imágenes temáticas y optimizadas a los servicios
+  const servicesItemsWithImages = servicesItems.map((srv, idx) => ({
+    ...srv,
+    imageUrl: visuals.serviceFallbackImages[idx % visuals.serviceFallbackImages.length],
+  }));
 
   // 5.1 Síntesis de textos especializados y humanos
   let professionalName: string | undefined = undefined;
@@ -308,6 +316,7 @@ export async function generateDemoForBusiness(
       : 'Compromiso profesional y atención de excelencia',
     professionalName: professionalName || business.name,
     role: isDental ? 'Especialista en Odontología Integral' : isPet ? 'Médico Veterinario' : 'Equipo Profesional',
+    imageUrl: visuals.aboutImage.url,
     description: isDental
       ? `En ${business.name} nos dedicamos a cuidar tu salud bucal con un trato cercano, empático y libre de dolor. Combinamos tecnología de última generación con instalaciones confortables para que te sientas a gusto en cada consulta.`
       : `En ${business.name} priorizamos la cercanía, la excelencia y la confianza para brindarte un servicio transparente y a la altura de tus expectativas.`,
@@ -323,48 +332,6 @@ export async function generateDemoForBusiness(
           'Canales ágiles de contacto directo vía WhatsApp',
         ],
   };
-
-  const testimonials = isDental
-    ? [
-        {
-          patientName: 'Mariana G.',
-          comment: `Excelente atención de ${professionalName || 'la profesional'}. Me explicó todo el tratamiento con paciencia y no sentí ningún dolor. ¡Súper recomendable en ${city || 'la zona'}!`,
-          stars: 5,
-          treatment: 'Odontología General',
-        },
-        {
-          patientName: 'Lucas B.',
-          comment: 'El consultorio es moderno e impecable. Puntualidad inglesa en los turnos y excelente predisposición por WhatsApp.',
-          stars: 5,
-          treatment: 'Limpieza y Estética',
-        },
-        {
-          patientName: 'Florencia R.',
-          comment: 'Muy conforme con la atención y el seguimiento. Te hacen sentir cómodo desde el primer momento.',
-          stars: 5,
-          treatment: 'Consulta y Tratamiento',
-        },
-      ]
-    : [
-        {
-          patientName: 'Carlos M.',
-          comment: 'Gran profesionalismo y calidez. Destaco la rapidez para responder y la claridad en todo momento.',
-          stars: 5,
-          treatment: 'Atención General',
-        },
-        {
-          patientName: 'Valeria S.',
-          comment: 'Muy recomendable. El servicio superó mis expectativas y los canales de comunicación son impecables.',
-          stars: 5,
-          treatment: 'Servicio Personalizado',
-        },
-        {
-          patientName: 'Martín P.',
-          comment: 'Excelente experiencia. Cumplieron con los tiempos y el trato fue de primer nivel.',
-          stars: 5,
-          treatment: 'Atención Profesional',
-        },
-      ];
 
   const faqs = isDental
     ? [
@@ -405,21 +372,22 @@ export async function generateDemoForBusiness(
     hero: {
       title: heroTitle,
       subtitle: heroSubtitle,
-      badgeText: `Propuesta de presencia digital • ${city || 'Atención local'}`,
+      badgeText: visuals.heroImage.badgeLabel || `Atención profesional • ${city || 'Atención local'}`,
+      imageUrl: visuals.heroImage.url,
       ctaPrimary: {
         label: hasPhone ? 'Consultar por WhatsApp' : 'Contactar ahora',
         action: hasPhone ? 'whatsapp' : 'contact_form',
       },
       ctaSecondary: {
         label: 'Ver Especialidades',
-        action: '#servicios',
+        action: '#especialidades',
       },
     },
     about,
     services: {
       heading: isDental ? 'Tratamientos y Especialidades' : 'Nuestros Servicios',
       subheading: 'Soluciones integrales pensadas para brindarte la mejor experiencia y resultados.',
-      items: servicesItems,
+      items: servicesItemsWithImages,
     },
     features: {
       heading: '¿Por qué elegirnos?',
@@ -453,7 +421,6 @@ export async function generateDemoForBusiness(
             },
           ],
     },
-    testimonials,
     faqs,
     contact: {
       heading: 'Ubicación y Canales de Contacto',

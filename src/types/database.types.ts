@@ -237,6 +237,7 @@ export interface DemoServiceItem {
   title: string;
   description: string;
   icon?: string;
+  imageUrl?: string;
   isProvisional?: boolean;
 }
 
@@ -249,6 +250,7 @@ export interface DemoContent {
     title: string;
     subtitle: string;
     badgeText?: string;
+    imageUrl?: string;
     ctaPrimary: {
       label: string;
       action: 'whatsapp' | 'call' | 'contact_form';
@@ -264,6 +266,7 @@ export interface DemoContent {
     description: string;
     professionalName?: string;
     role?: string;
+    imageUrl?: string;
     highlights?: string[];
   };
   services: {
