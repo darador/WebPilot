@@ -1,6 +1,7 @@
--- WebPilot AI — Migración: Módulo de Demos del Agente Bruno
+-- WebPilot AI — Migración: Módulo de Demos del Agente Bruno (100% Idempotente)
 -- Tabla client_demos para almacenar propuestas web conceptuales antes de la venta
 
+-- 1. Tipo enumerado para los estados de la demo
 DO $$ BEGIN
     CREATE TYPE demo_status AS ENUM (
         'EN_PREPARACION',
@@ -13,6 +14,7 @@ EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
 
+-- 2. Tabla client_demos
 CREATE TABLE IF NOT EXISTS client_demos (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
@@ -28,23 +30,33 @@ CREATE TABLE IF NOT EXISTS client_demos (
     updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
 );
 
--- Índices para búsqueda y relaciones
+-- 3. Índices para búsqueda y relaciones
 CREATE INDEX IF NOT EXISTS idx_client_demos_business_id ON client_demos(business_id);
 CREATE INDEX IF NOT EXISTS idx_client_demos_status ON client_demos(status);
 CREATE INDEX IF NOT EXISTS idx_client_demos_slug ON client_demos(slug);
 
--- RLS
+-- 4. Habilitar RLS de forma segura
 ALTER TABLE client_demos ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Allow all access to client_demos" ON client_demos;
-CREATE POLICY "Allow all access to client_demos"
-    ON client_demos FOR ALL
-    TO anon, authenticated
-    USING (true)
-    WITH CHECK (true);
+-- 5. Crear política RLS verificando que no exista previamente (evita error 42710)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies 
+        WHERE tablename = 'client_demos' 
+        AND policyname = 'Allow all access to client_demos'
+    ) THEN
+        CREATE POLICY "Allow all access to client_demos"
+            ON client_demos FOR ALL
+            TO anon, authenticated
+            USING (true)
+            WITH CHECK (true);
+    END IF;
+END $$;
 
--- Trigger de updated_at
-CREATE OR REPLACE TRIGGER update_client_demos_updated_at
+-- 6. Trigger para updated_at automático
+DROP TRIGGER IF EXISTS update_client_demos_updated_at ON client_demos;
+CREATE TRIGGER update_client_demos_updated_at
     BEFORE UPDATE ON client_demos
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
