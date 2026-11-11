@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
-import { Business, Contact, Activity, CRMStage } from '@/types/database.types';
+import { Business, Contact, Activity, CRMStage, Audit, AuditIssue } from '@/types/database.types';
 import { ProspectFormValues } from '@/schemas/prospect';
 
 export interface GetProspectsParams {
@@ -82,6 +82,8 @@ export async function getProspects({
 export interface ProspectDetail extends Business {
   contacts: Contact[];
   activities: Activity[];
+  audit?: Audit | null;
+  auditIssues?: AuditIssue[];
 }
 
 export async function getProspectById(id: string): Promise<ProspectDetail | null> {
@@ -110,10 +112,32 @@ export async function getProspectById(id: string): Promise<ProspectDetail | null
     .eq('business_id', id)
     .order('created_at', { ascending: false });
 
+  // Obtener última auditoría técnica de Tito si existe
+  const { data: audits } = await supabase
+    .from('audits')
+    .select('*')
+    .eq('business_id', id)
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  const latestAudit = audits && audits.length > 0 ? (audits[0] as Audit) : null;
+  let auditIssues: AuditIssue[] = [];
+
+  if (latestAudit) {
+    const { data: issues } = await supabase
+      .from('audit_issues')
+      .select('*')
+      .eq('audit_id', latestAudit.id)
+      .order('created_at', { ascending: true });
+    auditIssues = (issues as AuditIssue[]) || [];
+  }
+
   return {
     ...(business as Business),
     contacts: (contacts as Contact[]) || [],
     activities: (activities as Activity[]) || [],
+    audit: latestAudit,
+    auditIssues,
   };
 }
 

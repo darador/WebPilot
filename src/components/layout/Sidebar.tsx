@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   Bot,
   Search,
+  SearchCode,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
@@ -30,6 +31,12 @@ const NAV_ITEMS = [
     label: 'Lola — Prospección',
     href: '/agents/lola',
     icon: Sparkles,
+    badge: 'Agente',
+  },
+  {
+    label: 'Tito — Auditoría',
+    href: '/agents/tito',
+    icon: SearchCode,
     badge: 'Agente',
   },
   {

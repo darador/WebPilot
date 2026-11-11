@@ -156,7 +156,7 @@ export default function TeamPage() {
                           isOperative ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'
                         }`}
                       />
-                      {isOperative ? 'Operativa' : 'Próximamente'}
+                      {isOperative ? (agent.id === 'lola' ? 'Operativa' : 'Operativo') : 'Próximamente'}
                     </span>
                   </div>
 
@@ -230,10 +230,14 @@ export default function TeamPage() {
                 <div className="mt-4 pt-3 border-t border-[#172238]">
                   {isOperative ? (
                     <Link
-                      href="/agents/lola"
-                      className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-md shadow-cyan-500/20 hover:from-cyan-400 hover:to-blue-500 transition-all hover:scale-[1.02]"
+                      href={agent.id === 'tito' ? '/agents/tito' : '/agents/lola'}
+                      className={`flex w-full items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold text-white shadow-md transition-all hover:scale-[1.02] ${
+                        agent.id === 'tito'
+                          ? 'bg-gradient-to-r from-emerald-500 to-teal-600 shadow-emerald-500/20 hover:from-emerald-400 hover:to-teal-500'
+                          : 'bg-gradient-to-r from-cyan-500 to-blue-600 shadow-cyan-500/20 hover:from-cyan-400 hover:to-blue-500'
+                      }`}
                     >
-                      <span>Abrir panel de Lola</span>
+                      <span>Abrir panel de {agent.name}</span>
                       <ArrowRight className="h-3.5 w-3.5" />
                     </Link>
                   ) : (

@@ -21,11 +21,17 @@ import {
   CheckCircle2,
   SearchCode,
   FileText,
+  AlertTriangle,
+  ShieldAlert,
+  Sparkles,
+  Wrench,
+  RefreshCw,
 } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { ActivityModal } from '@/components/crm/ActivityModal';
 import { ProspectModal } from '@/components/prospects/ProspectModal';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { createClient } from '@/lib/supabase/client';
 import {
   getProspectById,
   deleteProspect,
@@ -47,6 +53,35 @@ export default function ProspectDetailPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isAuditing, setIsAuditing] = useState(false);
+
+  const handleRunTitoAudit = async () => {
+    if (!prospect?.id || isAuditing) return;
+    setIsAuditing(true);
+    try {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+      const res = await fetch('/api/tito/audit', {
+        method: 'POST',
+        headers,
+        credentials: 'include',
+        body: JSON.stringify({ businessIds: [prospect.id] }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Error al ejecutar auditoría con Tito.');
+      }
+      await loadProspect();
+    } catch (err: any) {
+      alert(`Error en la auditoría: ${err.message}`);
+    } finally {
+      setIsAuditing(false);
+    }
+  };
 
   const loadProspect = useCallback(async () => {
     if (!id) return;
@@ -334,25 +369,188 @@ export default function ProspectDetailPage() {
             )}
           </div>
 
-          {/* Columna derecha: Auditoría Técnica Web (Preparada para Fase 2) */}
+          {/* Columna derecha: Auditoría Técnica con Tito */}
           <div className="space-y-4">
             <div className="rounded-xl border border-[#1a2336] bg-[#0c1220] p-5">
-              <div className="flex items-center gap-2 border-b border-[#182236] pb-3 mb-3">
-                <SearchCode className="h-4 w-4 text-purple-400" />
-                <h3 className="text-sm font-semibold text-white">Auditoría Técnica</h3>
+              <div className="flex items-center justify-between border-b border-[#182236] pb-3 mb-3">
+                <div className="flex items-center gap-2">
+                  <SearchCode className="h-4 w-4 text-emerald-400" />
+                  <h3 className="text-sm font-semibold text-white">Auditoría Técnica — Tito</h3>
+                </div>
+
+                {prospect.website && (
+                  <button
+                    type="button"
+                    onClick={handleRunTitoAudit}
+                    disabled={isAuditing}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[11px] font-medium transition-colors cursor-pointer disabled:opacity-50"
+                    title={prospect.audit ? 'Actualizar auditoría técnica' : 'Ejecutar inspección técnica'}
+                  >
+                    <RefreshCw className={`h-3 w-3 ${isAuditing ? 'animate-spin' : ''}`} />
+                    <span>{isAuditing ? 'Auditando...' : prospect.audit ? 'Reauditar' : 'Auditar ahora'}</span>
+                  </button>
+                )}
               </div>
 
-              <div className="rounded-lg border border-purple-900/30 bg-purple-950/15 p-4 text-xs text-slate-300">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-white">Estado de Auditoría</span>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-purple-900/40 text-purple-300 border border-purple-700/50">
-                    PENDIENTE
-                  </span>
+              {!prospect.website ? (
+                <div className="rounded-lg border border-amber-900/40 bg-amber-950/20 p-4 text-xs text-amber-200">
+                  <div className="flex items-center gap-2 font-semibold text-white">
+                    <AlertTriangle className="h-4 w-4 text-amber-400" />
+                    <span>Oportunidad de Desarrollo Web</span>
+                  </div>
+                  <p className="mt-2 text-[11px] text-amber-300/80 leading-relaxed">
+                    Este negocio no tiene un sitio web registrado. No requiere auditoría técnica: representa una oportunidad directa para ofrecerle el desarrollo de su presencia digital desde cero.
+                  </p>
                 </div>
-                <p className="mt-2 text-[11px] text-slate-400 leading-relaxed">
-                  El motor de auditoría automática con análisis de rendimiento, SEO, accesibilidad e IA se activará en la Fase 2.
-                </p>
-              </div>
+              ) : !prospect.audit ? (
+                <div className="rounded-lg border border-slate-800 bg-[#080d18] p-4 text-xs text-slate-300 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-white">Estado</span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-slate-800 text-slate-300 border border-slate-700">
+                      PENDIENTE
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Sitio web disponible ({prospect.website}). Hacé clic en «Auditar ahora» para que Tito inspeccione rendimiento, SEO, seguridad y conversión.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Resumen e Índice Técnico */}
+                  <div className="rounded-lg border border-emerald-500/30 bg-emerald-950/20 p-3.5 text-xs">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-emerald-300 font-semibold text-xs">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                        <span>Inspección completada por Tito</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-slate-400">
+                        {formatDate(prospect.audit.created_at)}
+                      </span>
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
+                      <div className="bg-[#080d18] p-2 rounded border border-[#1a253c]">
+                        <span className="text-slate-400 block text-[10px]">Tiempo Respuesta</span>
+                        <span className="font-semibold text-white">
+                          {prospect.audit.performance_data?.responseTimeMs || 0} ms
+                        </span>
+                      </div>
+                      <div className="bg-[#080d18] p-2 rounded border border-[#1a253c]">
+                        <span className="text-slate-400 block text-[10px]">Peso HTML Base</span>
+                        <span className="font-semibold text-white">
+                          {prospect.audit.performance_data?.htmlSizeKb || 0} KB
+                        </span>
+                      </div>
+                      <div className="bg-[#080d18] p-2 rounded border border-[#1a253c]">
+                        <span className="text-slate-400 block text-[10px]">Protocolo</span>
+                        <span
+                          className={`font-semibold ${
+                            prospect.audit.performance_data?.isHttps ? 'text-emerald-400' : 'text-red-400'
+                          }`}
+                        >
+                          {prospect.audit.performance_data?.isHttps ? 'HTTPS Seguro' : 'HTTP No Seguro'}
+                        </span>
+                      </div>
+                      <div className="bg-[#080d18] p-2 rounded border border-[#1a253c]">
+                        <span className="text-slate-400 block text-[10px]">Canal WhatsApp</span>
+                        <span
+                          className={`font-semibold ${
+                            prospect.audit.ai_insights?.hasWhatsApp ? 'text-emerald-400' : 'text-amber-400'
+                          }`}
+                        >
+                          {prospect.audit.ai_insights?.hasWhatsApp ? 'Detectado' : 'No encontrado'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Nota técnica de Core Web Vitals */}
+                    <div className="mt-2.5 p-2 rounded bg-[#080d18]/60 border border-[#1a253c] text-[10px] text-slate-400 leading-normal">
+                      ℹ <strong>Core Web Vitals:</strong> Medición en navegador no disponible en inspección estática (requiere simulación de renderizado con navegador o datos de campo de Google).
+                    </div>
+                  </div>
+
+                  {/* Problemas Detectados con Evidencia */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-semibold text-white">
+                        Problemas detectados ({prospect.auditIssues?.length || 0})
+                      </span>
+                    </div>
+
+                    {prospect.auditIssues && prospect.auditIssues.length > 0 ? (
+                      <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1">
+                        {prospect.auditIssues.map((iss) => {
+                          const isHigh = iss.severity === 'CRITICO' || iss.severity === 'ALTO';
+                          return (
+                            <div
+                              key={iss.id}
+                              className={`p-3 rounded-lg border text-xs space-y-1.5 ${
+                                isHigh
+                                  ? 'bg-red-950/20 border-red-900/40 text-red-200'
+                                  : 'bg-[#080d18] border-[#1a253c] text-slate-300'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <span className="font-semibold text-white text-xs">{iss.title}</span>
+                                <span
+                                  className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-bold shrink-0 ${
+                                    iss.severity === 'CRITICO'
+                                      ? 'bg-red-900/50 text-red-300 border border-red-700/60'
+                                      : iss.severity === 'ALTO'
+                                      ? 'bg-orange-900/50 text-orange-300 border border-orange-700/60'
+                                      : iss.severity === 'MEDIO'
+                                      ? 'bg-amber-900/40 text-amber-300 border border-amber-700/50'
+                                      : 'bg-slate-800 text-slate-300'
+                                  }`}
+                                >
+                                  {iss.severity}
+                                </span>
+                              </div>
+
+                              <p className="text-[11px] text-slate-300 leading-relaxed">
+                                {iss.description}
+                              </p>
+
+                              {iss.recommendation && (
+                                <div className="text-[10px] text-emerald-300 bg-emerald-950/30 p-1.5 rounded border border-emerald-800/30 flex items-start gap-1">
+                                  <span className="font-semibold shrink-0">Recomendación:</span>
+                                  <span>{iss.recommendation}</span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-500 italic">No se detectaron problemas críticos.</p>
+                    )}
+                  </div>
+
+                  {/* Servicios que WebPilot puede ofrecer */}
+                  {prospect.audit.ai_insights?.commercialRecommendations &&
+                    prospect.audit.ai_insights.commercialRecommendations.length > 0 && (
+                      <div className="rounded-lg border border-cyan-500/30 bg-cyan-950/20 p-3.5 space-y-2">
+                        <div className="flex items-center gap-1.5 text-cyan-300 font-semibold text-xs">
+                          <Wrench className="h-3.5 w-3.5" />
+                          <span>Servicios sugeridos para ofrecerle</span>
+                        </div>
+                        <ul className="space-y-1.5 text-[11px]">
+                          {prospect.audit.ai_insights.commercialRecommendations.map(
+                            (rec: any, idx: number) => (
+                              <li
+                                key={idx}
+                                className="bg-[#080d18] p-2 rounded border border-[#1a253c] text-slate-200"
+                              >
+                                <div className="font-semibold text-cyan-300">{rec.serviceName}</div>
+                                <div className="text-[10px] text-slate-400 mt-0.5">{rec.reason}</div>
+                              </li>
+                            )
+                          )}
+                        </ul>
+                      </div>
+                    )}
+                </div>
+              )}
             </div>
 
             {/* Información del Sistema */}

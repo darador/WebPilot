@@ -51,7 +51,7 @@ export const TEAM_MEMBERS: AgentMember[] = [
     personality: 'Meticuloso, detallista y un poco gruñón.',
     quote: 'Esta página necesita pasar por el taller.',
     avatar: '/avatars/tito.png',
-    status: 'proximamente',
+    status: 'operativo',
     color: '#10b981',
     bgColor: 'bg-emerald-500/10',
     borderColor: 'border-emerald-500/30',
