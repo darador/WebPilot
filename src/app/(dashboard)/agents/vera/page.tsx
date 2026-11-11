@@ -33,22 +33,31 @@ import {
   FileText,
   Briefcase,
   HelpCircle,
+  Star,
+  MessageSquare,
+  ThumbsUp,
+  ThumbsDown,
+  User,
+  Plus,
 } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { createClient } from '@/lib/supabase/client';
 import {
   VeraBusinessSummary,
   VeraCommercialStrategy,
-  VeraOpportunity,
-  VeraRecommendedService,
 } from '@/services/vera.service';
+import {
+  BusinessReview,
+  ReputationAnalysis,
+  BusinessReputationData,
+} from '@/services/reputation.service';
 import { DEFAULT_SERVICES_CATALOG, ServiceItem } from '@/lib/constants/services';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
 export default function VeraAgentPage() {
   const [businesses, setBusinesses] = useState<VeraBusinessSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'opportunities' | 'catalog'>('opportunities');
+  const [activeTab, setActiveTab] = useState<'opportunities' | 'reputation' | 'catalog'>('opportunities');
   const [filterType, setFilterType] = useState<'all' | 'pending' | 'analyzed' | 'with_web' | 'without_web' | 'tito_done'>('all');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -67,6 +76,37 @@ export default function VeraAgentPage() {
   const [servicesCatalog, setServicesCatalog] = useState<ServiceItem[]>(DEFAULT_SERVICES_CATALOG);
   const [catalogSavedMessage, setCatalogSavedMessage] = useState(false);
 
+  // ESTADOS DEL MÓDULO DE INTELIGENCIA DE REPUTACIÓN
+  const [reputationOverview, setReputationOverview] = useState<
+    {
+      business: any;
+      reviewCount: number;
+      averageRating: number | null;
+      analysis: ReputationAnalysis | null;
+    }[]
+  >([]);
+  const [isLoadingReputation, setIsLoadingReputation] = useState(false);
+  const [activeReputationBusiness, setActiveReputationBusiness] = useState<any | null>(null);
+  const [activeReputationData, setActiveReputationData] = useState<BusinessReputationData | null>(null);
+  const [isAddReviewsModalOpen, setIsAddReviewsModalOpen] = useState(false);
+  const [isReputationReportModalOpen, setIsReputationReportModalOpen] = useState(false);
+
+  // Formulario de carga manual de reseña
+  const [newReviewForm, setNewReviewForm] = useState<{
+    author: string;
+    rating: number;
+    date: string;
+    text: string;
+    businessResponse: string;
+  }>({
+    author: '',
+    rating: 5,
+    date: 'Hace 1 mes',
+    text: '',
+    businessResponse: '',
+  });
+  const [isSavingReview, setIsSavingReview] = useState(false);
+
   useEffect(() => {
     // Cargar catálogo de localStorage si existe
     try {
@@ -78,6 +118,7 @@ export default function VeraAgentPage() {
       // Usar defaults
     }
     fetchBusinesses();
+    fetchReputationOverview();
   }, []);
 
   const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
@@ -108,6 +149,21 @@ export default function VeraAgentPage() {
       console.error('Error fetching businesses for Vera:', e);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchReputationOverview = async () => {
+    setIsLoadingReputation(true);
+    try {
+      const res = await fetchWithAuth('/api/vera/reputation');
+      if (res.ok) {
+        const json = await res.json();
+        setReputationOverview(json.data || []);
+      }
+    } catch (e) {
+      console.error('Error fetching reputation overview:', e);
+    } finally {
+      setIsLoadingReputation(false);
     }
   };
 
@@ -230,7 +286,6 @@ export default function VeraAgentPage() {
         const json = await res.json();
         setSelectedStrategy(json.strategy);
       } else {
-        // Si no la tiene guardada, la ejecutamos en el momento
         const singleRun = await fetchWithAuth('/api/vera/analyze', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -252,6 +307,143 @@ export default function VeraAgentPage() {
     }
   };
 
+  // MÓDULO REPUTACIÓN: Abrir modal de carga manual de reseñas
+  const handleOpenAddReviews = async (business: any) => {
+    setActiveReputationBusiness(business);
+    setIsAddReviewsModalOpen(true);
+    // Cargar reseñas existentes del negocio
+    try {
+      const res = await fetchWithAuth(`/api/vera/reputation/${business.id}`);
+      if (res.ok) {
+        const json = await res.json();
+        setActiveReputationData(json.data);
+      }
+    } catch (e) {
+      console.error('Error cargando reputación existente:', e);
+    }
+  };
+
+  // MÓDULO REPUTACIÓN: Abrir informe completo de reputación
+  const handleOpenReputationReport = async (business: any) => {
+    setActiveReputationBusiness(business);
+    setIsReputationReportModalOpen(true);
+    try {
+      const res = await fetchWithAuth(`/api/vera/reputation/${business.id}`);
+      if (res.ok) {
+        const json = await res.json();
+        setActiveReputationData(json.data);
+      }
+    } catch (e) {
+      console.error('Error cargando informe de reputación:', e);
+    }
+  };
+
+  // Guardar nueva reseña manual
+  const handleSaveManualReview = async () => {
+    if (!activeReputationBusiness || !newReviewForm.text.trim()) return;
+    setIsSavingReview(true);
+
+    try {
+      const currentReviews: BusinessReview[] = activeReputationData?.reviews || [];
+      const newReview: BusinessReview = {
+        id: `rev_${Date.now()}`,
+        author: newReviewForm.author.trim() || 'Paciente anónimo',
+        rating: newReviewForm.rating,
+        date: newReviewForm.date.trim() || 'Reciente',
+        text: newReviewForm.text.trim(),
+        businessResponse: newReviewForm.businessResponse.trim() || null,
+        source: 'MANUAL',
+        createdAt: new Date().toISOString(),
+      };
+
+      const updatedReviews = [newReview, ...currentReviews];
+
+      const res = await fetchWithAuth('/api/vera/reputation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          businessId: activeReputationBusiness.id,
+          reviews: updatedReviews,
+        }),
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        setActiveReputationData({ reviews: json.reviews, analysis: json.analysis });
+        setNewReviewForm({
+          author: '',
+          rating: 5,
+          date: 'Hace 1 mes',
+          text: '',
+          businessResponse: '',
+        });
+        fetchReputationOverview();
+      }
+    } catch (e) {
+      console.error('Error guardando reseña manual:', e);
+    } finally {
+      setIsSavingReview(false);
+    }
+  };
+
+  // Atajo Primera Prueba: Cargar 3 reseñas de prueba para consultorios de Quilmes
+  const handleLoadSampleReviews = async () => {
+    if (!activeReputationBusiness) return;
+    setIsSavingReview(true);
+
+    const sampleReviews: BusinessReview[] = [
+      {
+        id: `rev_${Date.now()}_1`,
+        author: 'María Laura González',
+        rating: 4,
+        date: 'Hace 3 semanas',
+        text: 'Excelente la atención de los profesionales y las instalaciones impecables. El único problema es que para coordinar un turno tardan mucho en responder los mensajes de WhatsApp y el teléfono fijo da ocupado casi siempre.',
+        source: 'MANUAL',
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: `rev_${Date.now()}_2`,
+        author: 'Carlos Alberto Benítez',
+        rating: 5,
+        date: 'Hace 2 meses',
+        text: 'Muy buena atención médica y sin dolor en el tratamiento de conducto. Muy recomendable en la zona de Quilmes.',
+        businessResponse: '¡Muchas gracias Carlos por tu confianza y recomendación!',
+        source: 'MANUAL',
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: `rev_${Date.now()}_3`,
+        author: 'Romina V.',
+        rating: 3,
+        date: 'Hace 4 meses',
+        text: 'La doctora es una genia, pero te dan turno a las 15 hs y te terminan haciendo pasar a las 16 hs porque la sala de espera colapsa. Estaría bueno que tengan una web para ver turnos disponibles y presupuestos claros de ortodoncia.',
+        source: 'MANUAL',
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    try {
+      const res = await fetchWithAuth('/api/vera/reputation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          businessId: activeReputationBusiness.id,
+          reviews: sampleReviews,
+        }),
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        setActiveReputationData({ reviews: json.reviews, analysis: json.analysis });
+        fetchReputationOverview();
+      }
+    } catch (e) {
+      console.error('Error cargando reseñas de ejemplo:', e);
+    } finally {
+      setIsSavingReview(false);
+    }
+  };
+
   const copyToClipboard = (text: string, type: 'whatsapp' | 'email_subject' | 'email_body') => {
     navigator.clipboard.writeText(text);
     setCopiedType(type);
@@ -268,8 +460,11 @@ export default function VeraAgentPage() {
     <div>
       <Topbar
         title="Vera — Estratega Comercial"
-        subtitle="Conversión de datos y auditorías en propuestas comerciales, presupuestos y argumentos de venta"
-        onRefresh={fetchBusinesses}
+        subtitle="Conversión de datos, auditorías y opiniones en propuestas comerciales, presupuestos y argumentos de venta"
+        onRefresh={() => {
+          fetchBusinesses();
+          fetchReputationOverview();
+        }}
         isRefreshing={isLoading}
       />
 
@@ -307,7 +502,7 @@ export default function VeraAgentPage() {
                 </p>
 
                 <p className="mt-2 text-xs text-slate-400 max-w-2xl leading-relaxed">
-                  Vera analiza la situación comercial de cada negocio, identifica necesidades reales de desarrollo o rediseño, cotiza servicios según nuestro catálogo y redacta el mensaje de contacto inicial para WhatsApp y correo.
+                  Vera analiza la situación comercial de cada negocio, diagnostica las quejas y valoraciones de sus clientes, identifica necesidades reales de desarrollo y redacta los mensajes iniciales para WhatsApp y correo.
                 </p>
               </div>
             </div>
@@ -349,6 +544,18 @@ export default function VeraAgentPage() {
               </button>
 
               <button
+                onClick={() => setActiveTab('reputation')}
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
+                  activeTab === 'reputation'
+                    ? 'bg-amber-600 text-white shadow-md shadow-amber-500/30'
+                    : 'bg-[#0f172a] text-slate-400 hover:text-white border border-[#1e2a42]'
+                }`}
+              >
+                <Star className="h-3.5 w-3.5 text-amber-400" />
+                <span>Inteligencia de Reputación</span>
+              </button>
+
+              <button
                 onClick={() => setActiveTab('catalog')}
                 className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
                   activeTab === 'catalog'
@@ -357,7 +564,7 @@ export default function VeraAgentPage() {
                 }`}
               >
                 <Sliders className="h-3.5 w-3.5" />
-                <span>Catálogo de Servicios WebPilot ({servicesCatalog.length})</span>
+                <span>Catálogo de Servicios ({servicesCatalog.length})</span>
               </button>
             </div>
 
@@ -711,7 +918,157 @@ export default function VeraAgentPage() {
           </div>
         )}
 
-        {/* PESTAÑA 2: CATÁLOGO DE SERVICIOS */}
+        {/* PESTAÑA 2: INTELIGENCIA DE REPUTACIÓN */}
+        {activeTab === 'reputation' && (
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#0c1220] p-4 rounded-xl border border-[#172238]">
+              <div>
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Star className="h-4 w-4 text-amber-400" />
+                  <span>Inteligencia de Reputación y Análisis de Opiniones</span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Vera analiza las opiniones reales de los pacientes para detectar problemas de turnos, esperas o comunicación y convertirlos en argumentos de venta.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-slate-400 font-mono">
+                  {reputationOverview.filter((r) => r.reviewCount > 0).length} negocios con reseñas
+                </span>
+              </div>
+            </div>
+
+            {/* Tabla de Reputación */}
+            <div className="rounded-xl border border-[#172238] bg-[#0c1220] overflow-hidden shadow-xl">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#080d18] text-slate-400 font-semibold border-b border-[#172238]">
+                    <tr>
+                      <th className="py-3 px-4">Negocio</th>
+                      <th className="py-3 px-4">Localidad</th>
+                      <th className="py-3 px-4">Reseñas Registradas</th>
+                      <th className="py-3 px-4">Calificación Promedio</th>
+                      <th className="py-3 px-4">Diagnóstico de Opiniones</th>
+                      <th className="py-3 px-4 text-right">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#172238]">
+                    {isLoadingReputation ? (
+                      <tr>
+                        <td colSpan={6} className="py-12 text-center text-slate-400">
+                          <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2 text-amber-400" />
+                          <span>Cargando datos de reputación...</span>
+                        </td>
+                      </tr>
+                    ) : reputationOverview.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-slate-500">
+                          No se encontraron negocios registrados.
+                        </td>
+                      </tr>
+                    ) : (
+                      reputationOverview.map((item) => {
+                        const hasReviews = item.reviewCount > 0;
+                        const hasIssues = item.analysis && item.analysis.recurringIssues.length > 0;
+
+                        return (
+                          <tr key={item.business.id} className="hover:bg-[#11192b]/60 transition-colors">
+                            <td className="py-3 px-4">
+                              <div className="font-semibold text-white">
+                                <Link
+                                  href={`/prospects/${item.business.id}`}
+                                  className="hover:text-amber-300 hover:underline"
+                                >
+                                  {item.business.name}
+                                </Link>
+                              </div>
+                              <div className="text-[11px] text-slate-400">
+                                {item.business.industry || 'Rubro sin especificar'}
+                              </div>
+                            </td>
+
+                            <td className="py-3 px-4 text-slate-300">
+                              <div className="flex items-center gap-1">
+                                <MapPin className="h-3 w-3 text-slate-500 shrink-0" />
+                                <span>{item.business.city || '-'}</span>
+                              </div>
+                            </td>
+
+                            <td className="py-3 px-4">
+                              {hasReviews ? (
+                                <span className="font-mono text-slate-200 font-semibold bg-[#080d18] border border-[#172238] px-2 py-0.5 rounded">
+                                  {item.reviewCount} reseña(s)
+                                </span>
+                              ) : (
+                                <span className="text-slate-500 italic">Sin reseñas cargadas</span>
+                              )}
+                            </td>
+
+                            <td className="py-3 px-4">
+                              {item.averageRating ? (
+                                <div className="flex items-center gap-1 text-amber-400 font-bold font-mono">
+                                  <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                                  <span>{item.averageRating}</span>
+                                  <span className="text-slate-500 font-normal text-[10px]">/ 5</span>
+                                </div>
+                              ) : (
+                                <span className="text-slate-600">-</span>
+                              )}
+                            </td>
+
+                            <td className="py-3 px-4 max-w-xs">
+                              {hasReviews && item.analysis ? (
+                                <div>
+                                  {hasIssues ? (
+                                    <span className="text-amber-300 font-medium block truncate">
+                                      {item.analysis.recurringIssues[0]?.title}
+                                    </span>
+                                  ) : (
+                                    <span className="text-emerald-400 font-medium block">
+                                      Reputación sólida y sin fricciones detectadas
+                                    </span>
+                                  )}
+                                  <span className="text-[10px] text-slate-400 block mt-0.5">
+                                    {item.analysis.commercialOpportunities.length} oportunidad(es) de mejora
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-slate-500 italic">Pendiente de incorporar opiniones</span>
+                              )}
+                            </td>
+
+                            <td className="py-3 px-4 text-right space-x-2">
+                              {hasReviews ? (
+                                <button
+                                  onClick={() => handleOpenReputationReport(item.business)}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-500/40 bg-amber-950/30 text-amber-300 hover:bg-amber-900/40 hover:text-white text-xs font-medium transition-colors"
+                                >
+                                  <FileText className="h-3 w-3" />
+                                  <span>Ver Informe</span>
+                                </button>
+                              ) : null}
+
+                              <button
+                                onClick={() => handleOpenAddReviews(item.business)}
+                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-700 bg-[#121c2e] text-slate-300 hover:border-amber-500 hover:text-amber-300 text-xs font-medium transition-colors"
+                              >
+                                <Plus className="h-3 w-3" />
+                                <span>{hasReviews ? 'Sumar' : 'Cargar'}</span>
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* PESTAÑA 3: CATÁLOGO DE SERVICIOS */}
         {activeTab === 'catalog' && (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#0c1220] p-4 rounded-xl border border-[#172238]">
@@ -822,6 +1179,426 @@ export default function VeraAgentPage() {
           </div>
         )}
       </div>
+
+      {/* MODAL 1: CARGA MANUAL DE RESEÑAS */}
+      {isAddReviewsModalOpen && activeReputationBusiness && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+          <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-amber-500/40 bg-[#0a0f1d] p-6 shadow-2xl text-slate-200 space-y-5">
+            <div className="flex items-start justify-between border-b border-[#172238] pb-3">
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <Star className="h-4 w-4 text-amber-400" />
+                  <span>Carga de Reseñas para {activeReputationBusiness.name}</span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Incorporá comentarios reales de clientes para que Vera analice patrones y oportunidades.
+                </p>
+              </div>
+
+              <button
+                onClick={() => setIsAddReviewsModalOpen(false)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Atajo de Primera Prueba */}
+            <div className="p-3 rounded-xl border border-amber-500/30 bg-amber-950/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div>
+                <strong className="text-amber-300 block">Primera Prueba — Datos de Test Realistas:</strong>
+                <span className="text-slate-400">
+                  Cargá automáticamente 3 opiniones reales sobre turnos, demoras y atención médica.
+                </span>
+              </div>
+              <button
+                onClick={handleLoadSampleReviews}
+                disabled={isSavingReview}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs shrink-0 transition-colors disabled:opacity-50"
+              >
+                <Sparkles className="h-3 w-3" />
+                <span>Cargar 3 Reseñas de Prueba</span>
+              </button>
+            </div>
+
+            {/* Formulario de Reseña Individual */}
+            <div className="space-y-3.5 bg-[#080d18] p-4 rounded-xl border border-[#172238] text-xs">
+              <h4 className="font-bold text-white text-xs uppercase tracking-wider text-slate-400">
+                Agregar Nueva Opinión Manual
+              </h4>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="text-[10px] text-slate-400 block mb-1">Nombre / Autor:</label>
+                  <input
+                    type="text"
+                    placeholder="Ej: María Laura G."
+                    value={newReviewForm.author}
+                    onChange={(e) => setNewReviewForm({ ...newReviewForm, author: e.target.value })}
+                    className="w-full bg-[#0c1220] border border-[#1e2a42] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-slate-400 block mb-1">Calificación (Estrellas):</label>
+                  <select
+                    value={newReviewForm.rating}
+                    onChange={(e) =>
+                      setNewReviewForm({ ...newReviewForm, rating: parseInt(e.target.value, 10) })
+                    }
+                    className="w-full bg-[#0c1220] border border-[#1e2a42] rounded-lg px-2.5 py-1.5 text-xs text-amber-400 font-bold focus:outline-none focus:border-amber-500"
+                  >
+                    <option value={5}>★★★★★ (5 estrellas)</option>
+                    <option value={4}>★★★★☆ (4 estrellas)</option>
+                    <option value={3}>★★★☆☆ (3 estrellas)</option>
+                    <option value={2}>★★☆☆☆ (2 estrellas)</option>
+                    <option value={1}>★☆☆☆☆ (1 estrella)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[10px] text-slate-400 block mb-1">Fecha aproximada:</label>
+                  <input
+                    type="text"
+                    placeholder="Ej: Hace 2 semanas"
+                    value={newReviewForm.date}
+                    onChange={(e) => setNewReviewForm({ ...newReviewForm, date: e.target.value })}
+                    className="w-full bg-[#0c1220] border border-[#1e2a42] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] text-slate-400 block mb-1">Texto de la Reseña / Opinión:</label>
+                <textarea
+                  rows={3}
+                  placeholder="Pegá aquí el texto exacto de la reseña de Google..."
+                  value={newReviewForm.text}
+                  onChange={(e) => setNewReviewForm({ ...newReviewForm, text: e.target.value })}
+                  className="w-full bg-[#0c1220] border border-[#1e2a42] rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-amber-500 leading-relaxed"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] text-slate-400 block mb-1">
+                  Respuesta del negocio (si existe):
+                </label>
+                <input
+                  type="text"
+                  placeholder="Opcional: Si el negocio contestó a la reseña..."
+                  value={newReviewForm.businessResponse}
+                  onChange={(e) =>
+                    setNewReviewForm({ ...newReviewForm, businessResponse: e.target.value })
+                  }
+                  className="w-full bg-[#0c1220] border border-[#1e2a42] rounded-lg px-2.5 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div className="flex justify-end pt-1">
+                <button
+                  onClick={handleSaveManualReview}
+                  disabled={!newReviewForm.text.trim() || isSavingReview}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs shadow-md transition-colors disabled:opacity-50"
+                >
+                  <Save className="h-3.5 w-3.5" />
+                  <span>{isSavingReview ? 'Guardando...' : 'Guardar y Analizar'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Listado de reseñas ya guardadas para este negocio */}
+            {activeReputationData?.reviews && activeReputationData.reviews.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Reseñas Guardadas ({activeReputationData.reviews.length})
+                </h4>
+                <div className="space-y-2 max-h-56 overflow-y-auto">
+                  {activeReputationData.reviews.map((rev) => (
+                    <div
+                      key={rev.id}
+                      className="p-3 bg-[#0c1220] rounded-xl border border-[#172238] text-xs space-y-1"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-white">{rev.author}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-amber-400 font-mono text-[11px]">
+                            {'★'.repeat(rev.rating)}
+                            {'☆'.repeat(5 - rev.rating)}
+                          </span>
+                          <span className="text-[10px] text-slate-500">{rev.date}</span>
+                        </div>
+                      </div>
+                      <p className="text-slate-300 text-[11px] leading-relaxed">{rev.text}</p>
+                      {rev.businessResponse && (
+                        <div className="text-[10px] text-slate-400 bg-[#080d18] p-1.5 rounded border border-[#1a253c] mt-1">
+                          <strong>Respuesta del negocio:</strong> {rev.businessResponse}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between pt-3 border-t border-[#172238] text-xs">
+              <span className="text-slate-500 font-mono text-[10px]">Fuente: Carga Manual Verificada</span>
+              <button
+                onClick={() => {
+                  setIsAddReviewsModalOpen(false);
+                  if (activeReputationData?.analysis) {
+                    handleOpenReputationReport(activeReputationBusiness);
+                  }
+                }}
+                className="px-4 py-1.5 rounded-lg bg-[#152037] text-white hover:bg-[#1e2e4f]"
+              >
+                Listo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: INFORME DE INTELIGENCIA DE REPUTACIÓN */}
+      {isReputationReportModalOpen && activeReputationBusiness && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+          <div className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl border border-amber-500/40 bg-[#0a0f1d] p-6 shadow-2xl text-slate-200 space-y-6">
+            <div className="flex items-start justify-between border-b border-[#172238] pb-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+                  <Star className="h-5 w-5 fill-amber-400" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <span>Informe de Inteligencia de Reputación</span>
+                    <span className="text-xs font-mono text-amber-400 font-normal">
+                      • {activeReputationBusiness.name}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Diagnóstico de opiniones de clientes, fricciones recurrentes y soluciones WebPilot
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setIsReputationReportModalOpen(false)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            {activeReputationData?.analysis ? (
+              <div className="space-y-6">
+                {/* 1. Métricas Cuantitativas y Aviso de Muestra */}
+                <div className="rounded-xl border border-amber-500/20 bg-amber-950/10 p-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="text-3xl font-extrabold text-amber-400 font-mono flex items-center gap-1">
+                        <span>{activeReputationData.analysis.averageRating}</span>
+                        <Star className="h-6 w-6 fill-amber-400 text-amber-400" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-white block">
+                          Calificación Promedio de Clientes
+                        </span>
+                        <span className="text-[11px] text-slate-400 font-mono">
+                          Sobre {activeReputationData.analysis.totalReviewsCount} opinión(es) analizadas
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 text-xs font-mono">
+                      <span className="text-emerald-400 font-semibold">
+                        {activeReputationData.analysis.positiveCount} positivas (4-5★)
+                      </span>
+                      <span className="text-slate-600">•</span>
+                      <span className="text-amber-400 font-semibold">
+                        {activeReputationData.analysis.neutralCount} neutras (3★)
+                      </span>
+                      <span className="text-slate-600">•</span>
+                      <span className="text-red-400 font-semibold">
+                        {activeReputationData.analysis.negativeCount} críticas (1-2★)
+                      </span>
+                    </div>
+                  </div>
+
+                  <p className="mt-3 text-xs text-slate-300 italic bg-[#080d18] p-2.5 rounded-lg border border-[#172238]">
+                    ℹ <strong>Confiabilidad de muestra:</strong> {activeReputationData.analysis.sampleNotice}
+                  </p>
+                </div>
+
+                {/* 2. Fortalezas Valoradas */}
+                {activeReputationData.analysis.strengths.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2.5 flex items-center gap-1.5">
+                      <ThumbsUp className="h-4 w-4 text-emerald-400" />
+                      <span>Fortalezas Valoradas por los Pacientes</span>
+                    </h4>
+                    <div className="space-y-2">
+                      {activeReputationData.analysis.strengths.map((str, idx) => (
+                        <div
+                          key={idx}
+                          className="p-3 bg-[#0c1220] rounded-xl border border-emerald-900/40 text-xs space-y-1"
+                        >
+                          <div className="font-bold text-white flex items-center gap-1.5">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                            <span>{str.title}</span>
+                          </div>
+                          <p className="text-slate-300">{str.description}</p>
+                          {str.evidenceQuotes.length > 0 && (
+                            <div className="text-[11px] text-emerald-300/90 italic bg-emerald-950/20 p-2 rounded border border-emerald-900/30 mt-1">
+                              {str.evidenceQuotes.join(' ')}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. Problemas Recurrentes Detectados con Citas Reales */}
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2.5 flex items-center gap-1.5">
+                    <AlertTriangle className="h-4 w-4 text-amber-400" />
+                    <span>
+                      Puntos de Fricción y Problemas Detectados (
+                      {activeReputationData.analysis.recurringIssues.length})
+                    </span>
+                  </h4>
+
+                  {activeReputationData.analysis.recurringIssues.length === 0 ? (
+                    <div className="p-3 rounded-xl bg-emerald-950/20 border border-emerald-500/30 text-xs text-emerald-300">
+                      No se detectaron quejas recurrentes en las opiniones analizadas.
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {activeReputationData.analysis.recurringIssues.map((iss, idx) => (
+                        <div
+                          key={idx}
+                          className="p-3.5 bg-[#0c1220] rounded-xl border border-[#1a2336] text-xs space-y-2"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="font-bold text-white">{iss.title}</span>
+                            <span
+                              className={`text-[10px] font-semibold px-2 py-0.5 rounded border uppercase shrink-0 ${
+                                iss.isPattern
+                                  ? 'border-red-500/50 bg-red-950/30 text-red-300'
+                                  : 'border-amber-500/40 bg-amber-950/20 text-amber-300'
+                              }`}
+                            >
+                              {iss.isPattern ? 'Patrón Recurrente' : 'Comentario Puntual'}
+                            </span>
+                          </div>
+
+                          <p className="text-slate-300">{iss.description}</p>
+
+                          <div className="bg-[#080d18] p-2.5 rounded-lg border border-[#172238] space-y-1">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase block">
+                              Evidencia de clientes:
+                            </span>
+                            {iss.evidenceQuotes.map((q, qIdx) => (
+                              <p key={qIdx} className="text-[11px] text-amber-200/90 italic">
+                                {q}
+                              </p>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* 4. Oportunidades y Servicios Recomendados por WebPilot */}
+                {activeReputationData.analysis.commercialOpportunities.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2.5 flex items-center gap-1.5">
+                      <Target className="h-4 w-4 text-cyan-400" />
+                      <span>Soluciones de WebPilot Basadas en la Voz del Paciente</span>
+                    </h4>
+
+                    <div className="space-y-3">
+                      {activeReputationData.analysis.commercialOpportunities.map((opp, idx) => (
+                        <div
+                          key={idx}
+                          className="p-4 bg-[#0a1424] rounded-xl border border-cyan-500/30 text-xs space-y-2"
+                        >
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                            <span className="font-bold text-white text-xs">{opp.opportunityTitle}</span>
+                            <span className="text-[11px] font-bold text-cyan-300 font-mono bg-cyan-950/60 border border-cyan-800 px-2 py-0.5 rounded">
+                              {opp.recommendedService}
+                            </span>
+                          </div>
+
+                          <p className="text-slate-300 text-[11px]">
+                            <strong>Problema del paciente:</strong> {opp.clientPainPoint}
+                          </p>
+
+                          <div className="bg-[#050b14] p-3 rounded-lg border border-cyan-900/40 space-y-1">
+                            <span className="text-[10px] font-bold text-cyan-400 uppercase block">
+                              Argumento de venta listo para usar:
+                            </span>
+                            <p className="text-[11px] text-slate-200 leading-relaxed font-sans">
+                              «{opp.salesPitchSnippet}»
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 5. Citas individuales */}
+                <div className="space-y-2 pt-2 border-t border-[#172238]">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                    Opiniones Registradas ({activeReputationData.reviews.length})
+                  </h4>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {activeReputationData.reviews.map((rev) => (
+                      <div
+                        key={rev.id}
+                        className="p-3 bg-[#080d18] rounded-lg border border-[#1a253c] text-xs space-y-1"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-white">{rev.author}</span>
+                          <span className="text-amber-400 text-[11px]">
+                            {'★'.repeat(rev.rating)}
+                            {'☆'.repeat(5 - rev.rating)} ({rev.date})
+                          </span>
+                        </div>
+                        <p className="text-slate-300 text-[11px] italic">"{rev.text}"</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-12 text-slate-400 text-xs">
+                No hay opiniones cargadas para este negocio.
+              </div>
+            )}
+
+            <div className="flex justify-between items-center pt-3 border-t border-[#172238] text-xs">
+              <button
+                onClick={() => {
+                  setIsReputationReportModalOpen(false);
+                  handleOpenAddReviews(activeReputationBusiness);
+                }}
+                className="px-3 py-1.5 rounded-lg border border-slate-700 text-slate-300 hover:text-white text-xs"
+              >
+                Editar / Sumar Reseñas
+              </button>
+
+              <button
+                onClick={() => setIsReputationReportModalOpen(false)}
+                className="px-4 py-1.5 rounded-lg bg-[#152037] text-white hover:bg-[#1e2e4f] text-xs font-medium"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL DETALLADO DE ESTRATEGIA COMERCIAL DE VERA */}
       {isStrategyModalOpen && (

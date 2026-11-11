@@ -219,27 +219,27 @@ export function ProspectsTable({
                     </div>
                   </td>
 
-                  {/* Ubicación con enlace a Google Maps */}
-                  <td className="py-3 px-4 text-slate-300">
+                  {/* Ubicación con enlace directo a Google Maps */}
+                  <td className="py-3 px-4">
                     <a
                       href={buildGoogleMapsUrl(p)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex flex-col group/loc hover:text-emerald-400 transition-colors"
-                      title={`Ver "${p.name}" en Google Maps`}
+                      className="inline-flex items-start gap-1.5 group/loc transition-colors"
+                      title={`Abrir perfil de "${p.name}" en Google Maps`}
                     >
-                      <div className="flex items-center gap-1.5">
-                        <MapPin className="h-3 w-3 text-slate-500 group-hover/loc:text-emerald-400 shrink-0 transition-colors" />
-                        <span className="font-medium text-slate-300 group-hover/loc:text-emerald-300 group-hover/loc:underline flex items-center gap-1">
-                          {p.city || '-'}
-                          <ExternalLink className="h-2.5 w-2.5 opacity-0 group-hover/loc:opacity-100 transition-opacity text-emerald-400 shrink-0" />
-                        </span>
+                      <MapPin className="h-3.5 w-3.5 text-emerald-400 shrink-0 mt-0.5 group-hover/loc:scale-110 transition-transform" />
+                      <div>
+                        <div className="flex items-center gap-1 text-[11px] font-medium text-slate-200 group-hover/loc:text-emerald-300 group-hover/loc:underline">
+                          <span>{p.city || p.address || 'Ver en Maps'}</span>
+                          <ExternalLink className="h-2.5 w-2.5 text-emerald-400 shrink-0" />
+                        </div>
+                        {p.state_province && (
+                          <span className="text-[10px] text-slate-400 block group-hover/loc:text-slate-300">
+                            {p.state_province}
+                          </span>
+                        )}
                       </div>
-                      {p.state_province && (
-                        <span className="text-[10px] text-slate-500 block pl-4.5 group-hover/loc:text-slate-400 transition-colors">
-                          {p.state_province}
-                        </span>
-                      )}
                     </a>
                   </td>
 
