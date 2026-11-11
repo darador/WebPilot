@@ -58,7 +58,18 @@ export default function VeraAgentPage() {
   const [businesses, setBusinesses] = useState<VeraBusinessSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'opportunities' | 'reputation' | 'catalog'>('opportunities');
-  const [filterType, setFilterType] = useState<'all' | 'pending' | 'analyzed' | 'with_web' | 'without_web' | 'tito_done'>('all');
+  const [filterType, setFilterType] = useState<
+    | 'all'
+    | 'pending'
+    | 'analyzed'
+    | 'buena_presencia'
+    | 'mejorable'
+    | 'oportunidad_clara'
+    | 'revision_humana'
+    | 'with_web'
+    | 'without_web'
+    | 'tito_done'
+  >('all');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzingStatus, setAnalyzingStatus] = useState<string | null>(null);
@@ -68,6 +79,7 @@ export default function VeraAgentPage() {
   const [selectedStrategy, setSelectedStrategy] = useState<VeraCommercialStrategy | null>(null);
   const [isStrategyModalOpen, setIsStrategyModalOpen] = useState(false);
   const [isLoadingStrategyDetail, setIsLoadingStrategyDetail] = useState(false);
+  const [isDismissing, setIsDismissing] = useState(false);
 
   // Copiado al portapapeles
   const [copiedType, setCopiedType] = useState<'whatsapp' | 'email_subject' | 'email_body' | null>(null);
@@ -209,12 +221,61 @@ export default function VeraAgentPage() {
     return businesses.filter((item) => {
       if (filterType === 'pending') return !item.veraStrategy.hasStrategy;
       if (filterType === 'analyzed') return item.veraStrategy.hasStrategy;
+      if (filterType === 'buena_presencia')
+        return item.veraStrategy.commercialOutcome === 'BUENA_PRESENCIA';
+      if (filterType === 'mejorable')
+        return item.veraStrategy.commercialOutcome === 'PROPUESTA_OPCIONAL';
+      if (filterType === 'oportunidad_clara')
+        return item.veraStrategy.commercialOutcome === 'OPORTUNIDAD_CLARA';
+      if (filterType === 'revision_humana')
+        return item.veraStrategy.commercialOutcome === 'INFORMACION_INSUFICIENTE';
       if (filterType === 'with_web') return item.hasWebsite;
       if (filterType === 'without_web') return !item.hasWebsite;
       if (filterType === 'tito_done') return item.titoAudit.status === 'COMPLETADO';
       return true;
     });
   }, [businesses, filterType]);
+
+  const handleMarkNoOpportunity = async () => {
+    if (!selectedStrategy?.businessId || isDismissing) return;
+    setIsDismissing(true);
+    try {
+      const res = await fetchWithAuth('/api/vera/dismiss', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          businessId: selectedStrategy.businessId,
+          reason: 'Presencia digital sólida y funcional. No requiere propuesta comercial activa.',
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Error al actualizar estado.');
+      }
+
+      setFeedbackMessage({
+        type: 'success',
+        text: `Negocio marcado como «Sin oportunidad comercial por ahora». Se mantiene en CRM para seguimiento futuro.`,
+      });
+
+      setSelectedStrategy((prev) =>
+        prev
+          ? {
+              ...prev,
+              markedAsNoOpportunity: true,
+              commercialOutcome: 'BUENA_PRESENCIA',
+              actionRecommendation: 'NO_OFRECER',
+            }
+          : null
+      );
+      fetchBusinesses();
+    } catch (e: any) {
+      alert(`Error: ${e.message}`);
+    } finally {
+      setIsDismissing(false);
+    }
+  };
 
   // Selección
   const toggleSelect = (id: string) => {
@@ -467,6 +528,18 @@ export default function VeraAgentPage() {
   const analyzedCount = businesses.filter((b) => b.veraStrategy.hasStrategy).length;
   const pendingCount = totalCount - analyzedCount;
   const titoDoneCount = businesses.filter((b) => b.titoAudit.status === 'COMPLETADO').length;
+  const buenaPresenciaCount = businesses.filter(
+    (b) => b.veraStrategy.hasStrategy && b.veraStrategy.commercialOutcome === 'BUENA_PRESENCIA'
+  ).length;
+  const mejorableCount = businesses.filter(
+    (b) => b.veraStrategy.hasStrategy && b.veraStrategy.commercialOutcome === 'PROPUESTA_OPCIONAL'
+  ).length;
+  const oportunidadClaraCount = businesses.filter(
+    (b) => b.veraStrategy.hasStrategy && b.veraStrategy.commercialOutcome === 'OPORTUNIDAD_CLARA'
+  ).length;
+  const revisionHumanaCount = businesses.filter(
+    (b) => b.veraStrategy.hasStrategy && b.veraStrategy.commercialOutcome === 'INFORMACION_INSUFICIENTE'
+  ).length;
 
   return (
     <div>
@@ -637,30 +710,64 @@ export default function VeraAgentPage() {
                   Todos ({totalCount})
                 </button>
                 <button
+                  onClick={() => setFilterType('buena_presencia')}
+                  className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                    filterType === 'buena_presencia'
+                      ? 'bg-emerald-600 text-white shadow-sm'
+                      : 'bg-[#11192b] text-emerald-400/90 hover:text-white'
+                  }`}
+                  title="Negocios con buena presencia digital donde Vera concluye NO ofrecer servicios"
+                >
+                  Buena Presencia / Sin venta ({buenaPresenciaCount})
+                </button>
+                <button
+                  onClick={() => setFilterType('oportunidad_clara')}
+                  className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                    filterType === 'oportunidad_clara'
+                      ? 'bg-purple-700 text-white shadow-sm'
+                      : 'bg-[#11192b] text-purple-300 hover:text-white'
+                  }`}
+                  title="Sin web o con fallas críticas estructurales"
+                >
+                  Oportunidad Clara ({oportunidadClaraCount})
+                </button>
+                <button
+                  onClick={() => setFilterType('mejorable')}
+                  className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                    filterType === 'mejorable'
+                      ? 'bg-cyan-600 text-white shadow-sm'
+                      : 'bg-[#11192b] text-cyan-300 hover:text-white'
+                  }`}
+                  title="Web funcional con oportunidad puntual y opcional de optimización"
+                >
+                  Mejorable Opcional ({mejorableCount})
+                </button>
+                <button
+                  onClick={() => setFilterType('revision_humana')}
+                  className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                    filterType === 'revision_humana'
+                      ? 'bg-amber-600 text-white shadow-sm'
+                      : 'bg-[#11192b] text-amber-300 hover:text-white'
+                  }`}
+                  title="Auditoría no concluyente o error de conexión: requiere revisión humana"
+                >
+                  Revisión Humana ({revisionHumanaCount})
+                </button>
+                <button
                   onClick={() => setFilterType('pending')}
                   className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
                     filterType === 'pending'
-                      ? 'bg-amber-600 text-white'
+                      ? 'bg-slate-700 text-white'
                       : 'bg-[#11192b] text-slate-400 hover:text-white'
                   }`}
                 >
-                  Pendientes ({pendingCount})
-                </button>
-                <button
-                  onClick={() => setFilterType('analyzed')}
-                  className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
-                    filterType === 'analyzed'
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-[#11192b] text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Con Estrategia ({analyzedCount})
+                  Sin Estrategia ({pendingCount})
                 </button>
                 <button
                   onClick={() => setFilterType('with_web')}
                   className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
                     filterType === 'with_web'
-                      ? 'bg-cyan-600 text-white'
+                      ? 'bg-blue-600 text-white'
                       : 'bg-[#11192b] text-slate-400 hover:text-white'
                   }`}
                 >
@@ -670,7 +777,7 @@ export default function VeraAgentPage() {
                   onClick={() => setFilterType('without_web')}
                   className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
                     filterType === 'without_web'
-                      ? 'bg-purple-700 text-white'
+                      ? 'bg-indigo-600 text-white'
                       : 'bg-[#11192b] text-slate-400 hover:text-white'
                   }`}
                 >
@@ -866,19 +973,30 @@ export default function VeraAgentPage() {
                                   <span className="text-white font-medium block truncate" title={item.veraStrategy.primaryNeed || ''}>
                                     {item.veraStrategy.primaryNeed}
                                   </span>
-                                  <div className="flex items-center gap-2 mt-0.5">
-                                    <span
-                                      className={`text-[10px] font-semibold uppercase px-1.5 py-0.2 rounded border ${
-                                        item.veraStrategy.urgency === 'ALTA'
-                                          ? 'border-red-500/40 bg-red-950/30 text-red-300'
-                                          : 'border-amber-500/40 bg-amber-950/30 text-amber-300'
-                                      }`}
-                                    >
-                                      {item.veraStrategy.urgency} urgencia
-                                    </span>
-                                    <span className="text-[10px] text-slate-400">
-                                      {item.veraStrategy.servicesCount} servicio(s)
-                                    </span>
+                                  <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                                    {item.veraStrategy.commercialOutcome === 'BUENA_PRESENCIA' ? (
+                                      <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded border border-emerald-500/40 bg-emerald-950/40 text-emerald-300">
+                                        Buena Presencia • No ofrecer
+                                      </span>
+                                    ) : item.veraStrategy.commercialOutcome === 'INFORMACION_INSUFICIENTE' ? (
+                                      <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded border border-amber-500/40 bg-amber-950/40 text-amber-300">
+                                        Revisión Humana Requerida
+                                      </span>
+                                    ) : item.veraStrategy.commercialOutcome === 'PROPUESTA_OPCIONAL' ? (
+                                      <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded border border-cyan-500/40 bg-cyan-950/40 text-cyan-300">
+                                        Mejorable • Opcional
+                                      </span>
+                                    ) : (
+                                      <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded border border-purple-500/40 bg-purple-950/40 text-purple-300">
+                                        Oportunidad Clara
+                                      </span>
+                                    )}
+
+                                    {item.veraStrategy.servicesCount > 0 && (
+                                      <span className="text-[10px] text-slate-400">
+                                        {item.veraStrategy.servicesCount} servicio(s)
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
                               ) : (
@@ -890,7 +1008,13 @@ export default function VeraAgentPage() {
 
                             {/* Inversión Sugerida */}
                             <td className="py-3 px-4">
-                              {hasVera && item.veraStrategy.suggestedBundleARS ? (
+                              {hasVera && item.veraStrategy.commercialOutcome === 'BUENA_PRESENCIA' ? (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded bg-emerald-950/40 border border-emerald-800/40 text-[10px] font-mono font-semibold text-emerald-300">
+                                  $0 (Sin venta)
+                                </span>
+                              ) : hasVera && item.veraStrategy.commercialOutcome === 'INFORMACION_INSUFICIENTE' ? (
+                                <span className="text-slate-500 text-[11px]">-</span>
+                              ) : hasVera && item.veraStrategy.suggestedBundleARS ? (
                                 <div className="font-mono font-bold text-emerald-400">
                                   {formatCurrency(item.veraStrategy.suggestedBundleARS)}
                                 </div>
@@ -1651,6 +1775,60 @@ export default function VeraAgentPage() {
               </div>
             ) : selectedStrategy ? (
               <div className="space-y-6">
+                {/* Banner de Criterio Comercial Objetivo de Vera */}
+                <div
+                  className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                    selectedStrategy.commercialOutcome === 'BUENA_PRESENCIA'
+                      ? 'border-emerald-500/40 bg-emerald-950/30 text-emerald-200'
+                      : selectedStrategy.commercialOutcome === 'INFORMACION_INSUFICIENTE'
+                      ? 'border-amber-500/40 bg-amber-950/30 text-amber-200'
+                      : selectedStrategy.commercialOutcome === 'PROPUESTA_OPCIONAL'
+                      ? 'border-cyan-500/40 bg-cyan-950/30 text-cyan-200'
+                      : 'border-purple-500/40 bg-purple-950/30 text-purple-200'
+                  }`}
+                >
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                          selectedStrategy.commercialOutcome === 'BUENA_PRESENCIA'
+                            ? 'border-emerald-400 bg-emerald-500/20 text-emerald-300'
+                            : selectedStrategy.commercialOutcome === 'INFORMACION_INSUFICIENTE'
+                            ? 'border-amber-400 bg-amber-500/20 text-amber-300'
+                            : selectedStrategy.commercialOutcome === 'PROPUESTA_OPCIONAL'
+                            ? 'border-cyan-400 bg-cyan-500/20 text-cyan-300'
+                            : 'border-purple-400 bg-purple-500/20 text-purple-300'
+                        }`}
+                      >
+                        {selectedStrategy.commercialOutcome === 'BUENA_PRESENCIA'
+                          ? 'Resultado A: Buena Presencia Digital'
+                          : selectedStrategy.commercialOutcome === 'PROPUESTA_OPCIONAL'
+                          ? 'Resultado B: Presencia Mejorable'
+                          : selectedStrategy.commercialOutcome === 'INFORMACION_INSUFICIENTE'
+                          ? 'Resultado D: Información Insuficiente'
+                          : 'Resultado C: Oportunidad Comercial Clara'}
+                      </span>
+                      <strong className="text-xs font-semibold text-white">
+                        {selectedStrategy.commercialOutcomeLabel || selectedStrategy.digitalPresence.tierLabel}
+                      </strong>
+                    </div>
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      {selectedStrategy.summary}
+                    </p>
+                  </div>
+
+                  {selectedStrategy.commercialOutcome === 'BUENA_PRESENCIA' && (
+                    <button
+                      onClick={handleMarkNoOpportunity}
+                      disabled={isDismissing}
+                      className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-500/50 bg-emerald-900/40 hover:bg-emerald-800/50 text-emerald-200 text-xs font-semibold transition-colors disabled:opacity-50"
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                      <span>{selectedStrategy.markedAsNoOpportunity ? 'Marcado sin venta' : 'Marcar como "Sin oportunidad"'}</span>
+                    </button>
+                  )}
+                </div>
+
                 {/* 1. Resumen Ejecutivo y Presencia Digital */}
                 <div className="rounded-xl border border-purple-500/20 bg-purple-950/10 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
@@ -1742,114 +1920,177 @@ export default function VeraAgentPage() {
                     <span>Servicios Recomendados y Propuesta Económica</span>
                   </h4>
 
-                  <div className="rounded-xl border border-emerald-500/30 bg-[#0c1424] p-4 space-y-3">
-                    <div className="space-y-2">
-                      {selectedStrategy.recommendedServices.map((svc, idx) => (
-                        <div
-                          key={idx}
-                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-lg bg-[#080d18] border border-[#172238] text-xs"
-                        >
-                          <div>
-                            <div className="font-bold text-white flex items-center gap-2">
-                              <span>{svc.serviceName}</span>
-                              {svc.isMonthly && (
-                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">
-                                  Mensual
-                                </span>
-                              )}
+                  {selectedStrategy.commercialOutcome === 'BUENA_PRESENCIA' ? (
+                    <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-4 text-xs space-y-2">
+                      <div className="flex items-center gap-2 text-emerald-300 font-bold">
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span>Sin servicios comerciales requeridos (Presupuesto $0)</span>
+                      </div>
+                      <p className="text-slate-300 leading-relaxed text-[11px]">
+                        De acuerdo al criterio de honestidad técnica de Vera, no se cotizan servicios del catálogo ni se inventan necesidades en sitios web que ya cuentan con una presencia sólida, diseño responsive y canales de contacto activos.
+                      </p>
+                    </div>
+                  ) : selectedStrategy.commercialOutcome === 'INFORMACION_INSUFICIENTE' ? (
+                    <div className="rounded-xl border border-amber-500/30 bg-amber-950/20 p-4 text-xs space-y-2">
+                      <div className="flex items-center gap-2 text-amber-300 font-bold">
+                        <AlertTriangle className="h-4 w-4" />
+                        <span>Cotización pausada — Requiere revisión humana previa</span>
+                      </div>
+                      <p className="text-slate-300 leading-relaxed text-[11px]">
+                        La auditoría técnica no arrojó resultados concluyentes o registró error de conexión. No se generan presupuestos automáticos hasta verificar manualmente el estado de la web.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-emerald-500/30 bg-[#0c1424] p-4 space-y-3">
+                      <div className="space-y-2">
+                        {selectedStrategy.recommendedServices.map((svc, idx) => (
+                          <div
+                            key={idx}
+                            className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-lg bg-[#080d18] border border-[#172238] text-xs"
+                          >
+                            <div>
+                              <div className="font-bold text-white flex items-center gap-2">
+                                <span>{svc.serviceName}</span>
+                                {svc.isMonthly && (
+                                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">
+                                    Mensual
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-slate-400 mt-0.5">{svc.justification}</p>
                             </div>
-                            <p className="text-[11px] text-slate-400 mt-0.5">{svc.justification}</p>
-                          </div>
 
-                          <div className="font-mono text-emerald-400 font-bold shrink-0 text-right">
-                            {formatCurrency(svc.suggestedPriceARS)}
-                            <span className="text-[10px] text-slate-500 block">
-                              (US$ {svc.suggestedPriceUSD})
+                            <div className="font-mono text-emerald-400 font-bold shrink-0 text-right">
+                              {formatCurrency(svc.suggestedPriceARS)}
+                              <span className="text-[10px] text-slate-500 block">
+                                (US$ {svc.suggestedPriceUSD})
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Caja de Paquete / Bundle Bonificado */}
+                      <div className="pt-3 border-t border-[#1a2942] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                        <div>
+                          <span className="text-xs font-bold text-white block">
+                            {selectedStrategy.suggestedPricing.bundleName}
+                          </span>
+                          <span className="text-[11px] text-slate-400 block">
+                            {selectedStrategy.suggestedPricing.bundleDiscountPercentage > 0
+                              ? `Incluye ${selectedStrategy.suggestedPricing.bundleDiscountPercentage}% de bonificación por paquete integral`
+                              : 'Propuesta adaptada a la necesidad comprobada del negocio'}
+                          </span>
+                          {selectedStrategy.suggestedPricing.commitmentMonths ? (
+                            <span className="text-[10px] text-emerald-400 font-medium block mt-0.5">
+                              • Compromiso inicial sugerido: {selectedStrategy.suggestedPricing.commitmentMonths} meses
+                            </span>
+                          ) : null}
+                        </div>
+
+                        <div className="text-left sm:text-right w-full sm:w-auto">
+                          <div className="flex items-baseline sm:justify-end gap-2">
+                            <span className="text-xs text-slate-400">Desarrollo:</span>
+                            <span className="text-lg font-bold font-mono text-emerald-400">
+                              {formatCurrency(selectedStrategy.suggestedPricing.bundleFinalARS)}
+                            </span>
+                            <span className="text-[11px] text-slate-500 font-mono">
+                              (US$ {selectedStrategy.suggestedPricing.bundleFinalUSD})
                             </span>
                           </div>
+                          {selectedStrategy.suggestedPricing.monthlyMaintenanceARS ? (
+                            <div className="text-xs font-medium text-cyan-300 font-mono mt-0.5">
+                              + {formatCurrency(selectedStrategy.suggestedPricing.monthlyMaintenanceARS)}/mes abono mensual
+                              {selectedStrategy.suggestedPricing.monthlyMaintenanceUSD ? (
+                                <span className="text-[11px] text-slate-400 ml-1">
+                                  (US$ {selectedStrategy.suggestedPricing.monthlyMaintenanceUSD}/mes)
+                                </span>
+                              ) : null}
+                            </div>
+                          ) : null}
+                          {selectedStrategy.suggestedPricing.firstYearTotalARS ? (
+                            <div className="text-[11px] text-amber-300/90 font-mono mt-0.5">
+                              Total 1° año (Desarrollo + 12m): {formatCurrency(selectedStrategy.suggestedPricing.firstYearTotalARS)}
+                            </div>
+                          ) : null}
                         </div>
-                      ))}
-                    </div>
-
-                    {/* Caja de Paquete / Bundle Bonificado */}
-                    <div className="pt-3 border-t border-[#1a2942] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                      <div>
-                        <span className="text-xs font-bold text-white block">
-                          {selectedStrategy.suggestedPricing.bundleName}
-                        </span>
-                        <span className="text-[11px] text-slate-400 block">
-                          {selectedStrategy.suggestedPricing.bundleDiscountPercentage > 0
-                            ? `Incluye ${selectedStrategy.suggestedPricing.bundleDiscountPercentage}% de bonificación por paquete integral`
-                            : 'Estrategia de volumen: desarrollo accesible + mantenimiento'}
-                        </span>
-                        {selectedStrategy.suggestedPricing.commitmentMonths ? (
-                          <span className="text-[10px] text-emerald-400 font-medium block mt-0.5">
-                            • Compromiso inicial sugerido: {selectedStrategy.suggestedPricing.commitmentMonths} meses
-                          </span>
-                        ) : null}
-                      </div>
-
-                      <div className="text-left sm:text-right w-full sm:w-auto">
-                        <div className="flex items-baseline sm:justify-end gap-2">
-                          <span className="text-xs text-slate-400">Desarrollo:</span>
-                          <span className="text-lg font-bold font-mono text-emerald-400">
-                            {formatCurrency(selectedStrategy.suggestedPricing.bundleFinalARS)}
-                          </span>
-                          <span className="text-[11px] text-slate-500 font-mono">
-                            (US$ {selectedStrategy.suggestedPricing.bundleFinalUSD})
-                          </span>
-                        </div>
-                        {selectedStrategy.suggestedPricing.monthlyMaintenanceARS ? (
-                          <div className="text-xs font-medium text-cyan-300 font-mono mt-0.5">
-                            + {formatCurrency(selectedStrategy.suggestedPricing.monthlyMaintenanceARS)}/mes abono mensual
-                            {selectedStrategy.suggestedPricing.monthlyMaintenanceUSD ? (
-                              <span className="text-[11px] text-slate-400 ml-1">
-                                (US$ {selectedStrategy.suggestedPricing.monthlyMaintenanceUSD}/mes)
-                              </span>
-                            ) : null}
-                          </div>
-                        ) : null}
-                        {selectedStrategy.suggestedPricing.firstYearTotalARS ? (
-                          <div className="text-[11px] text-amber-300/90 font-mono mt-0.5">
-                            Total 1° año (Desarrollo + 12m): {formatCurrency(selectedStrategy.suggestedPricing.firstYearTotalARS)}
-                          </div>
-                        ) : null}
                       </div>
                     </div>
-                  </div>
+                  )}
                 </div>
 
-                {/* 4. Argumentos Comerciales de Venta */}
+                {/* 4. Evidencia y Argumentos Comerciales Verificables */}
                 <div>
                   <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-1.5">
                     <Target className="h-4 w-4 text-cyan-400" />
-                    <span>Argumentos de Venta para el Contacto</span>
+                    <span>Evidencia Verificable y Argumentos Comerciales</span>
                   </h4>
+
+                  {/* Bloques de Hechos Comprobados, Interpretaciones e Hipótesis */}
+                  {selectedStrategy.commercialArguments?.provenFacts && selectedStrategy.commercialArguments.provenFacts.length > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs mb-3">
+                      <div className="p-3 bg-[#0c1220] rounded-xl border border-emerald-500/30">
+                        <strong className="text-emerald-400 block mb-1.5 flex items-center gap-1.5">
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          <span>1. Hechos Comprobados:</span>
+                        </strong>
+                        <ul className="text-slate-300 space-y-1 list-disc list-inside text-[11px]">
+                          {selectedStrategy.commercialArguments.provenFacts.map((fact, idx) => (
+                            <li key={idx}>{fact}</li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div className="p-3 bg-[#0c1220] rounded-xl border border-cyan-500/30">
+                        <strong className="text-cyan-400 block mb-1.5 flex items-center gap-1.5">
+                          <SearchCode className="h-3.5 w-3.5" />
+                          <span>2. Interpretación Técnica:</span>
+                        </strong>
+                        <ul className="text-slate-300 space-y-1 list-disc list-inside text-[11px]">
+                          {selectedStrategy.commercialArguments.interpretations.map((interp, idx) => (
+                            <li key={idx}>{interp}</li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div className="p-3 bg-[#0c1220] rounded-xl border border-purple-500/30">
+                        <strong className="text-purple-400 block mb-1.5 flex items-center gap-1.5">
+                          <Target className="h-3.5 w-3.5" />
+                          <span>3. Hipótesis Comercial:</span>
+                        </strong>
+                        <ul className="text-slate-300 space-y-1 list-disc list-inside text-[11px]">
+                          {selectedStrategy.commercialArguments.commercialHypothesis.map((hyp, idx) => (
+                            <li key={idx}>{hyp}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                     <div className="p-3 bg-[#0c1220] rounded-xl border border-[#172238]">
-                      <strong className="text-amber-400 block mb-1">1. El Problema Real (Pain Point):</strong>
+                      <strong className="text-amber-400 block mb-1">Diagnóstico Comercial (Pain Point):</strong>
                       <p className="text-slate-300 leading-relaxed">
                         {selectedStrategy.commercialArguments.painPoint}
                       </p>
                     </div>
 
                     <div className="p-3 bg-[#0c1220] rounded-xl border border-[#172238]">
-                      <strong className="text-red-400 block mb-1">2. El Costo de la Inacción:</strong>
+                      <strong className="text-red-400 block mb-1">Impacto de la Inacción:</strong>
                       <p className="text-slate-300 leading-relaxed">
                         {selectedStrategy.commercialArguments.costOfInaction}
                       </p>
                     </div>
 
                     <div className="p-3 bg-[#0c1220] rounded-xl border border-[#172238]">
-                      <strong className="text-cyan-400 block mb-1">3. La Solución de WebPilot:</strong>
+                      <strong className="text-cyan-400 block mb-1">Propuesta / Postura de WebPilot:</strong>
                       <p className="text-slate-300 leading-relaxed">
                         {selectedStrategy.commercialArguments.ourSolution}
                       </p>
                     </div>
 
                     <div className="p-3 bg-[#0c1220] rounded-xl border border-[#172238]">
-                      <strong className="text-emerald-400 block mb-1">4. Por Qué Resolverlo Ahora:</strong>
+                      <strong className="text-emerald-400 block mb-1">Oportunidad Temporal:</strong>
                       <p className="text-slate-300 leading-relaxed">
                         {selectedStrategy.commercialArguments.whyNow}
                       </p>

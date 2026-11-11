@@ -908,42 +908,77 @@ export default function ProspectDetailPage() {
 
               {prospect.audit?.ai_insights?.vera_strategy ? (
                 <div className="space-y-3.5 text-xs">
-                  {/* Paquete e inversión */}
-                  <div className="p-3.5 rounded-lg border border-purple-500/30 bg-purple-950/20 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] uppercase font-bold tracking-wider text-purple-400">
-                        Propuesta Sugerida
-                      </span>
-                      <div className="text-right">
-                        <span className="text-[10px] text-slate-400 mr-1">Desarrollo:</span>
-                        <span className="text-base font-bold font-mono text-emerald-400">
-                          {formatCurrency(prospect.audit.ai_insights.vera_strategy.suggestedPricing?.bundleFinalARS || 0)}
+                  {/* Paquete e inversión o Diagnóstico de Presencia */}
+                  {prospect.audit.ai_insights.vera_strategy.commercialOutcome === 'BUENA_PRESENCIA' ? (
+                    <div className="p-3.5 rounded-lg border border-emerald-500/30 bg-emerald-950/20 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-400">
+                          Buena Presencia Digital
+                        </span>
+                        <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-emerald-900/40 text-emerald-300 border border-emerald-800/40">
+                          No ofrecer servicios
                         </span>
                       </div>
+                      <div className="text-xs font-semibold text-white">
+                        Presencia digital sólida y funcional
+                      </div>
+                      <div className="text-[11px] text-slate-300 leading-relaxed">
+                        {prospect.audit.ai_insights.vera_strategy.summary}
+                      </div>
                     </div>
-                    {prospect.audit.ai_insights.vera_strategy.suggestedPricing?.monthlyMaintenanceARS ? (
-                      <div className="flex items-center justify-between pt-1 border-t border-purple-500/20 text-[11px] font-mono">
-                        <span className="text-slate-400">Mantenimiento mensual:</span>
-                        <span className="font-semibold text-cyan-300">
-                          +{formatCurrency(prospect.audit.ai_insights.vera_strategy.suggestedPricing.monthlyMaintenanceARS)}/mes
+                  ) : prospect.audit.ai_insights.vera_strategy.commercialOutcome === 'INFORMACION_INSUFICIENTE' ? (
+                    <div className="p-3.5 rounded-lg border border-amber-500/30 bg-amber-950/20 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] uppercase font-bold tracking-wider text-amber-400">
+                          Información Insuficiente
+                        </span>
+                        <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-amber-900/40 text-amber-300 border border-amber-800/40">
+                          Revisión humana
                         </span>
                       </div>
-                    ) : null}
-                    {prospect.audit.ai_insights.vera_strategy.suggestedPricing?.firstYearTotalARS ? (
-                      <div className="flex items-center justify-between text-[11px] font-mono text-amber-300/90">
-                        <span>Total estimado 1° año:</span>
-                        <span className="font-semibold">
-                          {formatCurrency(prospect.audit.ai_insights.vera_strategy.suggestedPricing.firstYearTotalARS)}
-                        </span>
+                      <div className="text-[11px] text-slate-300 leading-relaxed">
+                        {prospect.audit.ai_insights.vera_strategy.summary}
                       </div>
-                    ) : null}
-                    <div className="text-xs font-semibold text-white pt-1">
-                      {prospect.audit.ai_insights.vera_strategy.suggestedPricing?.bundleName}
                     </div>
-                    <div className="text-[11px] text-slate-300 line-clamp-2">
-                      {prospect.audit.ai_insights.vera_strategy.summary}
+                  ) : (
+                    <div className="p-3.5 rounded-lg border border-purple-500/30 bg-purple-950/20 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] uppercase font-bold tracking-wider text-purple-400">
+                          {prospect.audit.ai_insights.vera_strategy.commercialOutcome === 'PROPUESTA_OPCIONAL'
+                            ? 'Propuesta Opcional y Específica'
+                            : 'Propuesta Sugerida'}
+                        </span>
+                        <div className="text-right">
+                          <span className="text-[10px] text-slate-400 mr-1">Desarrollo:</span>
+                          <span className="text-base font-bold font-mono text-emerald-400">
+                            {formatCurrency(prospect.audit.ai_insights.vera_strategy.suggestedPricing?.bundleFinalARS || 0)}
+                          </span>
+                        </div>
+                      </div>
+                      {prospect.audit.ai_insights.vera_strategy.suggestedPricing?.monthlyMaintenanceARS ? (
+                        <div className="flex items-center justify-between pt-1 border-t border-purple-500/20 text-[11px] font-mono">
+                          <span className="text-slate-400">Mantenimiento mensual:</span>
+                          <span className="font-semibold text-cyan-300">
+                            +{formatCurrency(prospect.audit.ai_insights.vera_strategy.suggestedPricing.monthlyMaintenanceARS)}/mes
+                          </span>
+                        </div>
+                      ) : null}
+                      {prospect.audit.ai_insights.vera_strategy.suggestedPricing?.firstYearTotalARS ? (
+                        <div className="flex items-center justify-between text-[11px] font-mono text-amber-300/90">
+                          <span>Total estimado 1° año:</span>
+                          <span className="font-semibold">
+                            {formatCurrency(prospect.audit.ai_insights.vera_strategy.suggestedPricing.firstYearTotalARS)}
+                          </span>
+                        </div>
+                      ) : null}
+                      <div className="text-xs font-semibold text-white pt-1">
+                        {prospect.audit.ai_insights.vera_strategy.suggestedPricing?.bundleName}
+                      </div>
+                      <div className="text-[11px] text-slate-300 line-clamp-2">
+                        {prospect.audit.ai_insights.vera_strategy.summary}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Oportunidades Clave */}
                   <div className="space-y-1.5">

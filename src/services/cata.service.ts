@@ -198,53 +198,95 @@ export async function getCataOpportunities(
     const primaryContact = contactsByBusiness.get(business.id) || null;
     const lastActivity = latestActivityByBusiness.get(business.id) || null;
 
+    const outcome = veraStrategy?.commercialOutcome;
+    const isNoOpportunity =
+      outcome === 'BUENA_PRESENCIA' ||
+      veraStrategy?.actionRecommendation === 'NO_OFRECER' ||
+      Boolean(veraStrategy?.markedAsNoOpportunity);
+    const isNeedsReview =
+      outcome === 'INFORMACION_INSUFICIENTE' ||
+      veraStrategy?.actionRecommendation === 'REVISION_HUMANA';
+
     // Calcular servicio, precio de desarrollo y mantenimiento mensual
-    const recommendedService =
-      veraStrategy?.recommendedServices?.[0]?.serviceName ||
-      (!business.website ? 'Landing Express' : 'Optimización Web y Conversión');
-
-    const suggestedPriceARS =
-      veraStrategy?.suggestedPricing?.bundleFinalARS ||
-      veraStrategy?.recommendedServices?.[0]?.suggestedPriceARS ||
-      (!business.website ? 69000 : 59000);
-
-    const suggestedPriceUSD =
-      veraStrategy?.suggestedPricing?.bundleFinalUSD ||
-      veraStrategy?.recommendedServices?.[0]?.suggestedPriceUSD ||
-      (!business.website ? 60 : 50);
-
-    const monthlyMaintenanceARS =
-      veraStrategy?.suggestedPricing?.monthlyMaintenanceARS ||
-      (!business.website ? 19000 : 19000);
-
-    const monthlyMaintenanceUSD =
-      veraStrategy?.suggestedPricing?.monthlyMaintenanceUSD ||
-      (!business.website ? 16 : 16);
-
-    const commitmentMonths = veraStrategy?.suggestedPricing?.commitmentMonths || 12;
-    const firstYearTotalARS =
-      veraStrategy?.suggestedPricing?.firstYearTotalARS ||
-      (suggestedPriceARS + monthlyMaintenanceARS * commitmentMonths);
-
-    const firstYearTotalUSD =
-      veraStrategy?.suggestedPricing?.firstYearTotalUSD ||
-      (suggestedPriceUSD + monthlyMaintenanceUSD * commitmentMonths);
-
-    const opportunityReason =
-      veraStrategy?.summary ||
-      veraStrategy?.opportunities?.[0]?.commercialImpact ||
-      (!business.website
-        ? 'Negocio sin sitio web oficial: oportunidad para implementar Landing Express ($69.000 + $19.000/mes) y captar turnos por WhatsApp.'
-        : 'Sitio web con oportunidades técnicas de velocidad y conversión móvil.');
-
-    // Prioridad comercial
+    let recommendedService = '';
+    let suggestedPriceARS = 0;
+    let suggestedPriceUSD = 0;
+    let monthlyMaintenanceARS = 0;
+    let monthlyMaintenanceUSD = 0;
+    let firstYearTotalARS = 0;
+    let firstYearTotalUSD = 0;
+    let commitmentMonths = 0;
+    let opportunityReason = '';
     let priority: 'ALTA' | 'MEDIA' | 'BAJA' = 'MEDIA';
-    if (!business.website || veraStrategy?.opportunities?.some((o) => o.severity === 'CRITICO' || o.severity === 'ALTO')) {
-      priority = 'ALTA';
-    } else if (business.status === 'NEGOCIACIÓN' || business.status === 'RESPONDIÓ') {
-      priority = 'ALTA';
-    } else if (business.status === 'PERDIDO') {
+
+    if (isNoOpportunity) {
+      recommendedService = 'Sin propuesta (Presencia sólida)';
+      suggestedPriceARS = 0;
+      suggestedPriceUSD = 0;
+      monthlyMaintenanceARS = 0;
+      monthlyMaintenanceUSD = 0;
+      firstYearTotalARS = 0;
+      firstYearTotalUSD = 0;
+      commitmentMonths = 0;
+      opportunityReason = 'Presencia digital sólida y funcional. Vera concluye no ofrecer servicios actualmente.';
       priority = 'BAJA';
+    } else if (isNeedsReview) {
+      recommendedService = 'Revisión humana requerida';
+      suggestedPriceARS = 0;
+      suggestedPriceUSD = 0;
+      monthlyMaintenanceARS = 0;
+      monthlyMaintenanceUSD = 0;
+      firstYearTotalARS = 0;
+      firstYearTotalUSD = 0;
+      commitmentMonths = 0;
+      opportunityReason = 'Auditoría no concluyente o error de conexión. Requiere verificación manual antes de contactar.';
+      priority = 'BAJA';
+    } else {
+      recommendedService =
+        veraStrategy?.recommendedServices?.[0]?.serviceName ||
+        (!business.website ? 'Landing Express' : 'Optimización Web y Conversión');
+
+      suggestedPriceARS =
+        veraStrategy?.suggestedPricing?.bundleFinalARS ||
+        veraStrategy?.recommendedServices?.[0]?.suggestedPriceARS ||
+        (!business.website ? 69000 : 59000);
+
+      suggestedPriceUSD =
+        veraStrategy?.suggestedPricing?.bundleFinalUSD ||
+        veraStrategy?.recommendedServices?.[0]?.suggestedPriceUSD ||
+        (!business.website ? 60 : 50);
+
+      monthlyMaintenanceARS =
+        veraStrategy?.suggestedPricing?.monthlyMaintenanceARS ||
+        (!business.website ? 19000 : 0);
+
+      monthlyMaintenanceUSD =
+        veraStrategy?.suggestedPricing?.monthlyMaintenanceUSD ||
+        (!business.website ? 16 : 0);
+
+      commitmentMonths = veraStrategy?.suggestedPricing?.commitmentMonths || (monthlyMaintenanceARS > 0 ? 12 : 0);
+      firstYearTotalARS =
+        veraStrategy?.suggestedPricing?.firstYearTotalARS ||
+        (suggestedPriceARS + monthlyMaintenanceARS * commitmentMonths);
+
+      firstYearTotalUSD =
+        veraStrategy?.suggestedPricing?.firstYearTotalUSD ||
+        (suggestedPriceUSD + monthlyMaintenanceUSD * commitmentMonths);
+
+      opportunityReason =
+        veraStrategy?.summary ||
+        veraStrategy?.opportunities?.[0]?.commercialImpact ||
+        (!business.website
+          ? 'Negocio sin sitio web oficial: oportunidad para implementar Landing Express ($69.000 + $19.000/mes) y captar turnos por WhatsApp.'
+          : 'Sitio web con oportunidades técnicas de velocidad y conversión móvil.');
+
+      if (!business.website || veraStrategy?.opportunities?.some((o) => o.severity === 'CRITICO' || o.severity === 'ALTO')) {
+        priority = 'ALTA';
+      } else if (business.status === 'NEGOCIACIÓN' || business.status === 'RESPONDIÓ') {
+        priority = 'ALTA';
+      } else if (business.status === 'PERDIDO') {
+        priority = 'BAJA';
+      }
     }
 
     // Calcular seguimiento
