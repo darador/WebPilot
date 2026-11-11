@@ -26,6 +26,12 @@ import {
   Sparkles,
   Wrench,
   RefreshCw,
+  Target,
+  Send,
+  MessageCircle,
+  DollarSign,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { ActivityModal } from '@/components/crm/ActivityModal';
@@ -39,7 +45,7 @@ import {
 } from '@/services/prospects.service';
 import { updateBusinessStage } from '@/services/crm.service';
 import { CRM_STAGES, ACTIVITY_TYPE_LABELS } from '@/lib/constants/crm';
-import { formatDate, buildGoogleMapsUrl } from '@/lib/utils';
+import { formatDate, buildGoogleMapsUrl, formatCurrency } from '@/lib/utils';
 import { CRMStage } from '@/types/database.types';
 
 export default function ProspectDetailPage() {
@@ -54,6 +60,38 @@ export default function ProspectDetailPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isAuditing, setIsAuditing] = useState(false);
+  const [isAnalyzingVera, setIsAnalyzingVera] = useState(false);
+  const [isVeraModalOpen, setIsVeraModalOpen] = useState(false);
+  const [copiedVera, setCopiedVera] = useState(false);
+
+  const handleRunVeraAnalysis = async () => {
+    if (!prospect?.id || isAnalyzingVera) return;
+    setIsAnalyzingVera(true);
+    try {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+      const res = await fetch('/api/vera/analyze', {
+        method: 'POST',
+        headers,
+        credentials: 'include',
+        body: JSON.stringify({ businessIds: [prospect.id] }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Error al formular estrategia con Vera.');
+      }
+      await loadProspect();
+      setIsVeraModalOpen(true);
+    } catch (err: any) {
+      alert(`Error con Vera: ${err.message}`);
+    } finally {
+      setIsAnalyzingVera(false);
+    }
+  };
 
   const handleRunTitoAudit = async () => {
     if (!prospect?.id || isAuditing) return;
@@ -602,6 +640,117 @@ export default function ProspectDetailPage() {
               )}
             </div>
 
+            {/* Tarjeta de Vera — Estratega Comercial */}
+            <div className="rounded-xl border border-purple-500/30 bg-[#0c1220] p-5 shadow-lg shadow-purple-950/10">
+              <div className="flex items-center justify-between border-b border-[#182238] pb-3 mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400">
+                    <Target className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-white">Estrategia Comercial — Vera</h3>
+                    <p className="text-[10px] text-purple-300">Propuesta, precios y argumentos de venta</p>
+                  </div>
+                </div>
+
+                {prospect.audit?.ai_insights?.vera_strategy ? (
+                  <button
+                    onClick={handleRunVeraAnalysis}
+                    disabled={isAnalyzingVera}
+                    className="inline-flex items-center gap-1 text-[11px] font-medium text-purple-400 hover:text-purple-300 transition-colors"
+                    title="Actualizar estrategia comercial con Vera"
+                  >
+                    <RefreshCw className={`h-3 w-3 ${isAnalyzingVera ? 'animate-spin' : ''}`} />
+                    <span>Actualizar</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleRunVeraAnalysis}
+                    disabled={isAnalyzingVera}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-md shadow-purple-500/20 hover:from-purple-500 hover:to-indigo-500 transition-all disabled:opacity-50"
+                  >
+                    <Sparkles className="h-3 w-3" />
+                    <span>{isAnalyzingVera ? 'Analizando...' : 'Estrategia Vera'}</span>
+                  </button>
+                )}
+              </div>
+
+              {prospect.audit?.ai_insights?.vera_strategy ? (
+                <div className="space-y-3.5 text-xs">
+                  {/* Paquete e inversión */}
+                  <div className="p-3.5 rounded-lg border border-purple-500/30 bg-purple-950/20 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-purple-400">
+                        Propuesta Sugerida
+                      </span>
+                      <span className="text-base font-bold font-mono text-emerald-400">
+                        {formatCurrency(prospect.audit.ai_insights.vera_strategy.suggestedPricing?.bundleFinalARS || 0)}
+                      </span>
+                    </div>
+                    <div className="text-xs font-semibold text-white">
+                      {prospect.audit.ai_insights.vera_strategy.suggestedPricing?.bundleName}
+                    </div>
+                    <div className="text-[11px] text-slate-300 line-clamp-2">
+                      {prospect.audit.ai_insights.vera_strategy.summary}
+                    </div>
+                  </div>
+
+                  {/* Oportunidades Clave */}
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] uppercase font-semibold text-slate-400 block">
+                      Oportunidad Principal Detectada:
+                    </span>
+                    <div className="p-2.5 rounded-lg bg-[#080d18] border border-[#172238] text-[11px] text-slate-200">
+                      <strong className="text-purple-300 block mb-0.5">
+                        {prospect.audit.ai_insights.vera_strategy.opportunities?.[0]?.title}
+                      </strong>
+                      <span className="text-slate-400">
+                        {prospect.audit.ai_insights.vera_strategy.opportunities?.[0]?.factProven}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Botones de acción */}
+                  <div className="pt-2 flex items-center gap-2">
+                    <button
+                      onClick={() => setIsVeraModalOpen(true)}
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#152037] hover:bg-[#1e2e4f] border border-purple-500/30 px-3 py-2 text-xs font-medium text-white transition-colors"
+                    >
+                      <FileText className="h-3.5 w-3.5 text-purple-400" />
+                      <span>Ver Estrategia Completa</span>
+                    </button>
+
+                    <a
+                      href={`https://wa.me/?text=${encodeURIComponent(
+                        prospect.audit.ai_insights.vera_strategy.outreachPitch?.whatsappMessage || ''
+                      )}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 px-3 py-2 text-xs font-semibold text-white transition-colors shadow-sm"
+                      title="Abrir chat en WhatsApp con el mensaje inicial de Vera"
+                    >
+                      <Send className="h-3.5 w-3.5" />
+                      <span>WhatsApp</span>
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-lg border border-slate-800 bg-[#080d18] p-4 text-xs text-slate-300 space-y-3">
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Vera aún no generó la estrategia comercial para este negocio. Hacé clic en «Estrategia Vera» para calcular qué venderle, justificar el valor y preparar el mensaje de WhatsApp.
+                  </p>
+                  <button
+                    onClick={handleRunVeraAnalysis}
+                    disabled={isAnalyzingVera}
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-purple-600 hover:bg-purple-500 px-3 py-2 text-xs font-semibold text-white shadow-md transition-all disabled:opacity-50"
+                  >
+                    <Target className="h-3.5 w-3.5" />
+                    <span>{isAnalyzingVera ? 'Analizando con Vera...' : 'Generar Estrategia Comercial'}</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Información del Sistema */}
             <div className="rounded-xl border border-[#1a2336] bg-[#090e1a] p-5 text-xs space-y-2">
               <h4 className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
@@ -642,6 +791,113 @@ export default function ProspectDetailPage() {
         onCancel={() => setIsDeleteDialogOpen(false)}
         onConfirm={handleDelete}
       />
+
+      {/* Modal Estrategia Comercial de Vera */}
+      {isVeraModalOpen && prospect.audit?.ai_insights?.vera_strategy && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+          <div className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl border border-purple-500/40 bg-[#0a0f1d] p-6 shadow-2xl text-slate-200 space-y-6">
+            <div className="flex items-start justify-between border-b border-[#172238] pb-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400">
+                  <Target className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">
+                    Estrategia Comercial — {prospect.name}
+                  </h3>
+                  <p className="text-xs text-purple-300">
+                    Formulada por Vera AI • {prospect.audit.ai_insights.vera_strategy.suggestedPricing?.bundleName}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsVeraModalOpen(false)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Inversión y paquete */}
+            <div className="p-4 rounded-xl border border-emerald-500/30 bg-[#0c1424] flex items-center justify-between">
+              <div>
+                <span className="text-xs text-slate-400 uppercase font-bold block">Propuesta Sugerida</span>
+                <span className="text-sm font-bold text-white">
+                  {prospect.audit.ai_insights.vera_strategy.suggestedPricing?.bundleName}
+                </span>
+              </div>
+              <div className="text-right">
+                <span className="text-xl font-bold font-mono text-emerald-400">
+                  {formatCurrency(prospect.audit.ai_insights.vera_strategy.suggestedPricing?.bundleFinalARS || 0)}
+                </span>
+                <span className="text-xs text-cyan-400 block font-mono">
+                  US$ {prospect.audit.ai_insights.vera_strategy.suggestedPricing?.bundleFinalUSD}
+                </span>
+              </div>
+            </div>
+
+            {/* Oportunidades y Hechos Comprobados */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold uppercase text-slate-400">Oportunidades y Hechos Comprobados</h4>
+              {prospect.audit.ai_insights.vera_strategy.opportunities?.map((opp: any, idx: number) => (
+                <div key={idx} className="p-3 bg-[#0c1220] rounded-xl border border-[#172238] text-xs space-y-1">
+                  <div className="font-bold text-white">{opp.title}</div>
+                  <div className="text-slate-300"><strong>Hecho:</strong> {opp.factProven}</div>
+                  <div className="text-purple-300"><strong>Impacto:</strong> {opp.commercialImpact}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Mensaje de WhatsApp listo */}
+            <div className="p-4 rounded-xl border border-emerald-500/30 bg-[#081816] space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                  <MessageCircle className="h-3.5 w-3.5" />
+                  <span>Mensaje de WhatsApp para el primer contacto</span>
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(
+                        prospect.audit?.ai_insights?.vera_strategy?.outreachPitch?.whatsappMessage || ''
+                      );
+                      setCopiedVera(true);
+                      setTimeout(() => setCopiedVera(false), 2000);
+                    }}
+                    className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-300 bg-emerald-950/60 border border-emerald-700/50 px-2.5 py-1 rounded hover:bg-emerald-900/60 transition-colors"
+                  >
+                    {copiedVera ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                    <span>{copiedVera ? '¡Copiado!' : 'Copiar'}</span>
+                  </button>
+                  <a
+                    href={`https://wa.me/?text=${encodeURIComponent(
+                      prospect.audit.ai_insights.vera_strategy.outreachPitch?.whatsappMessage || ''
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-white bg-emerald-600 px-2.5 py-1 rounded hover:bg-emerald-500 transition-colors"
+                  >
+                    <Send className="h-3 w-3" />
+                    <span>Abrir en WhatsApp</span>
+                  </a>
+                </div>
+              </div>
+              <pre className="text-xs text-slate-200 whitespace-pre-wrap font-sans bg-[#05100e] p-3 rounded-lg border border-emerald-900/40 leading-relaxed">
+                {prospect.audit.ai_insights.vera_strategy.outreachPitch?.whatsappMessage}
+              </pre>
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                onClick={() => setIsVeraModalOpen(false)}
+                className="px-4 py-2 rounded-lg bg-[#152037] text-white hover:bg-[#1e2e4f] text-xs font-medium"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

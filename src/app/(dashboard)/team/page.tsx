@@ -230,10 +230,12 @@ export default function TeamPage() {
                 <div className="mt-4 pt-3 border-t border-[#172238]">
                   {isOperative ? (
                     <Link
-                      href={agent.id === 'tito' ? '/agents/tito' : '/agents/lola'}
+                      href={agent.id === 'vera' ? '/agents/vera' : agent.id === 'tito' ? '/agents/tito' : '/agents/lola'}
                       className={`flex w-full items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold text-white shadow-md transition-all hover:scale-[1.02] ${
                         agent.id === 'tito'
                           ? 'bg-gradient-to-r from-emerald-500 to-teal-600 shadow-emerald-500/20 hover:from-emerald-400 hover:to-teal-500'
+                          : agent.id === 'vera'
+                          ? 'bg-gradient-to-r from-purple-600 to-indigo-600 shadow-purple-500/20 hover:from-purple-500 hover:to-indigo-500'
                           : 'bg-gradient-to-r from-cyan-500 to-blue-600 shadow-cyan-500/20 hover:from-cyan-400 hover:to-blue-500'
                       }`}
                     >

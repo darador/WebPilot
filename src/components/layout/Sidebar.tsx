@@ -15,6 +15,7 @@ import {
   Bot,
   Search,
   SearchCode,
+  Target,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
@@ -37,6 +38,12 @@ const NAV_ITEMS = [
     label: 'Tito — Auditoría',
     href: '/agents/tito',
     icon: SearchCode,
+    badge: 'Agente',
+  },
+  {
+    label: 'Vera — Estrategia',
+    href: '/agents/vera',
+    icon: Target,
     badge: 'Agente',
   },
   {

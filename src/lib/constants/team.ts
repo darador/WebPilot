@@ -74,7 +74,7 @@ export const TEAM_MEMBERS: AgentMember[] = [
     personality: 'Inteligente, analítica y pragmática.',
     quote: 'El problema no es la web, es lo que está dejando de vender.',
     avatar: '/avatars/vera.png',
-    status: 'proximamente',
+    status: 'operativo',
     color: '#8b5cf6',
     bgColor: 'bg-purple-500/10',
     borderColor: 'border-purple-500/30',
