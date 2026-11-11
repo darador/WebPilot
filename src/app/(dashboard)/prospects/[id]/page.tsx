@@ -154,6 +154,19 @@ export default function ProspectDetailPage() {
   const currentStageDef =
     CRM_STAGES.find((s) => s.id === prospect.status) || CRM_STAGES[0];
 
+  // Construcción del enlace oficial a Google Maps
+  // Si tiene Place ID: query=NOMBRE_DEL_NEGOCIO&query_place_id=GOOGLE_PLACE_ID
+  // Si no tiene Place ID: alternativa de búsqueda por nombre y dirección
+  const hasSpecificGoogleProfile = Boolean(prospect.google_place_id);
+  const googleMapsUrl = hasSpecificGoogleProfile
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(prospect.name.trim())}&query_place_id=${encodeURIComponent(prospect.google_place_id!.trim())}`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+        [prospect.name, prospect.address, prospect.city, prospect.state_province, prospect.country]
+          .map((p) => p?.trim())
+          .filter(Boolean)
+          .join(', ')
+      )}`;
+
   return (
     <div>
       <Topbar
@@ -224,22 +237,24 @@ export default function ProspectDetailPage() {
                       </span>
                     </span>
                   )}
-                  {prospect.google_place_id && (
-                    <a
-                      href={`https://www.google.com/maps/search/?api=1&query_place_id=${encodeURIComponent(prospect.google_place_id)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/30 bg-emerald-950/30 px-2 py-0.5 text-xs font-medium text-emerald-300 hover:bg-emerald-900/40 hover:border-emerald-500/50 hover:text-white transition-all shadow-sm"
-                      title="Abrir perfil del negocio en Google Maps"
-                    >
-                      <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none">
-                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#EA4335" />
-                        <circle cx="12" cy="9" r="2.5" fill="#FFFFFF" />
-                      </svg>
-                      <span>Ver perfil en Google</span>
-                      <ExternalLink className="h-3 w-3 opacity-70" />
-                    </a>
-                  )}
+                  <a
+                    href={googleMapsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/30 bg-emerald-950/30 px-2 py-0.5 text-xs font-medium text-emerald-300 hover:bg-emerald-900/40 hover:border-emerald-500/50 hover:text-white transition-all shadow-sm"
+                    title={
+                      hasSpecificGoogleProfile
+                        ? `Abrir perfil específico de ${prospect.name} en Google Maps`
+                        : `Buscar ${prospect.name} en Google Maps por nombre y dirección`
+                    }
+                  >
+                    <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#EA4335" />
+                      <circle cx="12" cy="9" r="2.5" fill="#FFFFFF" />
+                    </svg>
+                    <span>Ver perfil en Google</span>
+                    <ExternalLink className="h-3 w-3 opacity-70" />
+                  </a>
                   <span className="flex items-center gap-1">
                     <Calendar className="h-3 w-3 text-slate-500" />
                     <span>Alta: {formatDate(prospect.created_at)}</span>
@@ -266,7 +281,7 @@ export default function ProspectDetailPage() {
           </div>
 
           {/* Quick Contact & Info Grid */}
-          <div className={`mt-6 grid grid-cols-1 sm:grid-cols-2 ${prospect.google_place_id ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-4 border-t border-[#172238] pt-4 text-xs`}>
+          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 border-t border-[#172238] pt-4 text-xs">
             {/* Sitio Web */}
             <div>
               <span className="text-slate-500 uppercase text-[10px] font-semibold">Sitio Web</span>
@@ -307,27 +322,31 @@ export default function ProspectDetailPage() {
             </div>
 
             {/* Perfil en Google Maps */}
-            {prospect.google_place_id && (
-              <div>
-                <span className="text-slate-500 uppercase text-[10px] font-semibold">Google Maps</span>
-                <div className="mt-1">
-                  <a
-                    href={`https://www.google.com/maps/search/?api=1&query_place_id=${encodeURIComponent(prospect.google_place_id)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-emerald-400 hover:text-emerald-300 hover:underline font-medium truncate max-w-full"
-                    title="Ver perfil del negocio en Google Maps"
-                  >
-                    <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none">
-                      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#EA4335" />
-                      <circle cx="12" cy="9" r="2.5" fill="#FFFFFF" />
-                    </svg>
-                    <span>Ver perfil en Google</span>
-                    <ExternalLink className="h-3 w-3 shrink-0 opacity-75" />
-                  </a>
-                </div>
+            <div>
+              <span className="text-slate-500 uppercase text-[10px] font-semibold">
+                {hasSpecificGoogleProfile ? 'Google Maps (Perfil)' : 'Google Maps (Búsqueda)'}
+              </span>
+              <div className="mt-1">
+                <a
+                  href={googleMapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-emerald-400 hover:text-emerald-300 hover:underline font-medium truncate max-w-full"
+                  title={
+                    hasSpecificGoogleProfile
+                      ? `Abrir perfil oficial de ${prospect.name} en Google Maps`
+                      : `Buscar ${prospect.name} en Google Maps por nombre y dirección`
+                  }
+                >
+                  <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#EA4335" />
+                    <circle cx="12" cy="9" r="2.5" fill="#FFFFFF" />
+                  </svg>
+                  <span>Ver perfil en Google</span>
+                  <ExternalLink className="h-3 w-3 shrink-0 opacity-75" />
+                </a>
               </div>
-            )}
+            </div>
 
             {/* Fuente */}
             <div>

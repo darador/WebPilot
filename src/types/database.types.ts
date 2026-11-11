@@ -36,6 +36,7 @@ export interface Business {
   status: CRMStage;
   notes: string | null;
   google_place_id?: string | null;
+  address?: string | null;
   created_at: string;
   updated_at: string;
 }
