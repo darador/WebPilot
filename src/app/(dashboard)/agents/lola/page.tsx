@@ -30,11 +30,27 @@ import { createClient } from '@/lib/supabase/client';
 
 async function fetchWithAuth(url: string, options: RequestInit = {}) {
   const supabase = createClient();
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  const session = sessionData?.session;
+
+  console.log('[Lola Auth Client] ========================================');
+  console.log('[Lola Auth Client] Diagnóstico de petición a:', url);
+  console.log('[Lola Auth Client] 1. ¿Existe sesión activa en navegador?:', !!session);
+  console.log('[Lola Auth Client] 2. Usuario logueado:', session?.user?.email || '(ninguno)');
+  console.log('[Lola Auth Client] 3. ¿Tiene access_token?:', !!session?.access_token);
+  if (sessionError) {
+    console.error('[Lola Auth Client] Error al consultar getSession():', sessionError.message);
+  }
+
   const headers = new Headers(options.headers || {});
-  if (session?.access_token) {
+  const hasToken = !!session?.access_token;
+  if (hasToken) {
     headers.set('Authorization', `Bearer ${session.access_token}`);
   }
+
+  console.log('[Lola Auth Client] 4. ¿Encabezado Authorization adjuntado?:', hasToken);
+  console.log('[Lola Auth Client] ========================================');
+
   return fetch(url, {
     ...options,
     headers,
@@ -91,6 +107,15 @@ export default function LolaAgentPage() {
   const [loadingHistory, setLoadingHistory] = useState(false);
 
   useEffect(() => {
+    const checkInitialSession = async () => {
+      const supabase = createClient();
+      const { data: { session }, error } = await supabase.auth.getSession();
+      console.log('[Lola Page Mount] Estado de autenticación al cargar pantalla:');
+      console.log('[Lola Page Mount] - ¿Existe sesión?:', !!session);
+      console.log('[Lola Page Mount] - Email:', session?.user?.email || '(ninguno / no autenticado)');
+      if (error) console.error('[Lola Page Mount] - Error al chequear sesión:', error.message);
+    };
+    checkInitialSession();
     fetchHistory();
   }, []);
 

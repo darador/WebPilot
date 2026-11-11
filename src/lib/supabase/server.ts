@@ -39,7 +39,14 @@ export async function getAuthenticatedUser(
   req?: Request
 ): Promise<{ user: User | null; supabase: SupabaseClient }> {
   const authHeader = req?.headers.get('authorization') || req?.headers.get('Authorization');
+  const hasAuthHeader = !!authHeader;
   const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : null;
+  const hasBearerToken = !!bearerToken;
+
+  console.log('[Lola Auth Server] ========================================');
+  console.log('[Lola Auth Server] Verificando autenticación en servidor:');
+  console.log('[Lola Auth Server] 1. ¿Servidor recibió encabezado Authorization?:', hasAuthHeader);
+  console.log('[Lola Auth Server] 2. ¿Formato Bearer detectado?:', hasBearerToken);
 
   const supabase = await createClient(req);
 
@@ -47,23 +54,48 @@ export async function getAuthenticatedUser(
   if (bearerToken) {
     try {
       const { data: { user }, error } = await supabase.auth.getUser(bearerToken);
+      console.log('[Lola Auth Server] 3. Resultado validación Bearer token en Supabase:', {
+        usuarioEncontrado: !!user,
+        email: user?.email || null,
+        error: error ? error.message : null,
+      });
       if (!error && user) {
+        console.log('[Lola Auth Server] -> Autenticado exitosamente vía Bearer token.');
+        console.log('[Lola Auth Server] ========================================');
         return { user, supabase };
       }
-    } catch {
-      // Continuar con verificación por cookies si falla el token directo
+    } catch (err: any) {
+      console.error('[Lola Auth Server] Excepción al validar Bearer token:', err?.message);
     }
   }
 
   // 2. Si no hay Bearer token o expiró, verificar cookies del navegador
+  let cookieNames: string[] = [];
+  try {
+    const cookieStore = cookies();
+    cookieNames = cookieStore.getAll().map((c) => c.name);
+  } catch (e: any) {
+    console.error('[Lola Auth Server] Error al leer cookies del servidor:', e?.message);
+  }
+  console.log('[Lola Auth Server] 4. Nombres de cookies recibidas:', cookieNames);
+
   try {
     const { data: { user }, error } = await supabase.auth.getUser();
+    console.log('[Lola Auth Server] 5. Resultado validación Cookies en Supabase:', {
+      usuarioEncontrado: !!user,
+      email: user?.email || null,
+      error: error ? error.message : null,
+    });
     if (!error && user) {
+      console.log('[Lola Auth Server] -> Autenticado exitosamente vía Cookies.');
+      console.log('[Lola Auth Server] ========================================');
       return { user, supabase };
     }
-  } catch {
-    // Error al leer cookies de sesión
+  } catch (err: any) {
+    console.error('[Lola Auth Server] Excepción al validar Cookies:', err?.message);
   }
 
+  console.log('[Lola Auth Server] 6. Resultado final: Rechazado (401 - Sesión no iniciada)');
+  console.log('[Lola Auth Server] ========================================');
   return { user: null, supabase };
 }
