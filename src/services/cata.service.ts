@@ -196,23 +196,23 @@ export async function getCataOpportunities(
     // Calcular servicio y precio sugerido
     const recommendedService =
       veraStrategy?.recommendedServices?.[0]?.serviceName ||
-      (!business.website ? 'Desarrollo de Sitio Web Inicial' : 'Optimización Web y Conversión');
+      (!business.website ? 'Landing Express' : 'Optimización Web y Conversión');
 
     const suggestedPriceARS =
       veraStrategy?.suggestedPricing?.bundleFinalARS ||
       veraStrategy?.recommendedServices?.[0]?.suggestedPriceARS ||
-      (!business.website ? 180000 : 120000);
+      (!business.website ? 99000 : 79000);
 
     const suggestedPriceUSD =
       veraStrategy?.suggestedPricing?.bundleFinalUSD ||
       veraStrategy?.recommendedServices?.[0]?.suggestedPriceUSD ||
-      (!business.website ? 180 : 120);
+      (!business.website ? 85 : 65);
 
     const opportunityReason =
       veraStrategy?.summary ||
       veraStrategy?.opportunities?.[0]?.commercialImpact ||
       (!business.website
-        ? 'Negocio sin sitio web oficial: no captura pacientes que buscan odontólogos en Google.'
+        ? 'Negocio sin sitio web oficial: oportunidad para implementar Landing Express ($99.000 ARS) y captar turnos por WhatsApp.'
         : 'Sitio web con oportunidades técnicas de velocidad y conversión móvil.');
 
     // Prioridad comercial
@@ -335,11 +335,11 @@ export function generateCataMessages(
   const city = business.city ? ` de ${business.city}` : '';
   const priceFormatted = veraStrategy?.suggestedPricing?.bundleFinalARS
     ? formatCurrency(veraStrategy.suggestedPricing.bundleFinalARS)
-    : formatCurrency(!business.website ? 180000 : 120000);
+    : formatCurrency(!business.website ? 99000 : 79000);
 
   const mainServiceName =
     veraStrategy?.recommendedServices?.[0]?.serviceName ||
-    (!business.website ? 'Desarrollo de Sitio Web Profesional' : 'Optimización Web y Conversión');
+    (!business.website ? 'Landing Express' : 'Optimización Web y Conversión');
 
   // Tito data highlights
   const titoIssues = audit?.ai_insights?.tito_audit?.issues || [];
@@ -359,7 +359,7 @@ export function generateCataMessages(
 
 Estuvimos conociendo a *${name}*${city} y nos pareció excelente la propuesta que tienen para sus pacientes. Notamos que hoy no cuentan con un sitio web oficial propio, lo que hace que muchas personas que buscan odontólogos en la zona por Google no los encuentren de inmediato.
 
-Desarrollamos páginas web rápidas y modernas, pensadas específicamente para consultorios: botón de WhatsApp directo, mapa, servicios claros y facilidad para pedir turno desde el celular.
+Contamos con nuestra *Landing Express* pensada específicamente para consultorios: inversión sumamente accesible de ${priceFormatted} llave en mano, entrega en 3 a 5 días hábiles, botón directo a WhatsApp, mapa y adaptación completa a celulares.
 
 ¿Les gustaría que les comparta una propuesta breve de 1 minuto sin ningún compromiso? ¡Muchas gracias y buena semana!`,
       emailSubject: `${name}: propuesta para sumar su sitio web oficial y captar más pacientes`,
@@ -371,10 +371,11 @@ Al revisar su presencia digital, identificamos una oportunidad directa: actualme
 
 En WebPilot diseñamos sitios web modernos, ultrarrápidos y optimizados para salud y estética:
 • Acceso directo a WhatsApp para agendar turnos con un clic.
-• Explicación clara de especialidades y tratamientos.
-• Ubicación exacta, horarios de atención y opiniones destacadas.
+• Explicación clara de especialidades y tratamientos (hasta 5 secciones).
+• Ubicación exacta, integración con Google Maps y datos de contacto.
+• Carga instantánea y adaptable a celulares.
 
-Diseñamos una propuesta inicial para ustedes con una inversión muy accesible de ${priceFormatted} llave en mano.
+Diseñamos una propuesta inicial para ustedes con nuestra Landing Express por una inversión muy accesible de ${priceFormatted} llave en mano (entrega estimada de 3 a 5 días hábiles).
 
 ¿Tienen 5 minutos esta semana para que les enviemos el bosquejo interactivo sin ningún costo ni compromiso?
 

@@ -191,7 +191,12 @@ export async function analyzeBusiness(
 
   // Helper para buscar servicio en el catálogo
   const findService = (id: string): ServiceItem => {
-    return catalog.find((s) => s.id === id) || DEFAULT_SERVICES_CATALOG.find((s) => s.id === id)!;
+    const targetId = id === 'landing-page' ? 'landing-express' : id;
+    return (
+      catalog.find((s) => s.id === targetId || s.id === id) ||
+      DEFAULT_SERVICES_CATALOG.find((s) => s.id === targetId || s.id === id) ||
+      DEFAULT_SERVICES_CATALOG[0]
+    );
   };
 
   // CASO 1: NEGOCIOS SIN SITIO WEB (O SOLO INSTAGRAM)
@@ -214,9 +219,25 @@ export async function analyzeBusiness(
       });
     }
 
-    const isClinicOrConsultorio = business.industry?.toLowerCase().includes('odont') || business.name.toLowerCase().includes('consultorio') || business.name.toLowerCase().includes('centro');
+    const nameLower = (business.name || '').toLowerCase();
 
-    if (isClinicOrConsultorio) {
+    // 1. Sitio Web Institucional ($249.000): solo para policonsultorios, sanatorios o centros con múltiples áreas/sedes
+    const isMultiPageInstitution =
+      nameLower.includes('policonsultorio') ||
+      nameLower.includes('sanatorio') ||
+      nameLower.includes('hospital') ||
+      nameLower.includes('sedes') ||
+      nameLower.includes('centro médico integral');
+
+    // 2. Landing Profesional ($149.000): si es clínica estructurada con múltiples especialidades o tratamientos avanzados
+    const isComplexClinic =
+      !isMultiPageInstitution &&
+      (nameLower.includes('instituto') ||
+        nameLower.includes('clínica') ||
+        nameLower.includes('odontología avanzada') ||
+        nameLower.includes('implantes y estética'));
+
+    if (isMultiPageInstitution) {
       const sInst = findService('sitio-institucional');
       recommendedServices.push({
         serviceId: sInst.id,
@@ -224,38 +245,38 @@ export async function analyzeBusiness(
         category: sInst.category,
         suggestedPriceARS: sInst.suggestedPriceARS,
         suggestedPriceUSD: sInst.suggestedPriceUSD,
-        reason: 'Permite presentar al equipo de profesionales, especialidades, fotos del consultorio y canal de turnos.',
-        justification: `El negocio es un centro/consultorio consolidado ("${business.name}") que necesita transmitir confianza médica y respaldo institucional.`,
+        reason: 'Sitio web multipágina (hasta 5 páginas) para estructurar múltiples áreas, servicios y cuerpo profesional.',
+        justification: `La estructura de "${business.name}" amerita páginas individuales para cada especialidad con presencia institucional completa.`,
+        urgency: 'ALTA',
+      });
+    } else if (isComplexClinic) {
+      const sPro = findService('landing-profesional');
+      recommendedServices.push({
+        serviceId: sPro.id,
+        serviceName: sPro.name,
+        category: sPro.category,
+        suggestedPriceARS: sPro.suggestedPriceARS,
+        suggestedPriceUSD: sPro.suggestedPriceUSD,
+        reason: 'Landing page personalizada de hasta 7 secciones con presentación detallada de especialidades y formulario de consultas.',
+        justification: `Permite a "${business.name}" exhibir sus servicios en profundidad con un diseño visual elaborado y 2 rondas de modificaciones.`,
         urgency: 'ALTA',
       });
     } else {
-      const sLand = findService('landing-page');
+      // 3. PRODUCTO PRINCIPAL DE VOLUMEN COMERCIAL: Landing Express ($99.000)
+      const sExp = findService('landing-express');
       recommendedServices.push({
-        serviceId: sLand.id,
-        serviceName: sLand.name,
-        category: sLand.category,
-        suggestedPriceARS: sLand.suggestedPriceARS,
-        suggestedPriceUSD: sLand.suggestedPriceUSD,
-        reason: 'Solución ágil y de costo accesible para comenzar a recibir consultas directas por WhatsApp desde Google.',
-        justification: `Negocio sin presencia web que requiere un punto de contacto profesional sin grandes demoras de desarrollo.`,
+        serviceId: sExp.id,
+        serviceName: sExp.name,
+        category: sExp.category,
+        suggestedPriceARS: sExp.suggestedPriceARS,
+        suggestedPriceUSD: sExp.suggestedPriceUSD,
+        reason: 'Landing page ágil de 5 secciones y entrega rápida (3 a 5 días) orientada al volumen y captación directa por WhatsApp.',
+        justification: `Excelente relación costo-beneficio ($99.000 ARS): diseño profesional adaptable a celulares, botón directo a WhatsApp, datos de contacto e integración con Google Maps.`,
         urgency: 'ALTA',
       });
     }
 
-    // SEO Local
-    const sSeo = findService('seo-local-maps');
-    recommendedServices.push({
-      serviceId: sSeo.id,
-      serviceName: sSeo.name,
-      category: sSeo.category,
-      suggestedPriceARS: sSeo.suggestedPriceARS,
-      suggestedPriceUSD: sSeo.suggestedPriceUSD,
-      reason: 'Vincular la nueva web al perfil de Google Maps para aparecer en los primeros resultados de la zona.',
-      justification: `La ficha actual en Google Maps se potencia drásticamente al vincular un dominio con SEO local configurado.`,
-      urgency: 'ALTA',
-    });
-
-    // Mantenimiento
+    // Mantenimiento mensual accesible
     const sMant = findService('mantenimiento-mensual');
     recommendedServices.push({
       serviceId: sMant.id,
@@ -264,8 +285,8 @@ export async function analyzeBusiness(
       suggestedPriceARS: sMant.suggestedPriceARS,
       suggestedPriceUSD: sMant.suggestedPriceUSD,
       isMonthly: true,
-      reason: 'Garantizar hosting de alto rendimiento, soporte continuo y certificado SSL sin complicaciones técnicas para el cliente.',
-      justification: 'Los profesionales de la salud y comercios prefieren delegar completamente los aspectos técnicos de hosting y actualizaciones.',
+      reason: 'Garantizar hosting de alta velocidad, soporte continuo y certificado SSL sin complicaciones técnicas para el cliente.',
+      justification: 'Servicio accesible ($29.000 ARS/mes) para delegar completamente la administración y seguridad de la página web.',
       urgency: 'MEDIA',
     });
   } else {
@@ -442,9 +463,15 @@ export async function analyzeBusiness(
 
   let bundleName = 'Plan WebPilot Estándar';
   if (!hasWebsite) {
-    bundleName = 'Pack Despegue Digital (Sitio Web + SEO Local + WhatsApp)';
+    if (recommendedServices.some((s) => s.serviceId === 'sitio-institucional')) {
+      bundleName = 'Pack Institucional Multipágina';
+    } else if (recommendedServices.some((s) => s.serviceId === 'landing-profesional')) {
+      bundleName = 'Pack Presencia Profesional (Landing 7 Secciones)';
+    } else {
+      bundleName = 'Pack Despegue Express (Landing Web + WhatsApp)';
+    }
   } else if (isHttpInsecure || isSlowResponse) {
-    bundleName = 'Pack Modernización y Optimización de Rendimiento Web';
+    bundleName = 'Pack Modernización y Rendimiento Web';
   } else if (!hasWhatsAppDetected) {
     bundleName = 'Pack Conversión Rápida (WhatsApp + Captación de Turnos)';
   }
@@ -464,7 +491,7 @@ export async function analyzeBusiness(
     : `La lentitud o la falta de un canal directo como WhatsApp provoca que los visitantes abandonen la página antes de consultar, desaprovechando las visitas que llegan desde Google Maps.`;
 
   const ourSolution = !hasWebsite
-    ? `Desde WebPilot desarrollamos un sitio web moderno, optimizado para celulares y conectado directamente a su WhatsApp en menos de 10 días, sin necesidad de que el consultorio tenga conocimientos técnicos.`
+    ? `Desde WebPilot desarrollamos soluciones web profesionales muy ágiles y accesibles desde ${formatCurrency(bundleFinalARS)}, optimizadas para celulares y conectadas directamente a su WhatsApp en 3 a 5 días hábiles, sin complicaciones técnicas.`
     : `En WebPilot realizamos una intervención técnica puntual para resolver la velocidad, seguridad e integrar canales directos de WhatsApp y formularios, dejando la web funcionando a máxima capacidad de conversión.`;
 
   const whyNow = `El rubro de ${business.industry || 'servicios profesionales'} en ${business.city || 'la zona'} tiene una alta demanda de búsqueda en Google. Resolver esto ahora permite captar los pacientes antes que los consultorios de la competencia.`;
@@ -474,7 +501,7 @@ export async function analyzeBusiness(
   const cityName = business.city || 'su zona';
 
   const whatsappMessage = !hasWebsite
-    ? `Hola! 👋 Me contacto del equipo de WebPilot con respecto a ${business.name}.\n\nEstuvimos analizando la presencia digital de los profesionales de ${cityName} y notamos que actualmente no cuentan con un sitio web propio para que los pacientes puedan conocer sus especialidades y solicitar turnos por WhatsApp.\n\nNos dedicamos a desarrollar sitios web rápidos y profesionales para consultorios, totalmente listos para captar pacientes desde el celular. ¿Tendrían 5 minutos esta semana para mostrarles una propuesta simple y sin compromiso?\n\n¡Muchas gracias y que tengan un excelente día!`
+    ? `Hola! 👋 Me contacto del equipo de WebPilot con respecto a ${business.name}.\n\nEstuvimos analizando la presencia digital de los profesionales de ${cityName} y notamos que actualmente no cuentan con un sitio web propio para que los pacientes puedan conocer sus especialidades y solicitar turnos por WhatsApp.\n\nContamos con opciones muy accesibles desde ${formatCurrency(bundleFinalARS)} llave en mano (Landing Express con entrega en 3 a 5 días y botón directo a WhatsApp). ¿Tendrían 5 minutos esta semana para mostrarles una propuesta simple y sin compromiso?\n\n¡Muchas gracias y que tengan un excelente día!`
     : `Hola! 👋 Me contacto del equipo de WebPilot con respecto a ${business.name}.\n\nEstuvimos revisando su sitio web (${websiteUrl}) y notamos un par de detalles puntuales que están haciendo que potenciales pacientes de ${cityName} se pierdan antes de consultar (${opportunities[0]?.title.toLowerCase() || 'oportunidades de mejora'}).\n\nPreparamos un breve diagnóstico gratuito con las recomendaciones para optimizarlo y sumar más consultas por WhatsApp. ¿A quién podríamos compartirle este informe para que lo puedan evaluar?\n\n¡Saludos cordiales!`;
 
   const emailSubject = !hasWebsite

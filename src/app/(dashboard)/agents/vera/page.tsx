@@ -108,11 +108,18 @@ export default function VeraAgentPage() {
   const [isSavingReview, setIsSavingReview] = useState(false);
 
   useEffect(() => {
-    // Cargar catálogo de localStorage si existe
+    // Cargar catálogo de localStorage si existe y está actualizado con la estrategia de volumen
     try {
       const saved = localStorage.getItem('webpilot_services_catalog');
       if (saved) {
-        setServicesCatalog(JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        // Si el catálogo guardado contiene 'landing-express', respetamos las ediciones; de lo contrario actualizamos al nuevo catálogo oficial
+        if (Array.isArray(parsed) && parsed.some((s: any) => s.id === 'landing-express')) {
+          setServicesCatalog(parsed);
+        } else {
+          setServicesCatalog(DEFAULT_SERVICES_CATALOG);
+          localStorage.setItem('webpilot_services_catalog', JSON.stringify(DEFAULT_SERVICES_CATALOG));
+        }
       }
     } catch {
       // Usar defaults
