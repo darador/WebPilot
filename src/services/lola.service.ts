@@ -279,7 +279,8 @@ export async function investigateWebsite(url: string | null | undefined): Promis
 // ============================================================================
 export async function runLolaDiscovery(
   params: LolaSearchParams,
-  userId?: string | null
+  userId?: string | null,
+  client?: any
 ): Promise<{
   search: LolaSearch;
   candidates: LolaCandidate[];
@@ -294,7 +295,7 @@ export async function runLolaDiscovery(
   }
 
   const startTime = Date.now();
-  const supabase = createClient();
+  const supabase = client || createClient();
 
   // 1. Crear sesión de búsqueda en estado EN_PROCESO
   const { data: searchSession, error: searchError } = await supabase
@@ -432,7 +433,8 @@ export async function runLolaDiscovery(
 // Solo para los candidatos seleccionados por Daro y Julieta.
 // ============================================================================
 export async function investigateSelectedCandidates(
-  candidateIds: string[]
+  candidateIds: string[],
+  client?: any
 ): Promise<{
   investigatedCandidates: LolaCandidate[];
   apiCallsCount: number;
@@ -446,7 +448,7 @@ export async function investigateSelectedCandidates(
     throw new Error('Falta configurar GOOGLE_MAPS_API_KEY para realizar la investigación.');
   }
 
-  const supabase = createClient();
+  const supabase = client || createClient();
 
   // 1. Obtener los candidatos seleccionados
   const { data: candidates, error: fetchErr } = await supabase
@@ -572,9 +574,10 @@ export async function updateCandidateManualData(
     email?: string;
     website?: string;
     notes?: string;
-  }
+  },
+  client?: any
 ): Promise<LolaCandidate> {
-  const supabase = createClient();
+  const supabase = client || createClient();
 
   const payload: any = {
     manually_edited: true,
@@ -606,13 +609,14 @@ export async function updateCandidateManualData(
 // ============================================================================
 export async function approveLolaCandidates(
   candidateIds: string[],
-  userId?: string | null
+  userId?: string | null,
+  client?: any
 ): Promise<{
   approvedCount: number;
   duplicateCount: number;
   createdBusinesses: Business[];
 }> {
-  const supabase = createClient();
+  const supabase = client || createClient();
 
   // 1. Obtener los candidatos seleccionados
   const { data: candidates, error: candError } = await supabase
@@ -633,7 +637,7 @@ export async function approveLolaCandidates(
   const existingEmails = new Set<string>();
   const existingNames = new Set<string>();
 
-  existingBusinesses?.forEach((b) => {
+  existingBusinesses?.forEach((b: any) => {
     if (b.website) existingDomains.add(normalizeDomain(b.website));
     if (b.email) existingEmails.add(normalizeEmail(b.email));
     if (b.name) existingNames.add(b.name.trim().toLowerCase());
@@ -772,8 +776,8 @@ export async function approveLolaCandidates(
 /**
  * Descarta candidatos que no califican para la agencia.
  */
-export async function discardLolaCandidates(candidateIds: string[]): Promise<number> {
-  const supabase = createClient();
+export async function discardLolaCandidates(candidateIds: string[], client?: any): Promise<number> {
+  const supabase = client || createClient();
   const { data, error } = await supabase
     .from('lola_candidates')
     .update({ import_status: 'DESCARTADO' as LolaCandidateStatus })
@@ -790,8 +794,8 @@ export async function discardLolaCandidates(candidateIds: string[]): Promise<num
 /**
  * Obtiene el historial de búsquedas de Lola.
  */
-export async function getLolaSearchHistory(limit = 10): Promise<LolaSearch[]> {
-  const supabase = createClient();
+export async function getLolaSearchHistory(limit = 10, client?: any): Promise<LolaSearch[]> {
+  const supabase = client || createClient();
   const { data, error } = await supabase
     .from('lola_searches')
     .select('*')
@@ -809,8 +813,8 @@ export async function getLolaSearchHistory(limit = 10): Promise<LolaSearch[]> {
 /**
  * Obtiene candidatos de una búsqueda específica.
  */
-export async function getLolaCandidates(searchId: string): Promise<LolaCandidate[]> {
-  const supabase = createClient();
+export async function getLolaCandidates(searchId: string, client?: any): Promise<LolaCandidate[]> {
+  const supabase = client || createClient();
   const { data, error } = await supabase
     .from('lola_candidates')
     .select('*')

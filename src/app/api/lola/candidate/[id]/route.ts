@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { updateCandidateManualData } from '@/services/lola.service';
-import { createClient } from '@/lib/supabase/server';
+import { getAuthenticatedUser } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,9 +9,8 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Verificación básica de sesión
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    // Verificación básica de sesión (vía Bearer token o cookie)
+    const { user, supabase } = await getAuthenticatedUser(req);
 
     if (!user) {
       return NextResponse.json(
@@ -23,7 +22,7 @@ export async function PATCH(
     const candidateId = params.id;
     const body = await req.json();
 
-    const updated = await updateCandidateManualData(candidateId, body);
+    const updated = await updateCandidateManualData(candidateId, body, supabase);
 
     return NextResponse.json({ candidate: updated });
   } catch (error: any) {

@@ -26,6 +26,21 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import { LolaSearch, LolaCandidate } from '@/types/database.types';
+import { createClient } from '@/lib/supabase/client';
+
+async function fetchWithAuth(url: string, options: RequestInit = {}) {
+  const supabase = createClient();
+  const { data: { session } } = await supabase.auth.getSession();
+  const headers = new Headers(options.headers || {});
+  if (session?.access_token) {
+    headers.set('Authorization', `Bearer ${session.access_token}`);
+  }
+  return fetch(url, {
+    ...options,
+    headers,
+    credentials: 'include',
+  });
+}
 
 export default function LolaAgentPage() {
   // Formulario de Búsqueda (Etapa 1: Descubrimiento)
@@ -82,7 +97,7 @@ export default function LolaAgentPage() {
   const fetchHistory = async () => {
     setLoadingHistory(true);
     try {
-      const res = await fetch('/api/lola/history?limit=6');
+      const res = await fetchWithAuth('/api/lola/history?limit=6');
       if (res.ok) {
         const json = await res.json();
         setHistory(json.searches || []);
@@ -120,7 +135,7 @@ export default function LolaAgentPage() {
     setSearchStep('Etapa 1: Descubriendo comercios en Google Places API (New)...');
 
     try {
-      const res = await fetch('/api/lola/search', {
+      const res = await fetchWithAuth('/api/lola/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -205,7 +220,7 @@ export default function LolaAgentPage() {
     setSearchStep(`Etapa 3: Investigando ${selectedIds.length} comercios seleccionados...`);
 
     try {
-      const res = await fetch('/api/lola/investigate', {
+      const res = await fetchWithAuth('/api/lola/investigate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ candidateIds: selectedIds }),
@@ -262,7 +277,7 @@ export default function LolaAgentPage() {
 
     setIsSavingEdit(true);
     try {
-      const res = await fetch(`/api/lola/candidate/${editingCandidate.id}`, {
+      const res = await fetchWithAuth(`/api/lola/candidate/${editingCandidate.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editForm),
@@ -293,7 +308,7 @@ export default function LolaAgentPage() {
     setApprovalFeedback(null);
 
     try {
-      const res = await fetch('/api/lola/approve', {
+      const res = await fetchWithAuth('/api/lola/approve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ candidateIds: selectedIds }),
@@ -331,7 +346,7 @@ export default function LolaAgentPage() {
 
     setIsDiscarding(true);
     try {
-      const res = await fetch('/api/lola/discard', {
+      const res = await fetchWithAuth('/api/lola/discard', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ candidateIds: selectedIds }),

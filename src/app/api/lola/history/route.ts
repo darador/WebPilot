@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
 import { getLolaSearchHistory } from '@/services/lola.service';
-import { createClient } from '@/lib/supabase/server';
+import { getAuthenticatedUser } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const { user, supabase } = await getAuthenticatedUser(req);
 
     if (!user) {
       return NextResponse.json(
@@ -18,7 +17,7 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const limit = Number(searchParams.get('limit')) || 10;
-    const history = await getLolaSearchHistory(limit);
+    const history = await getLolaSearchHistory(limit, supabase);
     return NextResponse.json({ searches: history });
   } catch (error: any) {
     console.error('Error en /api/lola/history:', error);

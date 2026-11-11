@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server';
 import { approveLolaCandidates } from '@/services/lola.service';
-import { createClient } from '@/lib/supabase/server';
+import { getAuthenticatedUser } from '@/lib/supabase/server';
 
 export async function POST(req: Request) {
   try {
-    // 1. Verificación básica de sesión
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    // 1. Verificación básica de sesión (vía Bearer token o cookie)
+    const { user, supabase } = await getAuthenticatedUser(req);
 
     if (!user) {
       return NextResponse.json(
@@ -25,7 +24,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const result = await approveLolaCandidates(candidateIds, user.id);
+    const result = await approveLolaCandidates(candidateIds, user.id, supabase);
 
     return NextResponse.json(result);
   } catch (error: any) {

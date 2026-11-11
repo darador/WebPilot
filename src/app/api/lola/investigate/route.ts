@@ -1,14 +1,13 @@
 import { NextResponse } from 'next/server';
 import { investigateSelectedCandidates } from '@/services/lola.service';
-import { createClient } from '@/lib/supabase/server';
+import { getAuthenticatedUser } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
-    // Verificación básica de sesión
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    // Verificación básica de sesión (vía Bearer token o cookie)
+    const { user, supabase } = await getAuthenticatedUser(req);
 
     if (!user) {
       return NextResponse.json(
@@ -28,7 +27,7 @@ export async function POST(req: Request) {
     }
 
     // Ejecuta Etapa 3: Place Details solo para los seleccionados + Auditoría Web
-    const result = await investigateSelectedCandidates(candidateIds);
+    const result = await investigateSelectedCandidates(candidateIds, supabase);
 
     return NextResponse.json(result);
   } catch (error: any) {

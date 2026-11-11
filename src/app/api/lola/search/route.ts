@@ -1,14 +1,13 @@
 import { NextResponse } from 'next/server';
 import { runLolaDiscovery, LolaSearchParams } from '@/services/lola.service';
-import { createClient } from '@/lib/supabase/server';
+import { getAuthenticatedUser } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
-    // 1. Verificación básica de sesión para Daro y Julieta
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    // 1. Verificación básica de sesión para Daro y Julieta (vía Bearer token o cookie)
+    const { user, supabase } = await getAuthenticatedUser(req);
 
     if (!user) {
       return NextResponse.json(
@@ -36,7 +35,7 @@ export async function POST(req: Request) {
     };
 
     // Ejecuta Etapa 1: Descubrimiento con Google Places API (New) sin costo de Contact Data
-    const result = await runLolaDiscovery(params, user.id);
+    const result = await runLolaDiscovery(params, user.id, supabase);
 
     return NextResponse.json(result);
   } catch (error: any) {
