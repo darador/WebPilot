@@ -229,12 +229,12 @@ export default function OrchestratorPage() {
     <div className="space-y-6">
       {/* Topbar */}
       <Topbar
-        title="Orquestador — Operaciones"
-        subtitle="Director de Operaciones con Autonomía Supervisada"
+        title="Patricia — Directora de Operaciones"
+        subtitle="Orquestadora Central con Autonomía Supervisada • Coordinación de Lola, Tito, Vera, Bruno y Cata"
       />
 
       <div className="px-6 space-y-6">
-        {/* Banner Principal del Director de Operaciones */}
+        {/* Banner Principal de Patricia */}
         <div className="p-5 rounded-2xl border border-[#162035] bg-[#0c1220] shadow-xl relative overflow-hidden">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div className="space-y-1.5">
@@ -245,22 +245,22 @@ export default function OrchestratorPage() {
                 <div>
                   <div className="flex items-center gap-2">
                     <h2 className="text-lg font-bold text-white tracking-tight">
-                      Director de Operaciones WebPilot AI
+                      Patricia • Directora de Operaciones
                     </h2>
                     {isPaused ? (
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
                         <Pause className="h-3 w-3" />
-                        Pausado
+                        Pausada
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
                         <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
-                        Activo y Operativo
+                        Activa y Operativa
                       </span>
                     )}
                   </div>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Coordinando tareas de Lola (Prospección), Tito (Auditoría), Vera (Estrategia), Bruno (Demos) y Cata (Seguimiento).
+                    Patricia mantiene el equipo activo: detecta tareas, asigna trabajo a Lola, Tito, Vera, Bruno y Cata, y protege las decisiones de Daro y Julieta.
                   </p>
                 </div>
               </div>
@@ -274,7 +274,7 @@ export default function OrchestratorPage() {
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold transition-all shadow-md hover:shadow-cyan-500/20 disabled:opacity-50"
               >
                 <RefreshCw className={`h-3.5 w-3.5 ${isCycling ? 'animate-spin' : ''}`} />
-                <span>{isCycling ? 'Ejecutando Ciclo...' : 'Ejecutar Ciclo Manual'}</span>
+                <span>{isCycling ? 'Ejecutando Ciclo...' : 'Ejecutar Ciclo de Patricia'}</span>
               </button>
 
               <button
@@ -286,7 +286,7 @@ export default function OrchestratorPage() {
                 }`}
               >
                 {isPaused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
-                <span>{isPaused ? 'Reanudar Orquestador' : 'Pausar Orquestador'}</span>
+                <span>{isPaused ? 'Reanudar a Patricia' : 'Pausar a Patricia'}</span>
               </button>
 
               <button
@@ -303,7 +303,7 @@ export default function OrchestratorPage() {
               <button
                 onClick={() => setIsLimitsOpen(true)}
                 className="p-2 rounded-xl border border-[#1e2a42] bg-[#080d18] hover:bg-[#131d33] text-slate-300 hover:text-white transition-colors"
-                title="Configurar límites operativos"
+                title="Configurar límites operativos de Patricia"
               >
                 <Sliders className="h-4 w-4" />
               </button>
@@ -443,7 +443,7 @@ export default function OrchestratorPage() {
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
               <Bot className="h-4 w-4 text-cyan-400" />
-              <span>Agentes Conectados al Orquestador</span>
+              <span>Agentes Conectados a Patricia</span>
             </h3>
             <span className="text-[11px] text-slate-400">
               Coordinación operativa en tiempo real
@@ -509,7 +509,7 @@ export default function OrchestratorPage() {
             <div>
               <h3 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
                 <Layers className="h-4 w-4 text-cyan-400" />
-                <span>Flujos de Trabajo Operativos</span>
+                <span>Flujos de Trabajo Coordinados por Patricia</span>
               </h3>
               <p className="text-xs text-slate-400">
                 Activá o desactivá los flujos automáticos según la capacidad del equipo.

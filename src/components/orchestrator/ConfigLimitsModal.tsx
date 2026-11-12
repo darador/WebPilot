@@ -75,10 +75,10 @@ export function ConfigLimitsModal({
             </div>
             <div>
               <h3 className="text-base font-bold text-white tracking-tight">
-                Límites Operativos del Orquestador
+                Límites Operativos de Patricia
               </h3>
               <p className="text-xs text-slate-400">
-                Control de consumo y volumen para autonomía supervisada.
+                Control de volumen y consumo para autonomía supervisada.
               </p>
             </div>
           </div>

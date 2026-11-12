@@ -1,5 +1,5 @@
 export interface AgentMember {
-  id: 'lola' | 'tito' | 'vera' | 'bruno' | 'cata' | 'ramon';
+  id: 'patricia' | 'lola' | 'tito' | 'vera' | 'bruno' | 'cata' | 'ramon';
   name: string;
   codename: string;
   role: string;
@@ -18,6 +18,29 @@ export interface AgentMember {
 }
 
 export const TEAM_MEMBERS: AgentMember[] = [
+  {
+    id: 'patricia',
+    name: 'Patricia',
+    codename: 'La orquestadora',
+    role: 'Directora de Operaciones & Orquestadora',
+    department: 'Dirección y Operaciones',
+    responsibility: 'Coordinar el flujo de trabajo integral de la agencia: asignar tareas a los agentes, supervisar resultados, encadenar procesos y asegurar que las decisiones críticas pasen por aprobación humana.',
+    personality: 'Estratégica, resolutiva, impecable y rigurosa.',
+    quote: 'El equipo trabaja sincronizado; las decisiones importantes las toman Daro y Julieta.',
+    avatar: '/avatars/patricia.png',
+    status: 'operativo',
+    color: '#0ea5e9',
+    bgColor: 'bg-sky-500/10',
+    borderColor: 'border-sky-500/30',
+    badgeClass: 'bg-sky-500/15 text-sky-300 border-sky-700/50',
+    assignedTasks: [
+      'Coordinación y despacho de tareas a Lola, Tito, Vera, Bruno y Cata',
+      'Gestión de autonomía supervisada y bandeja de aprobaciones',
+      'Encadenamiento inteligente de flujos A, B, C y D',
+      'Supervisión de límites operativos y prevención de tareas duplicadas',
+    ],
+    skills: ['Orquestación Operativa', 'Autonomía Supervisada', 'Control de Flujos y Colas', 'Gestión de Prioridades'],
+  },
   {
     id: 'lola',
     name: 'Lola',

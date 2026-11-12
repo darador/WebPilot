@@ -158,7 +158,7 @@ export function TaskDetailModal({
           {task.next_action && (
             <div className="p-3.5 rounded-xl bg-[#080d18] border border-cyan-500/30 space-y-1">
               <span className="text-[11px] uppercase tracking-wider text-cyan-400 font-bold block">
-                Diagnóstico del Orquestador y Próximo Paso
+                Diagnóstico de Patricia y Próximo Paso
               </span>
               <p className="text-xs text-slate-200 leading-relaxed">{task.next_action}</p>
             </div>

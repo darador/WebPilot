@@ -33,10 +33,10 @@ const NAV_ITEMS = [
     badge: null,
   },
   {
-    label: 'Orquestador — Operaciones',
+    label: 'Patricia — Operaciones',
     href: '/orchestrator',
     icon: Network,
-    badge: 'Director',
+    badge: 'Directora',
   },
   {
     label: 'Lola — Prospección',
@@ -72,7 +72,7 @@ const NAV_ITEMS = [
     label: 'Nuestro equipo',
     href: '/team',
     icon: Bot,
-    badge: '6 IA',
+    badge: '7 IA',
   },
   {
     label: 'Biblioteca de Referencias',

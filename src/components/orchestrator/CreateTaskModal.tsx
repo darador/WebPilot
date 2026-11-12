@@ -141,7 +141,7 @@ export function CreateTaskModal({
                 Asignar Tarea Operativa
               </h3>
               <p className="text-xs text-slate-400">
-                El Orquestador delegará la ejecución al agente correspondiente.
+                Patricia delegará la ejecución al agente correspondiente.
               </p>
             </div>
           </div>
