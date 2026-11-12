@@ -24,6 +24,17 @@ interface TaskDetailModalProps {
   onTaskUpdated: () => void;
 }
 
+function formatNextAction(text: string | null | undefined): string {
+  if (!text) return '';
+  return text
+    .replace(/esperando revisión y aprobación de daro o julieta en el visor\.?/gi, 'Requiere Autorización de CEO en el visor.')
+    .replace(/espera aprobación humana de daro o julieta\.?/gi, 'Requiere Autorización de CEO.')
+    .replace(/revisión y aprobación de daro o julieta/gi, 'Autorización de CEO')
+    .replace(/aprobación humana de daro o julieta/gi, 'Autorización de CEO')
+    .replace(/daro o julieta/gi, 'CEO')
+    .replace(/daro y julieta/gi, 'CEO');
+}
+
 export function TaskDetailModal({
   task,
   isOpen,
@@ -160,7 +171,7 @@ export function TaskDetailModal({
               <span className="text-[11px] uppercase tracking-wider text-cyan-400 font-bold block">
                 Diagnóstico de Patricia y Próximo Paso
               </span>
-              <p className="text-xs text-slate-200 leading-relaxed">{task.next_action}</p>
+              <p className="text-xs text-slate-200 leading-relaxed">{formatNextAction(task.next_action)}</p>
             </div>
           )}
 
@@ -300,7 +311,7 @@ export function TaskDetailModal({
                   )}
                   {task.next_action && (
                     <div className="text-slate-300">
-                      <strong className="text-slate-400">Próxima acción / Diagnóstico:</strong> {task.next_action}
+                      <strong className="text-slate-400">Próxima acción / Diagnóstico:</strong> {formatNextAction(task.next_action)}
                     </div>
                   )}
                   {task.approval_notes && (

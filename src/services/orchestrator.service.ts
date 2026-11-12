@@ -281,6 +281,27 @@ export async function toggleOrchestratorFlow(
 // ==============================================================================
 
 /**
+ * Sanitiza mensajes de tareas para garantizar la consistencia en autorizaciones de CEO
+ */
+export function sanitizeTaskMessages<T extends { next_action?: string | null; error_message?: string | null }>(task: T): T {
+  if (!task) return task;
+  let next = task.next_action;
+  if (next) {
+    next = next
+      .replace(/esperando revisión y aprobación de daro o julieta en el visor\.?/gi, 'Requiere Autorización de CEO en el visor.')
+      .replace(/espera aprobación humana de daro o julieta\.?/gi, 'Requiere Autorización de CEO.')
+      .replace(/revisión y aprobación de daro o julieta/gi, 'Autorización de CEO')
+      .replace(/aprobación humana de daro o julieta/gi, 'Autorización de CEO')
+      .replace(/daro o julieta/gi, 'CEO')
+      .replace(/daro y julieta/gi, 'CEO');
+  }
+  return {
+    ...task,
+    next_action: next,
+  };
+}
+
+/**
  * Obtiene el listado de tareas con filtros
  */
 export async function getOrchestratorTasks(
@@ -321,7 +342,7 @@ export async function getOrchestratorTasks(
     const { data, error } = await query;
 
     if (!error && data && data.length > 0) {
-      let items = data as OrchestratorTask[];
+      let items = (data as OrchestratorTask[]).map(sanitizeTaskMessages);
       if (filters?.search && filters.search.trim()) {
         const q = filters.search.toLowerCase().trim();
         items = items.filter(
@@ -338,7 +359,7 @@ export async function getOrchestratorTasks(
   }
 
   // Fallback memoria local
-  let list = [...LOCAL_TASKS_CACHE];
+  let list = LOCAL_TASKS_CACHE.map(sanitizeTaskMessages);
 
   if (filters?.status && filters.status !== 'TODOS') {
     list = list.filter((t) => t.status === filters.status);
@@ -382,14 +403,14 @@ export async function getOrchestratorTaskById(
       .maybeSingle();
 
     if (!error && data) {
-      return data as OrchestratorTask;
+      return sanitizeTaskMessages(data as OrchestratorTask);
     }
   } catch (err) {
     console.warn('Orquestador: Error buscando tarea en Supabase:', err);
   }
 
   const local = LOCAL_TASKS_CACHE.find((t) => t.id === id);
-  return local || null;
+  return local ? sanitizeTaskMessages(local) : null;
 }
 
 /**

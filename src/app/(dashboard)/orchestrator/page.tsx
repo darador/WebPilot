@@ -45,6 +45,17 @@ import {
   OrchestratorWorkflowId,
 } from '@/types/database.types';
 
+function formatNextAction(text: string | null | undefined): string {
+  if (!text) return '';
+  return text
+    .replace(/esperando revisión y aprobación de daro o julieta en el visor\.?/gi, 'Requiere Autorización de CEO en el visor.')
+    .replace(/espera aprobación humana de daro o julieta\.?/gi, 'Requiere Autorización de CEO.')
+    .replace(/revisión y aprobación de daro o julieta/gi, 'Autorización de CEO')
+    .replace(/aprobación humana de daro o julieta/gi, 'Autorización de CEO')
+    .replace(/daro o julieta/gi, 'CEO')
+    .replace(/daro y julieta/gi, 'CEO');
+}
+
 export default function OrchestratorPage() {
   const [overview, setOverview] = useState<any>(null);
   const [tasks, setTasks] = useState<OrchestratorTask[]>([]);
@@ -446,7 +457,7 @@ export default function OrchestratorPage() {
                       </span>
                     </div>
                     <p className="text-slate-300 leading-relaxed text-[11px]">
-                      {task.next_action || 'Requiere revisión humana de la propuesta conceptual o evaluación.'}
+                      {formatNextAction(task.next_action) || 'Requiere revisión humana de la propuesta conceptual o evaluación.'}
                     </p>
                   </div>
 
@@ -741,8 +752,8 @@ export default function OrchestratorPage() {
                       <td className="py-2.5 px-3 whitespace-nowrap text-[11px]">
                         {t.retry_count} / {t.max_retries}
                       </td>
-                      <td className="py-2.5 px-3 max-w-xs truncate text-[11px] text-slate-300" title={t.next_action || ''}>
-                        {t.next_action || '—'}
+                      <td className="py-2.5 px-3 max-w-xs truncate text-[11px] text-slate-300" title={formatNextAction(t.next_action) || ''}>
+                        {formatNextAction(t.next_action) || '—'}
                       </td>
                       <td className="py-2.5 px-3 text-right whitespace-nowrap">
                         <button
@@ -784,7 +795,7 @@ export default function OrchestratorPage() {
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-400">
-                    {t.next_action || 'Proceso registrado correctamente en el motor de tareas.'}
+                    {formatNextAction(t.next_action) || 'Proceso registrado correctamente en el motor de tareas.'}
                   </p>
                 </div>
                 <div>{getStatusBadge(t.status)}</div>
