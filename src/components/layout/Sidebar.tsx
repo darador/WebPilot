@@ -19,6 +19,7 @@ import {
   PhoneCall,
   BookOpen,
   Palette,
+  Network,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
@@ -30,6 +31,12 @@ const NAV_ITEMS = [
     href: '/',
     icon: LayoutDashboard,
     badge: null,
+  },
+  {
+    label: 'Orquestador — Operaciones',
+    href: '/orchestrator',
+    icon: Network,
+    badge: 'Director',
   },
   {
     label: 'Lola — Prospección',

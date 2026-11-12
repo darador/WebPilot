@@ -375,3 +375,98 @@ export interface ClientDemo {
   business?: Business;
 }
 
+// ==============================================================================
+// ORQUESTADOR — DIRECTOR DE OPERACIONES
+// ==============================================================================
+
+export type OrchestratorAgentName = 'LOLA' | 'TITO' | 'VERA' | 'BRUNO' | 'CATA';
+
+export type OrchestratorTaskType =
+  | 'LOLA_DISCOVERY'
+  | 'TITO_AUDIT'
+  | 'VERA_STRATEGY'
+  | 'BRUNO_DEMO'
+  | 'CATA_FOLLOWUP'
+  | 'APPROVAL_REVIEW';
+
+export type OrchestratorWorkflowId =
+  | 'FLUJO_A'
+  | 'FLUJO_B'
+  | 'FLUJO_C'
+  | 'FLUJO_D'
+  | 'MANUAL';
+
+export type OrchestratorTaskStatus =
+  | 'PENDIENTE'
+  | 'EN_EJECUCION'
+  | 'ESPERANDO_APROBACION'
+  | 'COMPLETADA'
+  | 'FALLIDA'
+  | 'CANCELADA';
+
+export type OrchestratorPriority = 'BAJA' | 'MEDIA' | 'ALTA' | 'CRITICA';
+
+export interface OrchestratorTask {
+  id: string;
+  agent: OrchestratorAgentName;
+  task_type: OrchestratorTaskType;
+  workflow_id: OrchestratorWorkflowId;
+  business_id?: string | null;
+  business_name?: string | null;
+  status: OrchestratorTaskStatus;
+  priority: OrchestratorPriority;
+  payload: Record<string, any>;
+  result?: Record<string, any>;
+  error_message?: string | null;
+  retry_count: number;
+  max_retries: number;
+  next_action?: string | null;
+  requires_human_approval: boolean;
+  approval_status?: 'PENDIENTE' | 'APROBADO' | 'RECHAZADO' | null;
+  approval_notes?: string | null;
+  dedup_key?: string | null;
+  created_at: string;
+  started_at?: string | null;
+  completed_at?: string | null;
+  created_by?: string;
+  // Joined convenience field
+  business?: Business;
+}
+
+export interface OrchestratorLimits {
+  max_lola_searches_per_cycle: number;
+  max_new_candidates_per_cycle: number;
+  max_tito_audits_per_cycle: number;
+  max_bruno_demos_per_cycle: number;
+  max_retries: number;
+}
+
+export interface OrchestratorConfig {
+  id: string;
+  is_paused: boolean;
+  active_flows: {
+    flujoA: boolean; // Lola prospección
+    flujoB: boolean; // Tito & Vera evaluación
+    flujoC: boolean; // Bruno demos
+    flujoD: boolean; // Cata seguimiento
+  };
+  limits: OrchestratorLimits;
+  last_run_at?: string | null;
+  last_run_summary?: OrchestratorCycleSummary | null;
+  updated_at: string;
+}
+
+export interface OrchestratorCycleSummary {
+  cycle_id: string;
+  timestamp: string;
+  status: 'COMPLETADO' | 'PARCIAL' | 'ERROR' | 'PAUSADO';
+  tasks_processed: number;
+  tasks_created: number;
+  tasks_completed: number;
+  tasks_failed: number;
+  approvals_needed: number;
+  agents_active: OrchestratorAgentName[];
+  details: string[];
+}
+
+
