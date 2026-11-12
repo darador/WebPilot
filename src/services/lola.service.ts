@@ -443,14 +443,17 @@ export async function runLolaDiscovery(
     // Deduplicación preventiva contra comercios ya registrados en el CRM (businesses)
     const { data: existingBusinesses } = await supabase
       .from('businesses')
-      .select('id, name, google_place_id');
+      .select('id, name, notes');
 
     const existingPlaceIds = new Set<string>();
     const existingNames = new Set<string>();
 
     (existingBusinesses || []).forEach((b: any) => {
-      if (b.google_place_id) existingPlaceIds.add(b.google_place_id);
       if (b.name) existingNames.add(b.name.trim().toLowerCase());
+      if (b.notes) {
+        const match = b.notes.match(/\[Google Places\]:\s*ID\s+([A-Za-z0-9_\-]+)/);
+        if (match) existingPlaceIds.add(match[1]);
+      }
     });
 
     // Guardar candidatos descubiertos en lola_candidates con import_status = 'DESCUBIERTO'
@@ -735,7 +738,7 @@ export async function approveLolaCandidates(
   // 2. Obtener negocios existentes para deduplicación estricta
   const { data: existingBusinesses } = await supabase
     .from('businesses')
-    .select('id, name, email, website, google_place_id');
+    .select('id, name, email, website, notes');
 
   const existingPlaceIds = new Set<string>();
   const existingDomains = new Set<string>();
@@ -743,10 +746,13 @@ export async function approveLolaCandidates(
   const existingNames = new Set<string>();
 
   existingBusinesses?.forEach((b: any) => {
-    if (b.google_place_id) existingPlaceIds.add(b.google_place_id);
     if (b.website) existingDomains.add(normalizeDomain(b.website));
     if (b.email) existingEmails.add(normalizeEmail(b.email));
     if (b.name) existingNames.add(b.name.trim().toLowerCase());
+    if (b.notes) {
+      const match = b.notes.match(/\[Google Places\]:\s*ID\s+([A-Za-z0-9_\-]+)/);
+      if (match) existingPlaceIds.add(match[1]);
+    }
   });
 
   const createdBusinesses: Business[] = [];
@@ -773,6 +779,34 @@ export async function approveLolaCandidates(
       continue;
     }
 
+    let website = cand.website || null;
+    let phone = cand.phone || null;
+
+    // Si aún no se investigó y tenemos place_id, obtener Place Details (websiteUri y phone)
+    if (!website && cand.place_id) {
+      const apiKey = getGoogleMapsApiKey();
+      if (apiKey) {
+        try {
+          const detailsUrl = `https://places.googleapis.com/v1/places/${cand.place_id}`;
+          const dRes = await fetch(detailsUrl, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Goog-Api-Key': apiKey,
+              'X-Goog-FieldMask': 'id,displayName,nationalPhoneNumber,websiteUri,formattedAddress',
+            },
+          });
+          if (dRes.ok) {
+            const dj = await dRes.json();
+            website = dj.websiteUri || null;
+            phone = dj.nationalPhoneNumber || phone;
+          }
+        } catch (e) {
+          // Continuar con lo que hay
+        }
+      }
+    }
+
     // Separación explícita de capas de datos (Google Places, Sitio Oficial y Aporte Manual)
     const notesParts: string[] = [];
 
@@ -782,12 +816,12 @@ export async function approveLolaCandidates(
     }
 
     // 2. Capa Sitio Oficial del negocio
-    if (cand.website) {
+    if (website) {
       const details = [];
       if (cand.has_whatsapp) details.push('WhatsApp detectado');
       if (cand.is_mobile_friendly) details.push('Responsive móvil');
       if (cand.site_title) details.push(`Título: "${cand.site_title}"`);
-      notesParts.push(`[Sitio Oficial]: ${cand.website} (${details.join(', ') || 'Web analizada'}).`);
+      notesParts.push(`[Sitio Oficial]: ${website} (${details.join(', ') || 'Web analizada'}).`);
     } else {
       notesParts.push('[Sitio Oficial]: Sin sitio web registrado en Google Places.');
     }
@@ -810,13 +844,12 @@ export async function approveLolaCandidates(
         {
           user_id: userId || null,
           name: cand.name,
-          google_place_id: cand.place_id || null,
           industry: cand.industry || null,
           city: cand.city || null,
           state_province: cand.state_province || null,
           country: cand.country || 'Argentina',
-          website: cand.website || null,
-          phone: cand.phone || null,
+          website: website || null,
+          phone: phone || null,
           email: cand.email || null,
           source: 'Google Places API (New)',
           status: 'NUEVO',
@@ -857,6 +890,8 @@ export async function approveLolaCandidates(
       .update({
         import_status: 'APROBADO' as LolaCandidateStatus,
         business_id: newBusiness.id,
+        website: website || cand.website || null,
+        phone: phone || cand.phone || null,
       })
       .eq('id', cand.id);
 
