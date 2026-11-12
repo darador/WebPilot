@@ -10,6 +10,9 @@ import {
   OrchestratorLimits,
   OrchestratorCycleSummary,
   Business,
+  OrchestratorLog,
+  OrchestratorEventStatus,
+  OrchestratorLogFilters,
 } from '@/types/database.types';
 import { runLolaDiscovery } from '@/services/lola.service';
 import { auditBusiness } from '@/services/tito.service';
@@ -656,7 +659,200 @@ export async function handleHumanApproval(
     updates.next_action = `Rechazada por el operador. Motivo: ${notes || 'Sin observaciones'}.`;
   }
 
-  return updateOrchestratorTask(id, updates, supabase);
+  const updatedTask = await updateOrchestratorTask(id, updates, supabase);
+
+  // Registrar en la Bitácora de Operaciones
+  try {
+    await logOrchestratorEvent(
+      {
+        agent: 'PATRICIA',
+        action_type: isApproved ? 'APROBACION_CONCEDIDA' : 'APROBACION_RECHAZADA',
+        cycle_id: 'AUTORIZACION_CEO',
+        business_id: current.business_id,
+        business_name: current.business_name,
+        task_id: current.id,
+        status: isApproved ? 'COMPLETADO' : 'FALLIDO',
+        description: `Autorización de CEO ${isApproved ? 'CONCEDIDA' : 'RECHAZADA'} para ${current.business_name || current.task_type}. ${notes ? `Observaciones: ${notes}.` : ''}`,
+        result_summary: isApproved ? 'Aprobado por CEO' : 'Rechazado por CEO',
+        result_data: { action, notes, task_type: current.task_type },
+      },
+      supabase
+    );
+  } catch (logErr) {
+    console.warn('Error registrando log de aprobación:', logErr);
+  }
+
+  return updatedTask;
+}
+
+// ==============================================================================
+// 2.5 BITÁCORA Y AUDITORÍA DE OPERACIONES (EVENT LOGGING)
+// ==============================================================================
+
+/**
+ * Registra un evento o decisión operativa en la bitácora de Patricia
+ */
+export async function logOrchestratorEvent(
+  eventData: {
+    agent: OrchestratorAgentName;
+    action_type: string;
+    description: string;
+    cycle_id?: string;
+    business_id?: string | null;
+    business_name?: string | null;
+    task_id?: string | null;
+    result_summary?: string | null;
+    result_data?: Record<string, any>;
+    status?: OrchestratorEventStatus;
+    error_or_reason?: string | null;
+    duration_ms?: number | null;
+    created_by?: string;
+  },
+  client?: any
+): Promise<OrchestratorLog | null> {
+  const supabase = client || createClient();
+
+  const cycleId = eventData.cycle_id || `cycle-${Date.now()}`;
+
+  const payload = {
+    agent: eventData.agent,
+    action_type: eventData.action_type,
+    description: eventData.description,
+    cycle_id: cycleId,
+    business_id: eventData.business_id || null,
+    business_name: eventData.business_name || null,
+    task_id: eventData.task_id || null,
+    result_summary: eventData.result_summary || null,
+    result_data: eventData.result_data || {},
+    status: eventData.status || 'COMPLETADO',
+    error_or_reason: eventData.error_or_reason || null,
+    duration_ms: eventData.duration_ms || null,
+    created_by: eventData.created_by || 'PATRICIA',
+  };
+
+  try {
+    const { data, error } = await supabase
+      .from('orchestrator_logs')
+      .insert([payload])
+      .select()
+      .single();
+
+    if (error) {
+      console.warn('[Orchestrator Log] Error insertando log en Supabase:', error.message);
+      return null;
+    }
+
+    return data as OrchestratorLog;
+  } catch (err: any) {
+    console.warn('[Orchestrator Log] Excepción guardando log:', err?.message);
+    return null;
+  }
+}
+
+/**
+ * Obtiene los eventos de la bitácora con filtros por ciclo, agente, estado y texto
+ */
+export async function getOrchestratorLogs(
+  filters: OrchestratorLogFilters = {},
+  client?: any
+): Promise<{ logs: OrchestratorLog[]; total: number }> {
+  const supabase = client || createClient();
+
+  try {
+    let query = supabase
+      .from('orchestrator_logs')
+      .select('*, business:businesses(*)', { count: 'exact' })
+      .order('created_at', { ascending: false });
+
+    if (filters.cycle_id) {
+      query = query.eq('cycle_id', filters.cycle_id);
+    }
+
+    if (filters.agent && filters.agent !== 'TODOS') {
+      query = query.eq('agent', filters.agent);
+    }
+
+    if (filters.status && filters.status !== 'TODOS') {
+      query = query.eq('status', filters.status);
+    }
+
+    if (filters.search && filters.search.trim()) {
+      const term = `%${filters.search.trim()}%`;
+      query = query.or(`business_name.ilike.${term},description.ilike.${term},result_summary.ilike.${term}`);
+    }
+
+    if (filters.date_from) {
+      query = query.gte('created_at', filters.date_from);
+    }
+
+    if (filters.date_to) {
+      query = query.lte('created_at', filters.date_to);
+    }
+
+    const limit = filters.limit || 50;
+    const offset = filters.offset || 0;
+
+    query = query.range(offset, offset + limit - 1);
+
+    const { data, error, count } = await query;
+
+    if (error) {
+      console.error('Error fetching orchestrator logs:', error);
+      return { logs: [], total: 0 };
+    }
+
+    return {
+      logs: (data || []) as OrchestratorLog[],
+      total: count || 0,
+    };
+  } catch (e: any) {
+    console.error('Exception fetching orchestrator logs:', e);
+    return { logs: [], total: 0 };
+  }
+}
+
+/**
+ * Obtiene los ciclos únicos de Patricia con metadata agregada
+ */
+export async function getOrchestratorCycles(
+  limit = 30,
+  client?: any
+): Promise<{ cycle_id: string; started_at: string; event_count: number; last_status: string }[]> {
+  const supabase = client || createClient();
+
+  try {
+    const { data, error } = await supabase
+      .from('orchestrator_logs')
+      .select('cycle_id, created_at, status')
+      .order('created_at', { ascending: false })
+      .limit(600);
+
+    if (error || !data) return [];
+
+    const cycleMap = new Map<string, { cycle_id: string; started_at: string; event_count: number; last_status: string }>();
+
+    for (const row of data) {
+      if (!cycleMap.has(row.cycle_id)) {
+        cycleMap.set(row.cycle_id, {
+          cycle_id: row.cycle_id,
+          started_at: row.created_at,
+          event_count: 1,
+          last_status: row.status,
+        });
+      } else {
+        const existing = cycleMap.get(row.cycle_id)!;
+        existing.event_count++;
+        if (new Date(row.created_at) < new Date(existing.started_at)) {
+          existing.started_at = row.created_at;
+        }
+      }
+    }
+
+    return Array.from(cycleMap.values()).slice(0, limit);
+  } catch (e) {
+    console.warn('Error fetching orchestrator cycles:', e);
+    return [];
+  }
 }
 
 // ==============================================================================
@@ -999,9 +1195,22 @@ export async function runOrchestratorCycle(client?: any): Promise<OrchestratorCy
 
   const cycleId = `cycle-${Date.now()}`;
   const timestamp = new Date().toISOString();
+  const cycleStartTime = Date.now();
 
   // 1. Si está en pausa, reportar y detener
   if (config.is_paused) {
+    await logOrchestratorEvent(
+      {
+        agent: 'PATRICIA',
+        action_type: 'CICLO_PAUSADO',
+        cycle_id: cycleId,
+        status: 'FALLIDO',
+        description: 'Ciclo omitido: El Orquestador se encuentra en pausa por decisión del operador.',
+        error_or_reason: 'Orquestador pausado',
+      },
+      supabase
+    );
+
     return {
       cycle_id: cycleId,
       timestamp,
@@ -1015,6 +1224,18 @@ export async function runOrchestratorCycle(client?: any): Promise<OrchestratorCy
       details: ['El Orquestador se encuentra en pausa por decisión del operador.'],
     };
   }
+
+  // Registrar inicio de ciclo en Bitácora
+  await logOrchestratorEvent(
+    {
+      agent: 'PATRICIA',
+      action_type: 'CICLO_INICIO',
+      cycle_id: cycleId,
+      status: 'INICIADO',
+      description: 'Patricia inicia ciclo de supervisión, verificación de dependencias y coordinación operativa de agentes.',
+    },
+    supabase
+  );
 
   const details: string[] = [];
   const agentsActiveSet = new Set<OrchestratorAgentName>();
@@ -1035,25 +1256,82 @@ export async function runOrchestratorCycle(client?: any): Promise<OrchestratorCy
   // ----------------------------------------------------------------------------
   const pendingTasks = await getOrchestratorTasks({ status: 'PENDIENTE', limit: 10 }, supabase);
 
+  if (pendingTasks.length > 0) {
+    await logOrchestratorEvent(
+      {
+        agent: 'PATRICIA',
+        action_type: 'DECISION',
+        cycle_id: cycleId,
+        status: 'COMPLETADO',
+        description: `Se detectaron ${pendingTasks.length} tareas pendientes en la cola para ejecución inmediata.`,
+      },
+      supabase
+    );
+  } else {
+    await logOrchestratorEvent(
+      {
+        agent: 'PATRICIA',
+        action_type: 'DECISION',
+        cycle_id: cycleId,
+        status: 'COMPLETADO',
+        description: 'No se encontraron tareas pendientes preexistentes en cola.',
+      },
+      supabase
+    );
+  }
+
   for (const task of pendingTasks) {
     agentsActiveSet.add(task.agent);
+    const taskStart = Date.now();
     try {
       const finished = await executeOrchestratorTask(task, supabase);
+      const duration = Date.now() - taskStart;
+
       if (finished.status === 'COMPLETADA') tasksCompletedCount++;
       else if (finished.status === 'FALLIDA') tasksFailedCount++;
       else if (finished.status === 'ESPERANDO_APROBACION') approvalsNeededCount++;
       details.push(`[${task.agent}] ${task.task_type} (${task.business_name || 'General'}): ${finished.next_action}`);
+
+      await logOrchestratorEvent(
+        {
+          agent: task.agent,
+          action_type: `TAREA_${task.task_type}`,
+          cycle_id: cycleId,
+          business_id: task.business_id,
+          business_name: task.business_name,
+          task_id: task.id,
+          status: finished.status as any,
+          description: `[${task.agent}] ${task.task_type}: ${finished.next_action}`,
+          result_summary: finished.status,
+          result_data: finished.result,
+          error_or_reason: finished.error_message,
+          duration_ms: duration,
+        },
+        supabase
+      );
     } catch (e: any) {
       tasksFailedCount++;
       details.push(`[${task.agent}] Error: ${e.message}`);
+
+      await logOrchestratorEvent(
+        {
+          agent: task.agent,
+          action_type: `TAREA_${task.task_type}`,
+          cycle_id: cycleId,
+          business_id: task.business_id,
+          business_name: task.business_name,
+          task_id: task.id,
+          status: 'FALLIDO',
+          description: `Error ejecutando tarea de ${task.agent}: ${e.message}`,
+          error_or_reason: e.message,
+        },
+        supabase
+      );
     }
   }
 
   // ----------------------------------------------------------------------------
   // ETAPA 2: FLUJO A & B — INGESTIÓN DE CANDIDATOS DESCUBIERTOS POR LOLA AL CRM
-  // Patricia detecta comercios descubiertos en lola_candidates que aún no ingresaron
-  // al CRM (businesses). Los investiga (obtiene website y teléfono) y los incorpora
-  // deduplicados para que Tito y Vera los procesen en esta misma pasada.
   // ----------------------------------------------------------------------------
   try {
     const { data: pendingCandidates } = await supabase
@@ -1073,7 +1351,18 @@ export async function runOrchestratorCycle(client?: any): Promise<OrchestratorCy
       );
 
       if (validCandidates.length > 0) {
-        // 2. Investigar los que aún no tengan website o teléfono para poder auditar con Tito
+        await logOrchestratorEvent(
+          {
+            agent: 'LOLA',
+            action_type: 'DESCUBRIMIENTO',
+            cycle_id: cycleId,
+            status: 'COMPLETADO',
+            description: `Se detectaron ${validCandidates.length} prospectos descubiertos en mesa de trabajo de Lola pendientes de ingresar al CRM.`,
+          },
+          supabase
+        );
+
+        // 2. Investigar los que aún no tengan website o teléfono
         const uninvestigatedIds = validCandidates
           .filter((c: any) => !c.website && !c.phone && c.place_id && c.import_status !== 'INVESTIGADO')
           .map((c: any) => c.id);
@@ -1083,6 +1372,17 @@ export async function runOrchestratorCycle(client?: any): Promise<OrchestratorCy
             const { investigateSelectedCandidates } = await import('@/services/lola.service');
             await investigateSelectedCandidates(uninvestigatedIds, supabase);
             details.push(`[LOLA] Se investigaron datos y sitios web para ${uninvestigatedIds.length} comercios descubiertos.`);
+
+            await logOrchestratorEvent(
+              {
+                agent: 'LOLA',
+                action_type: 'INVESTIGACION',
+                cycle_id: cycleId,
+                status: 'COMPLETADO',
+                description: `Se investigaron Place Details (sitio web y teléfono) para ${uninvestigatedIds.length} comercios descubiertos.`,
+              },
+              supabase
+            );
           } catch (e: any) {
             console.warn('Orquestador: Error investigando candidatos en Places:', e.message);
           }
@@ -1100,8 +1400,31 @@ export async function runOrchestratorCycle(client?: any): Promise<OrchestratorCy
           tasksCreatedCount += approvedRes.approvedCount;
           tasksCompletedCount += approvedRes.approvedCount;
           details.push(`[LOLA] ${approvedRes.approvedCount} nuevos comercios incorporados al CRM (${approvedRes.duplicateCount} duplicados omitidos).`);
+
+          await logOrchestratorEvent(
+            {
+              agent: 'PATRICIA',
+              action_type: 'INGESTION',
+              cycle_id: cycleId,
+              status: 'COMPLETADO',
+              description: `Se incorporaron ${approvedRes.approvedCount} comercios al CRM (${approvedRes.duplicateCount} duplicados omitidos).`,
+              result_summary: `${approvedRes.approvedCount} incorporados, ${approvedRes.duplicateCount} omitidos`,
+            },
+            supabase
+          );
         }
       }
+    } else {
+      await logOrchestratorEvent(
+        {
+          agent: 'PATRICIA',
+          action_type: 'DECISION',
+          cycle_id: cycleId,
+          status: 'COMPLETADO',
+          description: 'No se encontraron prospectos nuevos de Lola pendientes de ingresar al CRM.',
+        },
+        supabase
+      );
     }
   } catch (err: any) {
     console.warn('Orquestador: Advertencia durante la ingestión de candidatos de Lola:', err);
@@ -1109,8 +1432,6 @@ export async function runOrchestratorCycle(client?: any): Promise<OrchestratorCy
 
   // ----------------------------------------------------------------------------
   // ETAPA 3: FLUJO B — TITO (Auditoría Técnica de sitios web)
-  // Audita comercios que TIENEN sitio web y aún NO cuentan con auditoría técnica.
-  // Si no tiene sitio web, Tito NO lo audita y se deja para evaluación directa en Vera.
   // ----------------------------------------------------------------------------
   let businesses: any[] = [];
   try {
@@ -1129,8 +1450,42 @@ export async function runOrchestratorCycle(client?: any): Promise<OrchestratorCy
     let auditsRunCount = 0;
     const maxTito = config.limits.max_tito_audits_per_cycle || 10;
 
+    const needAudit = businesses.filter(
+      (b) =>
+        Boolean(b.website && b.website.trim().length > 3) &&
+        (!Array.isArray(b.audits) || !b.audits.some((a: any) => a.status === 'COMPLETADO' || a.score != null))
+    );
+    const alreadyAudited = businesses.filter(
+      (b) => Array.isArray(b.audits) && b.audits.some((a: any) => a.status === 'COMPLETADO' || a.score != null)
+    );
+    const withoutWeb = businesses.filter((b) => !Boolean(b.website && b.website.trim().length > 3));
+
+    await logOrchestratorEvent(
+      {
+        agent: 'PATRICIA',
+        action_type: 'DECISION',
+        cycle_id: cycleId,
+        status: 'COMPLETADO',
+        description: `Evaluación de prospectos para Tito: ${needAudit.length} con sitio web requieren auditoría, ${alreadyAudited.length} ya cuentan con auditoría técnica vigente, ${withoutWeb.length} no poseen sitio web (se derivan a Vera para Landing Express).`,
+      },
+      supabase
+    );
+
     for (const b of businesses) {
-      if (auditsRunCount >= maxTito) break;
+      if (auditsRunCount >= maxTito) {
+        await logOrchestratorEvent(
+          {
+            agent: 'PATRICIA',
+            action_type: 'OMISION',
+            cycle_id: cycleId,
+            status: 'PENDIENTE',
+            description: `Se alcanzó el límite de ${maxTito} auditorías técnicas de Tito para este ciclo. Quedan prospectos con web pendientes para el próximo ciclo.`,
+            error_or_reason: 'Límite operativo de ciclo alcanzado',
+          },
+          supabase
+        );
+        break;
+      }
 
       const audits = Array.isArray(b.audits) ? b.audits : [];
       const hasCompletedAudit = audits.some((a: any) => a.status === 'COMPLETADO' || a.score != null);
@@ -1158,16 +1513,51 @@ export async function runOrchestratorCycle(client?: any): Promise<OrchestratorCy
           tasksCreatedCount++;
           agentsActiveSet.add('TITO');
 
+          const titoStart = Date.now();
           try {
             const finished = await executeOrchestratorTask(task, supabase);
+            const duration = Date.now() - titoStart;
+
             if (finished.status === 'COMPLETADA') {
               tasksCompletedCount++;
               details.push(`[TITO] Auditoría técnica completada para ${b.name}: Puntaje ${finished.result?.score || 'N/A'}/100.`);
-              // Actualizar audits localmente para que Vera pueda procesarlo en esta misma pasada del ciclo
               b.audits = [{ id: finished.result?.auditId, score: finished.result?.score, ai_insights: {} }];
+
+              await logOrchestratorEvent(
+                {
+                  agent: 'TITO',
+                  action_type: 'AUDITORIA_WEB',
+                  cycle_id: cycleId,
+                  business_id: b.id,
+                  business_name: b.name,
+                  task_id: task.id,
+                  status: 'COMPLETADO',
+                  description: `Tito completó auditoría técnica para ${b.name}: Puntaje ${finished.result?.score || 'N/A'}/100. Problemas detectados: ${finished.result?.issues?.length || 0}.`,
+                  result_summary: `Puntaje: ${finished.result?.score || 'N/A'}/100`,
+                  result_data: finished.result,
+                  duration_ms: duration,
+                },
+                supabase
+              );
             } else if (finished.status === 'FALLIDA') {
               tasksFailedCount++;
               details.push(`[TITO] Falló auditoría de ${b.name}: ${finished.error_message}`);
+
+              await logOrchestratorEvent(
+                {
+                  agent: 'TITO',
+                  action_type: 'AUDITORIA_WEB',
+                  cycle_id: cycleId,
+                  business_id: b.id,
+                  business_name: b.name,
+                  task_id: task.id,
+                  status: 'FALLIDO',
+                  description: `Falló auditoría técnica para ${b.name}: ${finished.error_message}`,
+                  error_or_reason: finished.error_message,
+                  duration_ms: duration,
+                },
+                supabase
+              );
             }
           } catch (err: any) {
             tasksFailedCount++;
@@ -1180,17 +1570,46 @@ export async function runOrchestratorCycle(client?: any): Promise<OrchestratorCy
 
   // ----------------------------------------------------------------------------
   // ETAPA 4: FLUJO B — VERA (Estrategia y Evaluación Comercial)
-  // Evalúa:
-  // a) Negocios CON sitio web que ya tienen auditoría técnica (Tito) y aún NO tienen estrategia de Vera.
-  // b) Negocios SIN sitio web que aún NO tienen estrategia de Vera (desarrollo desde cero).
-  // No analiza prematuramente si la auditoría técnica requerida está pendiente.
   // ----------------------------------------------------------------------------
   if (isFlowActive('flujoB') && businesses.length > 0) {
     let veraRunCount = 0;
     const maxVera = 10;
 
+    const waitingTito = businesses.filter(
+      (b) =>
+        Boolean(b.website && b.website.trim().length > 3) &&
+        (!Array.isArray(b.audits) || b.audits.length === 0)
+    );
+
+    if (waitingTito.length > 0) {
+      await logOrchestratorEvent(
+        {
+          agent: 'PATRICIA',
+          action_type: 'DECISION',
+          cycle_id: cycleId,
+          status: 'PENDIENTE',
+          description: `Vera omitió temporalmente ${waitingTito.length} prospectos porque su auditoría técnica de Tito aún no ha finalizado.`,
+          error_or_reason: 'Esperando auditoría técnica previa de Tito',
+        },
+        supabase
+      );
+    }
+
     for (const b of businesses) {
-      if (veraRunCount >= maxVera) break;
+      if (veraRunCount >= maxVera) {
+        await logOrchestratorEvent(
+          {
+            agent: 'PATRICIA',
+            action_type: 'OMISION',
+            cycle_id: cycleId,
+            status: 'PENDIENTE',
+            description: `Se alcanzó el límite de ${maxVera} análisis comerciales de Vera en este ciclo.`,
+            error_or_reason: 'Límite operativo de ciclo alcanzado',
+          },
+          supabase
+        );
+        break;
+      }
 
       const audits = Array.isArray(b.audits) ? b.audits : [];
       const latestAudit = audits.length > 0 ? audits[0] : null;
@@ -1219,8 +1638,11 @@ export async function runOrchestratorCycle(client?: any): Promise<OrchestratorCy
           tasksCreatedCount++;
           agentsActiveSet.add('VERA');
 
+          const veraStart = Date.now();
           try {
             const finished = await executeOrchestratorTask(task, supabase);
+            const duration = Date.now() - veraStart;
+
             if (finished.status === 'COMPLETADA') {
               tasksCompletedCount++;
               const outcome = finished.result?.commercialOutcomeLabel || finished.result?.commercialOutcome || 'Estrategia formulada';
@@ -1228,9 +1650,42 @@ export async function runOrchestratorCycle(client?: any): Promise<OrchestratorCy
               if (latestAudit.ai_insights) {
                 latestAudit.ai_insights.vera_strategy = finished.result;
               }
+
+              await logOrchestratorEvent(
+                {
+                  agent: 'VERA',
+                  action_type: 'ESTRATEGIA_COMERCIAL',
+                  cycle_id: cycleId,
+                  business_id: b.id,
+                  business_name: b.name,
+                  task_id: task.id,
+                  status: 'COMPLETADO',
+                  description: `Vera formuló estrategia comercial para ${b.name}: Dictamen '${outcome}'. Propuesta: ${finished.result?.bundle?.services?.join(', ') || 'Solución Web'}.`,
+                  result_summary: outcome,
+                  result_data: finished.result,
+                  duration_ms: duration,
+                },
+                supabase
+              );
             } else if (finished.status === 'FALLIDA') {
               tasksFailedCount++;
               details.push(`[VERA] Falló evaluación de ${b.name}: ${finished.error_message}`);
+
+              await logOrchestratorEvent(
+                {
+                  agent: 'VERA',
+                  action_type: 'ESTRATEGIA_COMERCIAL',
+                  cycle_id: cycleId,
+                  business_id: b.id,
+                  business_name: b.name,
+                  task_id: task.id,
+                  status: 'FALLIDO',
+                  description: `Falló evaluación de Vera para ${b.name}: ${finished.error_message}`,
+                  error_or_reason: finished.error_message,
+                  duration_ms: duration,
+                },
+                supabase
+              );
             }
           } catch (err: any) {
             tasksFailedCount++;
@@ -1261,12 +1716,32 @@ export async function runOrchestratorCycle(client?: any): Promise<OrchestratorCy
           tasksCreatedCount++;
           agentsActiveSet.add('VERA');
 
+          const veraStart = Date.now();
           try {
             const finished = await executeOrchestratorTask(task, supabase);
+            const duration = Date.now() - veraStart;
+
             if (finished.status === 'COMPLETADA') {
               tasksCompletedCount++;
               const outcome = finished.result?.commercialOutcomeLabel || finished.result?.commercialOutcome || 'Estrategia formulada';
               details.push(`[VERA] Estrategia sin web completada para ${b.name}: ${outcome}.`);
+
+              await logOrchestratorEvent(
+                {
+                  agent: 'VERA',
+                  action_type: 'ESTRATEGIA_COMERCIAL',
+                  cycle_id: cycleId,
+                  business_id: b.id,
+                  business_name: b.name,
+                  task_id: task.id,
+                  status: 'COMPLETADO',
+                  description: `Vera formuló estrategia para negocio sin web (${b.name}): Dictamen '${outcome}' (Landing Express).`,
+                  result_summary: outcome,
+                  result_data: finished.result,
+                  duration_ms: duration,
+                },
+                supabase
+              );
             } else if (finished.status === 'FALLIDA') {
               tasksFailedCount++;
               details.push(`[VERA] Falló evaluación sin web de ${b.name}: ${finished.error_message}`);
@@ -1282,8 +1757,6 @@ export async function runOrchestratorCycle(client?: any): Promise<OrchestratorCy
 
   // ----------------------------------------------------------------------------
   // ETAPA 5: FLUJO C — BRUNO (Demos Comerciales para Oportunidades Claras)
-  // Recibe ÚNICAMENTE los prospectos evaluados por Vera con OPORTUNIDAD_CLARA.
-  // Respeta límites y requiere Autorización de CEO en el visor.
   // ----------------------------------------------------------------------------
   if (isFlowActive('flujoC')) {
     try {
@@ -1292,6 +1765,17 @@ export async function runOrchestratorCycle(client?: any): Promise<OrchestratorCy
 
       let demosCreated = 0;
       const maxBruno = config.limits.max_bruno_demos_per_cycle || 3;
+
+      await logOrchestratorEvent(
+        {
+          agent: 'PATRICIA',
+          action_type: 'DECISION',
+          cycle_id: cycleId,
+          status: 'COMPLETADO',
+          description: `Evaluación de Bruno: Se identificaron ${eligible.length} prospectos con oportunidad comercial clara calificados para demo conceptual.`,
+        },
+        supabase
+      );
 
       for (const item of eligible) {
         if (demosCreated >= maxBruno) break;
@@ -1321,11 +1805,31 @@ export async function runOrchestratorCycle(client?: any): Promise<OrchestratorCy
             tasksCreatedCount++;
             agentsActiveSet.add('BRUNO');
 
+            const brunoStart = Date.now();
             try {
               const finished = await executeOrchestratorTask(task, supabase);
+              const duration = Date.now() - brunoStart;
+
               if (finished.status === 'ESPERANDO_APROBACION') {
                 approvalsNeededCount++;
                 details.push(`[BRUNO] Demo conceptual creada para ${item.business.name}. Requiere Autorización de CEO en el visor.`);
+
+                await logOrchestratorEvent(
+                  {
+                    agent: 'BRUNO',
+                    action_type: 'DEMO_CONCEPTUAL',
+                    cycle_id: cycleId,
+                    business_id: item.business.id,
+                    business_name: item.business.name,
+                    task_id: task.id,
+                    status: 'ESPERANDO_APROBACION',
+                    description: `Bruno generó propuesta conceptual para ${item.business.name}. Requiere Autorización de CEO en el visor.`,
+                    result_summary: 'Requiere Autorización de CEO',
+                    result_data: finished.result,
+                    duration_ms: duration,
+                  },
+                  supabase
+                );
               } else if (finished.status === 'COMPLETADA') {
                 tasksCompletedCount++;
                 details.push(`[BRUNO] Demo lista para ${item.business.name}.`);
@@ -1347,8 +1851,6 @@ export async function runOrchestratorCycle(client?: any): Promise<OrchestratorCy
 
   // ----------------------------------------------------------------------------
   // ETAPA 6: FLUJO D — CATA (Contacto Comercial y Seguimiento)
-  // Prepara borradores personalizados para oportunidades con demo aprobada por el CEO.
-  // Nunca envía mensajes de forma automática.
   // ----------------------------------------------------------------------------
   if (isFlowActive('flujoD')) {
     try {
@@ -1358,6 +1860,17 @@ export async function runOrchestratorCycle(client?: any): Promise<OrchestratorCy
 
       let draftsPrepared = 0;
       const maxCata = 5;
+
+      await logOrchestratorEvent(
+        {
+          agent: 'PATRICIA',
+          action_type: 'DECISION',
+          cycle_id: cycleId,
+          status: 'COMPLETADO',
+          description: `Evaluación de Cata: Se identificaron ${opps.length} oportunidades con propuesta validada para preparar contacto comercial.`,
+        },
+        supabase
+      );
 
       for (const opp of opps) {
         if (draftsPrepared >= maxCata) break;
@@ -1389,11 +1902,31 @@ export async function runOrchestratorCycle(client?: any): Promise<OrchestratorCy
             tasksCreatedCount++;
             agentsActiveSet.add('CATA');
 
+            const cataStart = Date.now();
             try {
               const finished = await executeOrchestratorTask(task, supabase);
+              const duration = Date.now() - cataStart;
+
               if (finished.status === 'COMPLETADA') {
                 tasksCompletedCount++;
                 details.push(`[CATA] Borradores comerciales preparados para ${opp.business.name} (WhatsApp y Correo).`);
+
+                await logOrchestratorEvent(
+                  {
+                    agent: 'CATA',
+                    action_type: 'BORRADOR_COMERCIAL',
+                    cycle_id: cycleId,
+                    business_id: opp.business.id,
+                    business_name: opp.business.name,
+                    task_id: task.id,
+                    status: 'COMPLETADO',
+                    description: `Cata preparó borradores personalizados de WhatsApp y correo para ${opp.business.name} (sin auto-envío).`,
+                    result_summary: 'Borradores listos',
+                    result_data: finished.result,
+                    duration_ms: duration,
+                  },
+                  supabase
+                );
               } else if (finished.status === 'FALLIDA') {
                 tasksFailedCount++;
               }
@@ -1411,6 +1944,8 @@ export async function runOrchestratorCycle(client?: any): Promise<OrchestratorCy
   // ----------------------------------------------------------------------------
   // ETAPA 7: Consolidar Resumen del Ciclo
   // ----------------------------------------------------------------------------
+  const durationMs = Date.now() - cycleStartTime;
+
   const summary: OrchestratorCycleSummary = {
     cycle_id: cycleId,
     timestamp,
@@ -1423,6 +1958,27 @@ export async function runOrchestratorCycle(client?: any): Promise<OrchestratorCy
     agents_active: Array.from(agentsActiveSet),
     details: details.length > 0 ? details : ['Sin novedades operativas pendientes.'],
   };
+
+  // Registrar fin de ciclo en Bitácora
+  await logOrchestratorEvent(
+    {
+      agent: 'PATRICIA',
+      action_type: 'CICLO_FIN',
+      cycle_id: cycleId,
+      status: 'COMPLETADO',
+      description: `Ciclo finalizado exitosamente. ${tasksCompletedCount} tareas completadas, ${tasksCreatedCount} creadas, ${approvalsNeededCount} requieren Autorización de CEO.`,
+      duration_ms: durationMs,
+      result_summary: `${tasksCompletedCount} completadas, ${tasksCreatedCount} creadas, ${approvalsNeededCount} requieren CEO`,
+      result_data: {
+        tasksProcessed: pendingTasks.length + tasksCreatedCount,
+        tasksCompleted: tasksCompletedCount,
+        tasksCreated: tasksCreatedCount,
+        approvalsNeeded: approvalsNeededCount,
+        durationMs,
+      },
+    },
+    supabase
+  );
 
   // 6. Actualizar timestamp de última ejecución
   await updateOrchestratorConfig(
@@ -1513,6 +2069,12 @@ export async function getOrchestratorOverview(client?: any): Promise<{
       lastTask: string | null;
     }
   > = {
+    PATRICIA: {
+      name: 'Patricia',
+      role: 'Directora de Operaciones & Orquestadora Central',
+      state: 'DISPONIBLE',
+      lastTask: 'Supervisión y control de flujo activo',
+    },
     LOLA: {
       name: 'Lola',
       role: 'Prospección en Google Places',

@@ -37,6 +37,7 @@ const AGENTS: { id: OrchestratorAgentName; name: string; icon: any; role: string
 ];
 
 const TASK_TYPES_BY_AGENT: Record<OrchestratorAgentName, { type: OrchestratorTaskType; label: string }[]> = {
+  PATRICIA: [{ type: 'APPROVAL_REVIEW', label: 'Revisión y Coordinación Operativa' }],
   LOLA: [{ type: 'LOLA_DISCOVERY', label: 'Búsqueda de Prospectos (Google Places)' }],
   TITO: [{ type: 'TITO_AUDIT', label: 'Auditoría Técnica de Sitio Web' }],
   VERA: [{ type: 'VERA_STRATEGY', label: 'Evaluación y Estrategia Comercial' }],

@@ -379,7 +379,7 @@ export interface ClientDemo {
 // ORQUESTADOR — DIRECTOR DE OPERACIONES
 // ==============================================================================
 
-export type OrchestratorAgentName = 'LOLA' | 'TITO' | 'VERA' | 'BRUNO' | 'CATA';
+export type OrchestratorAgentName = 'PATRICIA' | 'LOLA' | 'TITO' | 'VERA' | 'BRUNO' | 'CATA';
 
 export type OrchestratorTaskType =
   | 'LOLA_DISCOVERY'
@@ -467,6 +467,44 @@ export interface OrchestratorCycleSummary {
   approvals_needed: number;
   agents_active: OrchestratorAgentName[];
   details: string[];
+}
+
+export type OrchestratorEventStatus =
+  | 'INICIADO'
+  | 'COMPLETADO'
+  | 'FALLIDO'
+  | 'PENDIENTE'
+  | 'ESPERANDO_APROBACION';
+
+export interface OrchestratorLog {
+  id: string;
+  created_at: string;
+  agent: OrchestratorAgentName;
+  action_type: string;
+  business_id?: string | null;
+  business_name?: string | null;
+  task_id?: string | null;
+  cycle_id: string;
+  description: string;
+  result_summary?: string | null;
+  result_data?: Record<string, any>;
+  status: OrchestratorEventStatus;
+  error_or_reason?: string | null;
+  duration_ms?: number | null;
+  created_by?: string;
+  // Joined convenience field
+  business?: Business;
+}
+
+export interface OrchestratorLogFilters {
+  cycle_id?: string;
+  agent?: OrchestratorAgentName | 'TODOS';
+  status?: OrchestratorEventStatus | 'TODOS';
+  search?: string;
+  date_from?: string;
+  date_to?: string;
+  limit?: number;
+  offset?: number;
 }
 
 

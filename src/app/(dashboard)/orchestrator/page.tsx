@@ -33,6 +33,7 @@ import { Topbar } from '@/components/layout/Topbar';
 import { CreateTaskModal } from '@/components/orchestrator/CreateTaskModal';
 import { TaskDetailModal } from '@/components/orchestrator/TaskDetailModal';
 import { ConfigLimitsModal } from '@/components/orchestrator/ConfigLimitsModal';
+import { ActivityLogView } from '@/components/orchestrator/ActivityLogView';
 import { DemoBadge } from '@/components/common/DemoBadge';
 import { DemoNoticeModal } from '@/components/common/DemoNoticeModal';
 import { useUserRole } from '@/lib/auth/useUserRole';
@@ -63,6 +64,7 @@ export default function OrchestratorPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isCycling, setIsCycling] = useState(false);
   const [cycleNotice, setCycleNotice] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'mando' | 'bitacora'>('mando');
 
   // Filters
   const [statusFilter, setStatusFilter] = useState<string>('TODOS');
@@ -376,8 +378,42 @@ export default function OrchestratorPage() {
           )}
         </div>
 
-        {/* 4 Tarjetas de Métricas Principales */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Navigation Tabs: Centro de Mando vs Bitácora de Operaciones */}
+        <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
+          <button
+            onClick={() => setActiveTab('mando')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              activeTab === 'mando'
+                ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 shadow-sm'
+                : 'text-slate-400 hover:text-white hover:bg-slate-900 border border-transparent'
+            }`}
+          >
+            <Network className="w-4 h-4" />
+            <span>Centro de Mando</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('bitacora')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              activeTab === 'bitacora'
+                ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 shadow-sm'
+                : 'text-slate-400 hover:text-white hover:bg-slate-900 border border-transparent'
+            }`}
+          >
+            <Activity className="w-4 h-4" />
+            <span>Bitácora de Operaciones</span>
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-indigo-500/20 text-indigo-300 font-mono">
+              Auditoría
+            </span>
+          </button>
+        </div>
+
+        {activeTab === 'bitacora' ? (
+          <ActivityLogView onRefreshTasks={fetchData} />
+        ) : (
+          <>
+            {/* 4 Tarjetas de Métricas Principales */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="p-4 rounded-2xl border border-[#162035] bg-[#0c1220]">
             <div className="flex items-center justify-between text-slate-400 mb-2">
               <span className="text-xs font-medium uppercase tracking-wider">Tareas Pendientes</span>
@@ -808,7 +844,9 @@ export default function OrchestratorPage() {
             ))}
           </div>
         </div>
-      </div>
+      </>
+      )}
+    </div>
 
       {/* Modals */}
       <CreateTaskModal
