@@ -169,7 +169,7 @@ export function TaskDetailModal({
             <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-3">
               <div className="flex items-center gap-2 text-amber-300 text-xs font-bold">
                 <ShieldCheck className="h-4 w-4" />
-                <span>Esta tarea requiere intervención y decisión de Daro o Julieta</span>
+                <span>Esta tarea Requiere Autorización de CEO</span>
               </div>
               <p className="text-xs text-slate-300 leading-relaxed">
                 El agente completó su preparación (ej. Demo de Bruno o Estrategia de Vera), pero

@@ -26,7 +26,7 @@ export const TEAM_MEMBERS: AgentMember[] = [
     department: 'Dirección y Operaciones',
     responsibility: 'Coordinar el flujo de trabajo integral de la agencia: asignar tareas a los agentes, supervisar resultados, encadenar procesos y asegurar que las decisiones críticas pasen por aprobación humana.',
     personality: 'Estratégica, resolutiva, impecable y rigurosa.',
-    quote: 'El equipo trabaja sincronizado; las decisiones importantes las toman Daro y Julieta.',
+    quote: 'El equipo trabaja sincronizado; las decisiones importantes requieren Autorización de CEO.',
     avatar: '/avatars/patricia.png',
     status: 'operativo',
     color: '#0ea5e9',

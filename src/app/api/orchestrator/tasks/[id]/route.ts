@@ -85,7 +85,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
         supabase
       );
     } else if (action === 'APPROVE') {
-      const approver = user.email?.split('@')[0] || 'Daro / Julieta';
+      const approver = user.email?.split('@')[0] || 'CEO';
       updatedTask = await handleHumanApproval(
         params.id,
         true,
@@ -94,7 +94,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
         supabase
       );
     } else if (action === 'REJECT') {
-      const approver = user.email?.split('@')[0] || 'Daro / Julieta';
+      const approver = user.email?.split('@')[0] || 'CEO';
       updatedTask = await handleHumanApproval(
         params.id,
         false,

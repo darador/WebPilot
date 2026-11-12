@@ -71,7 +71,7 @@ export default function TeamPage() {
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 px-2.5 py-0.5 text-[10px] font-mono font-semibold text-cyan-300">
                   <Bot className="h-3 w-3 text-cyan-400" />
-                  CENTRO DE OPERACIONES • DARO & JULIETA
+                  CENTRO DE OPERACIONES • DIRECCIÓN & CEO
                 </span>
               </div>
               <h2 className="mt-2 text-xl font-bold tracking-tight text-white">

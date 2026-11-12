@@ -101,7 +101,7 @@ export function ConfigLimitsModal({
             <ShieldAlert className="h-4 w-4 text-cyan-400 shrink-0 mt-0.5" />
             <span>
               Estos límites protegen los costos de API y evitan sobrecargar el pipeline comercial
-              sin supervisión de Daro o Julieta.
+              sin Autorización de CEO.
             </span>
           </div>
 

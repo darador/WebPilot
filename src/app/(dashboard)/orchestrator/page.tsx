@@ -292,7 +292,7 @@ export default function OrchestratorPage() {
                     )}
                   </div>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Patricia mantiene el equipo activo: detecta tareas, asigna trabajo a Lola, Tito, Vera, Bruno y Cata, y protege las decisiones de Daro y Julieta.
+                    Patricia mantiene el equipo activo: detecta tareas, asigna trabajo a Lola, Tito, Vera, Bruno y Cata, y protege las decisiones con supervisión de CEO.
                   </p>
                 </div>
               </div>
@@ -425,8 +425,8 @@ export default function OrchestratorPage() {
                   Bandeja de Aprobaciones Pendientes ({pendingApprovals.length})
                 </h3>
               </div>
-              <span className="text-[11px] text-amber-300/80">
-                Solo Daro o Julieta pueden autorizar estas acciones
+              <span className="text-[11px] text-amber-300 font-semibold tracking-wide uppercase px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">
+                Requiere Autorización de CEO
               </span>
             </div>
 

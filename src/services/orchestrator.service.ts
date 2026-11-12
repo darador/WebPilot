@@ -124,7 +124,7 @@ const INITIAL_DEMO_TASKS: OrchestratorTask[] = [
     },
     retry_count: 0,
     max_retries: 2,
-    next_action: 'Propuesta conceptual generada. Espera aprobación humana de Daro o Julieta.',
+    next_action: 'Propuesta conceptual generada. Requiere Autorización de CEO.',
     requires_human_approval: true,
     approval_status: 'PENDIENTE',
     created_at: new Date(Date.now() - 3600000 * 1.5).toISOString(),
@@ -781,7 +781,7 @@ export async function executeOrchestratorTask(
           // La demo creada siempre requiere aprobación humana antes de pasar a Cata
           requiresApproval = true;
           finalStatus = 'ESPERANDO_APROBACION';
-          nextActionMsg = `Demo conceptual generada por Bruno. Esperando revisión y aprobación de Daro o Julieta en el visor.`;
+          nextActionMsg = `Demo conceptual generada por Bruno. Requiere Autorización de CEO en el visor.`;
         }
         break;
       }

@@ -349,7 +349,7 @@ function BrunoContent() {
             <div className="p-4 rounded-xl border border-amber-800/40 bg-amber-950/20 text-xs text-amber-200 space-y-1">
               <strong className="block text-amber-300 font-semibold">Política de Publicación Definitiva:</strong>
               <p className="text-[11px] text-amber-200/90">
-                WebPilot AI no realiza publicación automática a dominios de clientes sin previa validación humana y confirmación de los contenidos por parte de Daro y Julieta.
+                WebPilot AI no realiza publicación automática a dominios de clientes sin previa validación humana y confirmación de los contenidos: Requiere Autorización de CEO.
               </p>
             </div>
           </div>

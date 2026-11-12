@@ -54,7 +54,7 @@ export function DemoNoticeModal({
           </p>
 
           <p className="text-[11px] text-slate-400">
-            Para realizar acciones operativas reales, iniciá sesión con las credenciales de Daro o Julieta.
+            Para realizar acciones operativas reales, se requiere Autorización de CEO o una cuenta administrativa autorizada.
           </p>
         </div>
 
