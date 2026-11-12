@@ -34,9 +34,14 @@ import { DemoPreviewModal } from '@/components/bruno/DemoPreviewModal';
 import { ClientDemo, DemoStatus } from '@/types/database.types';
 import { TEAM_MEMBERS } from '@/lib/constants/team';
 import { formatDate } from '@/lib/utils';
+import { useUserRole } from '@/lib/auth/useUserRole';
+import { DemoBadge } from '@/components/common/DemoBadge';
+import { DemoNoticeModal } from '@/components/common/DemoNoticeModal';
 
 function BrunoContent() {
   const brunoInfo = TEAM_MEMBERS.find((m) => m.id === 'bruno') || TEAM_MEMBERS[3];
+  const { isDemo } = useUserRole();
+  const [demoNoticeAction, setDemoNoticeAction] = useState<string | null>(null);
 
   const [demos, setDemos] = useState<ClientDemo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -205,7 +210,13 @@ function BrunoContent() {
 
             <div className="flex items-center gap-2.5 shrink-0">
               <button
-                onClick={() => setIsCreateOpen(true)}
+                onClick={() => {
+                  if (isDemo) {
+                    setDemoNoticeAction('generar propuestas comerciales o demos');
+                    return;
+                  }
+                  setIsCreateOpen(true);
+                }}
                 className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-600 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-orange-500/25 hover:from-orange-400 hover:to-amber-500 transition-all hover:scale-[1.02]"
               >
                 <Sparkles className="h-4 w-4" />
@@ -405,7 +416,13 @@ function BrunoContent() {
                   Seleccioná un negocio desde el botón &ldquo;Crear Nueva Demo&rdquo; para que Bruno prepare la primera muestra web conceptual.
                 </p>
                 <button
-                  onClick={() => setIsCreateOpen(true)}
+                  onClick={() => {
+                    if (isDemo) {
+                      setDemoNoticeAction('generar propuestas comerciales o demos');
+                      return;
+                    }
+                    setIsCreateOpen(true);
+                  }}
                   className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2 text-xs font-semibold text-white hover:bg-orange-500 transition-colors shadow-sm"
                 >
                   <Sparkles className="h-3.5 w-3.5" />
@@ -493,7 +510,13 @@ function BrunoContent() {
                       )}
 
                       <button
-                        onClick={() => setDemoToDelete(d)}
+                        onClick={() => {
+                          if (isDemo) {
+                            setDemoNoticeAction('eliminar propuestas comerciales');
+                            return;
+                          }
+                          setDemoToDelete(d);
+                        }}
                         className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-950/20 transition-colors"
                         title="Eliminar demo"
                       >
@@ -537,6 +560,12 @@ function BrunoContent() {
         isProcessing={isDeleting}
         onCancel={() => setDemoToDelete(null)}
         onConfirm={handleDeleteConfirm}
+      />
+
+      <DemoNoticeModal
+        isOpen={Boolean(demoNoticeAction)}
+        onClose={() => setDemoNoticeAction(null)}
+        actionName={demoNoticeAction || ''}
       />
     </div>
   );

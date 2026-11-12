@@ -8,6 +8,8 @@ import { Topbar } from '@/components/layout/Topbar';
 import { ProspectsTable } from '@/components/prospects/ProspectsTable';
 import { ProspectModal } from '@/components/prospects/ProspectModal';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { useUserRole } from '@/lib/auth/useUserRole';
+import { DemoNoticeModal } from '@/components/common/DemoNoticeModal';
 import {
   getProspects,
   deleteProspect,
@@ -17,6 +19,8 @@ import { Business } from '@/types/database.types';
 
 function ProspectsContent() {
   const searchParams = useSearchParams();
+  const { isDemo } = useUserRole();
+  const [showDemoNotice, setShowDemoNotice] = useState(false);
 
   // Prospects state
   const [prospects, setProspects] = useState<Business[]>([]);
@@ -45,10 +49,14 @@ function ProspectsContent() {
   // Open modal if URL query param ?action=new
   useEffect(() => {
     if (searchParams.get('action') === 'new') {
+      if (isDemo) {
+        setShowDemoNotice(true);
+        return;
+      }
       setIsModalOpen(true);
       setProspectToEdit(null);
     }
-  }, [searchParams]);
+  }, [searchParams, isDemo]);
 
   // Load distinct filters
   useEffect(() => {
@@ -91,16 +99,28 @@ function ProspectsContent() {
   };
 
   const handleCreateNew = () => {
+    if (isDemo) {
+      setShowDemoNotice(true);
+      return;
+    }
     setProspectToEdit(null);
     setIsModalOpen(true);
   };
 
   const handleEdit = (prospect: Business) => {
+    if (isDemo) {
+      setShowDemoNotice(true);
+      return;
+    }
     setProspectToEdit(prospect);
     setIsModalOpen(true);
   };
 
   const handleDeletePrompt = (prospect: Business) => {
+    if (isDemo) {
+      setShowDemoNotice(true);
+      return;
+    }
     setProspectToDelete(prospect);
   };
 
@@ -214,6 +234,13 @@ function ProspectsContent() {
         isProcessing={isDeleting}
         onCancel={() => setProspectToDelete(null)}
         onConfirm={handleConfirmDelete}
+      />
+
+      {/* Modal Informativo Modo Demostración */}
+      <DemoNoticeModal
+        isOpen={showDemoNotice}
+        onClose={() => setShowDemoNotice(false)}
+        actionName="crear, editar o eliminar negocios del directorio"
       />
     </div>
   );

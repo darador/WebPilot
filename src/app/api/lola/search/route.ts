@@ -51,12 +51,19 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     // 1. Verificación básica de sesión para Daro y Julieta (vía Bearer token o cookie)
-    const { user, supabase } = await getAuthenticatedUser(req);
+    const { user, supabase, isDemo } = await getAuthenticatedUser(req);
 
     if (!user) {
       return NextResponse.json(
         { error: 'Sesión no iniciada. Por favor iniciá sesión para operar a Lola.' },
         { status: 401 }
+      );
+    }
+
+    if (isDemo) {
+      return NextResponse.json(
+        { error: 'Acción no permitida: Estás navegando con una cuenta de demostración en modo solo lectura.' },
+        { status: 403 }
       );
     }
 

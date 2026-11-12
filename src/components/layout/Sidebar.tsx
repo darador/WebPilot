@@ -24,6 +24,9 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
+import { useUserRole } from '@/lib/auth/useUserRole';
+import { DemoBadge } from '@/components/common/DemoBadge';
+import { Eye } from 'lucide-react';
 
 const NAV_ITEMS = [
   {
@@ -110,6 +113,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const { isDemo } = useUserRole();
 
   useEffect(() => {
     const supabase = createClient();
@@ -200,18 +204,39 @@ export function Sidebar() {
 
       {/* Footer / User Session */}
       <div className="border-t border-[#1a2336] p-3 space-y-2 bg-[#070b14]">
-        <div className="flex items-center gap-3 rounded-lg px-2.5 py-2 bg-[#0d1424] border border-[#1a253d]">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-cyan-950 border border-cyan-700 text-cyan-300 text-xs font-bold">
-            {userEmail ? userEmail.slice(0, 2).toUpperCase() : 'WP'}
+        {isDemo && (
+          <div className="px-1 pb-1">
+            <DemoBadge variant="compact" className="w-full justify-center" />
+          </div>
+        )}
+
+        <div className={`flex items-center gap-3 rounded-lg px-2.5 py-2 border ${
+          isDemo
+            ? 'bg-amber-500/5 border-amber-500/30'
+            : 'bg-[#0d1424] border-[#1a253d]'
+        }`}>
+          <div className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${
+            isDemo
+              ? 'bg-amber-950 border border-amber-700 text-amber-300'
+              : 'bg-cyan-950 border border-cyan-700 text-cyan-300'
+          }`}>
+            {isDemo ? 'DM' : userEmail ? userEmail.slice(0, 2).toUpperCase() : 'WP'}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium text-slate-200 truncate">
-              {userEmail || 'Operador WebPilot'}
+              {userEmail || (isDemo ? 'demo@darador.com' : 'Operador WebPilot')}
             </p>
-            <div className="flex items-center gap-1 text-[10px] text-emerald-400">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Sesión activa</span>
-            </div>
+            {isDemo ? (
+              <div className="flex items-center gap-1 text-[10px] text-amber-400">
+                <Eye className="h-3 w-3" />
+                <span>Solo Lectura</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1 text-[10px] text-emerald-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Sesión activa</span>
+              </div>
+            )}
           </div>
         </div>
 

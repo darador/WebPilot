@@ -130,42 +130,22 @@ export default function LoginPage() {
             </div>
           </div>
 
+        {/* Submit */}
           <button
             type="submit"
             disabled={isLoading}
             className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-cyan-500/25 hover:from-cyan-400 hover:to-blue-500 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
           >
             <span>
-              {isLoading
-                ? 'Autenticando...'
-                : isSignUp
-                ? 'Registrar Usuario'
-                : 'Iniciar Sesión'}
+              {isLoading ? 'Autenticando...' : 'Iniciar Sesión'}
             </span>
             <ArrowRight className="h-3.5 w-3.5" />
           </button>
         </form>
 
-        {/* Switch Sign in / Sign up */}
-        <div className="mt-6 text-center border-t border-[#1a2336] pt-4">
-          <button
-            type="button"
-            onClick={() => {
-              setIsSignUp(!isSignUp);
-              setErrorMessage(null);
-              setSuccessMessage(null);
-            }}
-            className="text-xs text-slate-400 hover:text-cyan-400 transition-colors"
-          >
-            {isSignUp
-              ? '¿Ya tenés una cuenta? Iniciar Sesión'
-              : '¿Primera vez en WebPilot? Crear cuenta interna'}
-          </button>
-        </div>
-
         <div className="mt-6 flex items-center justify-center gap-1.5 text-[11px] text-slate-500">
           <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
-          <span>Acceso seguro protegido con Supabase Auth & RLS</span>
+          <span>Acceso privado protegido con Supabase Auth & RLS</span>
         </div>
       </div>
     </div>

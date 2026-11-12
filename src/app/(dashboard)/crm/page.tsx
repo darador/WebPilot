@@ -8,8 +8,12 @@ import { KanbanBoard } from '@/components/crm/KanbanBoard';
 import { ProspectModal } from '@/components/prospects/ProspectModal';
 import { getPipelineData } from '@/services/crm.service';
 import { Business, CRMStage } from '@/types/database.types';
+import { useUserRole } from '@/lib/auth/useUserRole';
+import { DemoNoticeModal } from '@/components/common/DemoNoticeModal';
 
 export default function CrmPage() {
+  const { isDemo } = useUserRole();
+  const [showDemoNotice, setShowDemoNotice] = useState(false);
   const [pipeline, setPipeline] = useState<Record<CRMStage, Business[]>>({
     NUEVO: [],
     AUDITADO: [],
@@ -79,7 +83,7 @@ export default function CrmPage() {
             </Link>
 
             <button
-              onClick={() => setIsNewModalOpen(true)}
+              onClick={() => (isDemo ? setShowDemoNotice(true) : setIsNewModalOpen(true))}
               className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-md shadow-cyan-500/20 hover:from-cyan-400 hover:to-blue-500 transition-all"
             >
               <Plus className="h-3.5 w-3.5" />
@@ -103,6 +107,13 @@ export default function CrmPage() {
         onSuccess={() => {
           loadPipeline();
         }}
+      />
+
+      {/* Modal Informativo Modo Demostración */}
+      <DemoNoticeModal
+        isOpen={showDemoNotice}
+        onClose={() => setShowDemoNotice(false)}
+        actionName="crear nuevos negocios o alterar el pipeline del CRM"
       />
     </div>
   );

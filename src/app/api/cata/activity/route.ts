@@ -7,12 +7,19 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
-    const { user, supabase } = await getAuthenticatedUser(req);
+    const { user, supabase, isDemo } = await getAuthenticatedUser(req);
 
     if (!user) {
       return NextResponse.json(
         { error: 'Sesión no iniciada. Por favor iniciá sesión para registrar actividad con Cata.' },
         { status: 401 }
+      );
+    }
+
+    if (isDemo) {
+      return NextResponse.json(
+        { error: 'Acción no permitida: Estás navegando con una cuenta de demostración en modo solo lectura.' },
+        { status: 403 }
       );
     }
 

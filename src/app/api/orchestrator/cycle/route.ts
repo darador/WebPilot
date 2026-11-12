@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     let clientToUse: any = null;
 
     if (!isCronAuthorized) {
-      const { user, supabase } = await getAuthenticatedUser(req);
+      const { user, supabase, isDemo } = await getAuthenticatedUser(req);
       if (!user) {
         return NextResponse.json(
           {
@@ -23,6 +23,15 @@ export async function POST(req: NextRequest) {
             error: 'No autorizado. Se requiere sesión de operador o token CRON.',
           },
           { status: 401 }
+        );
+      }
+      if (isDemo) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Acción no permitida: Estás navegando con una cuenta de demostración en modo solo lectura.',
+          },
+          { status: 403 }
         );
       }
       clientToUse = supabase;

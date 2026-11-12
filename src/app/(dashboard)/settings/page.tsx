@@ -4,8 +4,11 @@ import { useState, useEffect } from 'react';
 import { Settings, Database, ShieldCheck, Key, CheckCircle2, Copy, AlertCircle, Wifi } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { createClient } from '@/lib/supabase/client';
+import { useUserRole } from '@/lib/auth/useUserRole';
+import { DemoBadge } from '@/components/common/DemoBadge';
 
 export default function SettingsPage() {
+  const { isDemo } = useUserRole();
   const [copied, setCopied] = useState(false);
   const [dbStatus, setDbStatus] = useState<'checking' | 'connected' | 'error'>('checking');
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
@@ -53,6 +56,8 @@ export default function SettingsPage() {
       />
 
       <div className="p-6 max-w-4xl mx-auto space-y-6">
+        {isDemo && <DemoBadge variant="full" />}
+
         {/* Supabase Status Card */}
         <div className="rounded-xl border border-[#1a2336] bg-[#0c1220] p-6 shadow-xl">
           <div className="flex items-center justify-between border-b border-[#172238] pb-4">

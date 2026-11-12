@@ -25,12 +25,16 @@ import {
 import { Business, Audit, AuditIssue } from '@/types/database.types';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
+import { useUserRole } from '@/lib/auth/useUserRole';
+import { DemoNoticeModal } from '@/components/common/DemoNoticeModal';
 
 interface BusinessWithAudit extends Business {
   latestAudit?: Audit | null;
 }
 
 export default function TitoAgentPage() {
+  const { isDemo } = useUserRole();
+  const [showDemoNotice, setShowDemoNotice] = useState(false);
   const [activeTab, setActiveTab] = useState<'withWeb' | 'withoutWeb'>('withWeb');
   const [withWebList, setWithWebList] = useState<BusinessWithAudit[]>([]);
   const [withoutWebList, setWithoutWebList] = useState<Business[]>([]);
@@ -110,6 +114,10 @@ export default function TitoAgentPage() {
 
   const handleRunAudit = async () => {
     if (selectedIds.length === 0 || isAuditing) return;
+    if (isDemo) {
+      setShowDemoNotice(true);
+      return;
+    }
 
     setIsAuditing(true);
     setAuditFeedback(null);
@@ -743,6 +751,13 @@ export default function TitoAgentPage() {
           </div>
         </div>
       )}
+
+      {/* Modal Informativo Modo Demostración */}
+      <DemoNoticeModal
+        isOpen={showDemoNotice}
+        onClose={() => setShowDemoNotice(false)}
+        actionName="ejecutar auditorías técnicas con Tito"
+      />
     </div>
   );
 }

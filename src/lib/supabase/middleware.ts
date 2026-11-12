@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { isDemoUser, DEMO_FORBIDDEN_MESSAGE } from '@/lib/auth/roles';
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -55,6 +56,21 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.json(
         { error: 'No autorizado. Sesión requerida para acceder a WebPilot AI.' },
         { status: 401 }
+      );
+    }
+
+    // PROTECCIÓN DE MODO DEMO: Cualquier petición mutadora (POST, PATCH, PUT, DELETE) es rechazada con 403
+    const method = request.method.toUpperCase();
+    const isMutation = ['POST', 'PATCH', 'PUT', 'DELETE'].includes(method);
+
+    if (user && isDemoUser(user) && isMutation) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: DEMO_FORBIDDEN_MESSAGE,
+          isDemo: true,
+        },
+        { status: 403 }
       );
     }
 

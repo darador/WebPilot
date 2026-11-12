@@ -50,6 +50,8 @@ import { CRMStage } from '@/types/database.types';
 import { CRM_STAGES } from '@/lib/constants/crm';
 import { createClient } from '@/lib/supabase/client';
 import { formatCurrency, formatDate, buildGoogleMapsUrl } from '@/lib/utils';
+import { useUserRole } from '@/lib/auth/useUserRole';
+import { DemoNoticeModal } from '@/components/common/DemoNoticeModal';
 
 async function fetchWithAuth(url: string, options: RequestInit = {}) {
   const supabase = createClient();
@@ -69,6 +71,8 @@ async function fetchWithAuth(url: string, options: RequestInit = {}) {
 }
 
 export default function CataSalesPage() {
+  const { isDemo } = useUserRole();
+  const [showDemoNotice, setShowDemoNotice] = useState(false);
   const [activeTab, setActiveTab] = useState<'opportunities' | 'followups' | 'pipeline'>('opportunities');
   const [opportunities, setOpportunities] = useState<CataOpportunity[]>([]);
   const [metrics, setMetrics] = useState<CataMetrics | null>(null);
@@ -246,6 +250,10 @@ export default function CataSalesPage() {
   // Guardar actividad de Cata
   const handleSaveActivity = async () => {
     if (!selectedOppForActivity || !activityForm.summary.trim() || isSavingActivity) return;
+    if (isDemo) {
+      setShowDemoNotice(true);
+      return;
+    }
     setIsSavingActivity(true);
 
     try {
@@ -1612,6 +1620,13 @@ export default function CataSalesPage() {
           </div>
         </div>
       )}
+
+      {/* Modal Informativo Modo Demostración */}
+      <DemoNoticeModal
+        isOpen={showDemoNotice}
+        onClose={() => setShowDemoNotice(false)}
+        actionName="registrar actividades comerciales o actualizar etapas en CRM con Cata"
+      />
     </div>
   );
 }

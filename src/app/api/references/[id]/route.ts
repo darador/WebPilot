@@ -9,11 +9,21 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { user, supabase } = await getAuthenticatedUser(req);
+    const { user, supabase, isDemo } = await getAuthenticatedUser(req);
     if (!user) {
       return NextResponse.json(
         { success: false, error: 'Sesión no iniciada. Por favor iniciá sesión.' },
         { status: 401 }
+      );
+    }
+
+    if (isDemo) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Acción no permitida: Estás navegando con una cuenta de demostración en modo solo lectura.',
+        },
+        { status: 403 }
       );
     }
 
@@ -34,11 +44,21 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { user, supabase } = await getAuthenticatedUser(req);
+    const { user, supabase, isDemo } = await getAuthenticatedUser(req);
     if (!user) {
       return NextResponse.json(
         { success: false, error: 'Sesión no iniciada. Por favor iniciá sesión.' },
         { status: 401 }
+      );
+    }
+
+    if (isDemo) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Acción no permitida: Estás navegando con una cuenta de demostración en modo solo lectura.',
+        },
+        { status: 403 }
       );
     }
 

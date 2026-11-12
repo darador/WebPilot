@@ -33,6 +33,9 @@ import { Topbar } from '@/components/layout/Topbar';
 import { CreateTaskModal } from '@/components/orchestrator/CreateTaskModal';
 import { TaskDetailModal } from '@/components/orchestrator/TaskDetailModal';
 import { ConfigLimitsModal } from '@/components/orchestrator/ConfigLimitsModal';
+import { DemoBadge } from '@/components/common/DemoBadge';
+import { DemoNoticeModal } from '@/components/common/DemoNoticeModal';
+import { useUserRole } from '@/lib/auth/useUserRole';
 import {
   OrchestratorAgentName,
   OrchestratorConfig,
@@ -62,6 +65,9 @@ export default function OrchestratorPage() {
   const [selectedTaskForDetail, setSelectedTaskForDetail] = useState<OrchestratorTask | null>(null);
   const [isLimitsOpen, setIsLimitsOpen] = useState(false);
 
+  const { isDemo } = useUserRole();
+  const [demoNoticeAction, setDemoNoticeAction] = useState<string | null>(null);
+
   const fetchData = useCallback(async () => {
     setIsRefreshing(true);
     try {
@@ -88,6 +94,11 @@ export default function OrchestratorPage() {
   }, [fetchData]);
 
   const handleRunCycle = async () => {
+    if (isDemo) {
+      setDemoNoticeAction('ejecutar ciclos del orquestador');
+      return;
+    }
+
     setIsCycling(true);
     setCycleNotice(null);
     try {
@@ -114,6 +125,11 @@ export default function OrchestratorPage() {
   };
 
   const handleTogglePause = async (currentlyPaused: boolean) => {
+    if (isDemo) {
+      setDemoNoticeAction('pausar o reanudar a Patricia');
+      return;
+    }
+
     try {
       const res = await fetch('/api/orchestrator/config', {
         method: 'PATCH',
@@ -130,6 +146,11 @@ export default function OrchestratorPage() {
   };
 
   const handleToggleFlow = async (flowId: OrchestratorWorkflowId, currentEnabled: boolean) => {
+    if (isDemo) {
+      setDemoNoticeAction('activar o desactivar flujos operativos');
+      return;
+    }
+
     try {
       const res = await fetch('/api/orchestrator/config', {
         method: 'PATCH',
@@ -149,6 +170,11 @@ export default function OrchestratorPage() {
   };
 
   const handleQuickApprove = async (taskId: string, approve: boolean) => {
+    if (isDemo) {
+      setDemoNoticeAction('aprobar o rechazar tareas');
+      return;
+    }
+
     try {
       const res = await fetch(`/api/orchestrator/tasks/${taskId}`, {
         method: 'PATCH',
@@ -233,6 +259,12 @@ export default function OrchestratorPage() {
         subtitle="Orquestadora Central con Autonomía Supervisada • Coordinación de Lola, Tito, Vera, Bruno y Cata"
       />
 
+      {isDemo && (
+        <div className="px-6 pt-2">
+          <DemoBadge variant="full" />
+        </div>
+      )}
+
       <div className="px-6 space-y-6">
         {/* Banner Principal de Patricia */}
         <div className="p-5 rounded-2xl border border-[#162035] bg-[#0c1220] shadow-xl relative overflow-hidden">
@@ -291,6 +323,10 @@ export default function OrchestratorPage() {
 
               <button
                 onClick={() => {
+                  if (isDemo) {
+                    setDemoNoticeAction('crear o asignar tareas a los agentes');
+                    return;
+                  }
                   setSelectedAgentForCreate(undefined);
                   setIsCreateOpen(true);
                 }}
@@ -301,7 +337,13 @@ export default function OrchestratorPage() {
               </button>
 
               <button
-                onClick={() => setIsLimitsOpen(true)}
+                onClick={() => {
+                  if (isDemo) {
+                    setDemoNoticeAction('modificar límites operativos');
+                    return;
+                  }
+                  setIsLimitsOpen(true);
+                }}
                 className="p-2 rounded-xl border border-[#1e2a42] bg-[#080d18] hover:bg-[#131d33] text-slate-300 hover:text-white transition-colors"
                 title="Configurar límites operativos de Patricia"
               >
@@ -489,6 +531,10 @@ export default function OrchestratorPage() {
 
                   <button
                     onClick={() => {
+                      if (isDemo) {
+                        setDemoNoticeAction(`asignar tareas a ${ag.name}`);
+                        return;
+                      }
                       setSelectedAgentForCreate(ag.agent);
                       setIsCreateOpen(true);
                     }}
@@ -768,6 +814,12 @@ export default function OrchestratorPage() {
         isOpen={isLimitsOpen}
         onClose={() => setIsLimitsOpen(false)}
         onConfigUpdated={fetchData}
+      />
+
+      <DemoNoticeModal
+        isOpen={!!demoNoticeAction}
+        onClose={() => setDemoNoticeAction(null)}
+        actionName={demoNoticeAction || ''}
       />
     </div>
   );

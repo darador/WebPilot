@@ -56,8 +56,12 @@ import {
 } from '@/services/reputation.service';
 import { DEFAULT_SERVICES_CATALOG, ServiceItem } from '@/lib/constants/services';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { useUserRole } from '@/lib/auth/useUserRole';
+import { DemoNoticeModal } from '@/components/common/DemoNoticeModal';
 
 export default function VeraAgentPage() {
+  const { isDemo } = useUserRole();
+  const [showDemoNotice, setShowDemoNotice] = useState(false);
   const [businesses, setBusinesses] = useState<VeraBusinessSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'opportunities' | 'reputation' | 'catalog'>('opportunities');
@@ -196,6 +200,10 @@ export default function VeraAgentPage() {
 
   // Guardar catálogo personalizado
   const handleSaveCatalog = () => {
+    if (isDemo) {
+      setShowDemoNotice(true);
+      return;
+    }
     try {
       localStorage.setItem('webpilot_services_catalog', JSON.stringify(servicesCatalog));
       setCatalogSavedMessage(true);
@@ -207,6 +215,10 @@ export default function VeraAgentPage() {
 
   // Restablecer catálogo por defecto
   const handleResetCatalog = () => {
+    if (isDemo) {
+      setShowDemoNotice(true);
+      return;
+    }
     setServicesCatalog(DEFAULT_SERVICES_CATALOG);
     localStorage.removeItem('webpilot_services_catalog');
     setCatalogSavedMessage(true);
@@ -241,6 +253,10 @@ export default function VeraAgentPage() {
 
   const handleMarkNoOpportunity = async () => {
     if (!selectedStrategy?.businessId || isDismissing) return;
+    if (isDemo) {
+      setShowDemoNotice(true);
+      return;
+    }
     setIsDismissing(true);
     try {
       const res = await fetchWithAuth('/api/vera/dismiss', {
@@ -309,6 +325,10 @@ export default function VeraAgentPage() {
   // Ejecutar análisis comercial con Vera
   const handleRunAnalysis = async () => {
     if (selectedIds.length === 0 || isAnalyzing) return;
+    if (isDemo) {
+      setShowDemoNotice(true);
+      return;
+    }
 
     setIsAnalyzing(true);
     setFeedbackMessage(null);
@@ -361,7 +381,7 @@ export default function VeraAgentPage() {
       if (res.ok) {
         const json = await res.json();
         setSelectedStrategy(json.strategy);
-      } else {
+      } else if (!isDemo) {
         const singleRun = await fetchWithAuth('/api/vera/analyze', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -417,6 +437,10 @@ export default function VeraAgentPage() {
   // Guardar nueva reseña manual
   const handleSaveManualReview = async () => {
     if (!activeReputationBusiness || !newReviewForm.text.trim()) return;
+    if (isDemo) {
+      setShowDemoNotice(true);
+      return;
+    }
     setIsSavingReview(true);
 
     try {
@@ -465,6 +489,10 @@ export default function VeraAgentPage() {
   // Atajo Primera Prueba: Cargar 3 reseñas de prueba para consultorios de Quilmes
   const handleLoadSampleReviews = async () => {
     if (!activeReputationBusiness) return;
+    if (isDemo) {
+      setShowDemoNotice(true);
+      return;
+    }
     setIsSavingReview(true);
 
     const sampleReviews: BusinessReview[] = [
@@ -2355,6 +2383,13 @@ export default function VeraAgentPage() {
           </div>
         </div>
       )}
+
+      {/* Modal Informativo Modo Demostración */}
+      <DemoNoticeModal
+        isOpen={showDemoNotice}
+        onClose={() => setShowDemoNotice(false)}
+        actionName="evaluar oportunidades o modificar estrategias con Vera"
+      />
     </div>
   );
 }

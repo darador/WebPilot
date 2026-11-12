@@ -28,6 +28,8 @@ import {
 import { LolaSearch, LolaCandidate } from '@/types/database.types';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
+import { useUserRole } from '@/lib/auth/useUserRole';
+import { DemoNoticeModal } from '@/components/common/DemoNoticeModal';
 
 async function fetchWithAuth(url: string, options: RequestInit = {}) {
   const supabase = createClient();
@@ -68,6 +70,8 @@ export default function LolaAgentPage() {
   const [maxResults, setMaxResults] = useState(20);
 
   // Estados de ejecución
+  const { isDemo } = useUserRole();
+  const [showDemoNotice, setShowDemoNotice] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [isInvestigating, setIsInvestigating] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
@@ -202,6 +206,10 @@ export default function LolaAgentPage() {
   // ==========================================================================
   const handleStartDiscovery = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isDemo) {
+      setShowDemoNotice(true);
+      return;
+    }
     if (!industry.trim() || !city.trim()) {
       setErrorMessage('Por favor ingresá un rubro y una localidad.');
       return;
@@ -303,6 +311,10 @@ export default function LolaAgentPage() {
   // ==========================================================================
   const handleInvestigateSelected = async () => {
     if (selectedIds.length === 0) return;
+    if (isDemo) {
+      setShowDemoNotice(true);
+      return;
+    }
 
     setIsInvestigating(true);
     setSearchStep(`Etapa 3: Investigando ${selectedIds.length} comercios seleccionados...`);
@@ -362,6 +374,10 @@ export default function LolaAgentPage() {
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingCandidate) return;
+    if (isDemo) {
+      setShowDemoNotice(true);
+      return;
+    }
 
     setIsSavingEdit(true);
     try {
@@ -391,6 +407,10 @@ export default function LolaAgentPage() {
   // ==========================================================================
   const handleApproveSelected = async () => {
     if (selectedIds.length === 0) return;
+    if (isDemo) {
+      setShowDemoNotice(true);
+      return;
+    }
 
     setIsApproving(true);
     setApprovalFeedback(null);
@@ -430,6 +450,10 @@ export default function LolaAgentPage() {
 
   const handleDiscardSelected = async () => {
     if (selectedIds.length === 0) return;
+    if (isDemo) {
+      setShowDemoNotice(true);
+      return;
+    }
     if (!confirm(`¿Descartar los ${selectedIds.length} candidatos seleccionados?`)) return;
 
     setIsDiscarding(true);
@@ -1260,6 +1284,13 @@ export default function LolaAgentPage() {
           </div>
         </div>
       )}
+
+      {/* Modal Informativo Modo Demostración */}
+      <DemoNoticeModal
+        isOpen={showDemoNotice}
+        onClose={() => setShowDemoNotice(false)}
+        actionName="ejecutar prospecciones o importar candidatos con Lola"
+      />
     </div>
   );
 }

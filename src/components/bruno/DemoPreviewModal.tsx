@@ -18,6 +18,9 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { ClientDemo, DemoStatus } from '@/types/database.types';
+import { useUserRole } from '@/lib/auth/useUserRole';
+import { DemoNoticeModal } from '@/components/common/DemoNoticeModal';
+import { DemoBadge } from '@/components/common/DemoBadge';
 
 interface DemoPreviewModalProps {
   demo: ClientDemo | null;
@@ -37,6 +40,8 @@ export function DemoPreviewModal({
   const [copied, setCopied] = useState(false);
   const [rejectFeedback, setRejectFeedback] = useState('');
   const [showRejectInput, setShowRejectInput] = useState(false);
+  const { isDemo } = useUserRole();
+  const [showDemoNotice, setShowDemoNotice] = useState(false);
 
   if (!isOpen || !demo) return null;
 
@@ -46,6 +51,10 @@ export function DemoPreviewModal({
     : previewUrl;
 
   const handleUpdateStatus = async (newStatus: DemoStatus, notes?: string) => {
+    if (isDemo) {
+      setShowDemoNotice(true);
+      return;
+    }
     setIsUpdating(true);
     try {
       const res = await fetch(`/api/bruno/demos/${demo.id}`, {
@@ -125,6 +134,7 @@ export function DemoPreviewModal({
                   {demo.title}
                 </h3>
                 {getStatusBadge(demo.status)}
+                <DemoBadge />
               </div>
               <span className="text-[11px] text-slate-400 block mt-0.5">
                 Propuesta conceptual • Creada por Bruno
@@ -304,6 +314,12 @@ export function DemoPreviewModal({
           </div>
         </div>
       </div>
+
+      <DemoNoticeModal
+        isOpen={showDemoNotice}
+        onClose={() => setShowDemoNotice(false)}
+        actionName="aprobar o rechazar propuestas comerciales"
+      />
     </div>
   );
 }
