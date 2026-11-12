@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getDemoByIdOrSlug } from '@/services/bruno.service';
 import { getIndustryVisuals } from '@/lib/constants/industryVisuals';
+import { DentalMasterTemplate } from '@/components/templates/dental/DentalMasterTemplate';
 import {
   Phone,
   Mail,
@@ -47,7 +48,18 @@ export default async function DemoPage({ params }: DemoPageProps) {
   const theme = visuals.theme;
 
   const ind = (content.industry || '').toLowerCase();
-  const isDental = ind.includes('odontol') || ind.includes('dental') || ind.includes('medic') || ind.includes('salud');
+  const isDental =
+    ind.includes('odontol') ||
+    ind.includes('dental') ||
+    ind.includes('diente') ||
+    ind.includes('sonrisa') ||
+    (content.businessName || '').toLowerCase().includes('di paolo');
+
+  // Si es rubro odontológico, renderizar la Plantilla Maestra Premium de Odontología
+  if (isDental) {
+    return <DentalMasterTemplate demo={demo} />;
+  }
+
   const isPet = ind.includes('veterinari') || ind.includes('mascot');
 
   // WhatsApp Link oficial y verificado
