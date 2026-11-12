@@ -64,7 +64,7 @@ export default function TeamPage() {
       />
 
       <div className="p-6 max-w-7xl mx-auto space-y-6">
-        {/* Welcome Header for Daro and Julieta */}
+        {/* Welcome Header */}
         <div className="relative overflow-hidden rounded-2xl border border-cyan-500/30 bg-gradient-to-r from-cyan-950/40 via-[#0a1122] to-blue-950/30 p-6 shadow-xl">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>

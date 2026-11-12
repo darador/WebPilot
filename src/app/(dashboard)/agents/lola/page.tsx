@@ -325,7 +325,7 @@ export default function LolaAgentPage() {
 
   // ==========================================================================
   // ETAPA 3 — INVESTIGACIÓN EN PROFUNDIDAD (Place Details + Web Audit)
-  // Solo se ejecuta para los candidatos seleccionados por Daro y Julieta
+  // Solo se ejecuta para los candidatos seleccionados por el operador
   // ==========================================================================
   const handleInvestigateSelected = async () => {
     if (selectedIds.length === 0) return;

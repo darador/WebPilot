@@ -533,7 +533,7 @@ export async function runLolaDiscovery(
 
 // ============================================================================
 // ETAPA 3 — INVESTIGACIÓN EN PROFUNDIDAD (Place Details + Web Audit)
-// Solo para los candidatos seleccionados por Daro y Julieta.
+// Solo para los candidatos seleccionados por el operador.
 // ============================================================================
 export async function investigateSelectedCandidates(
   candidateIds: string[],
@@ -792,7 +792,7 @@ export async function approveLolaCandidates(
       notesParts.push('[Sitio Oficial]: Sin sitio web registrado en Google Places.');
     }
 
-    // 3. Capa Aporte Manual (completado por Daro o Julieta)
+    // 3. Capa Aporte Manual (completado por el operador)
     if (cand.manually_edited) {
       notesParts.push('[Aporte Manual]: Información de contacto o notas completadas por el operador.');
     }
@@ -859,6 +859,45 @@ export async function approveLolaCandidates(
         business_id: newBusiness.id,
       })
       .eq('id', cand.id);
+
+    // Encolar tarea en el orquestador para encadenamiento automático Tito ➔ Vera
+    try {
+      if (newBusiness.website) {
+        await supabase.from('orchestrator_tasks').insert([
+          {
+            agent: 'TITO',
+            task_type: 'TITO_AUDIT',
+            workflow_id: 'FLUJO_B',
+            business_id: newBusiness.id,
+            business_name: newBusiness.name,
+            priority: 'MEDIA',
+            payload: { businessId: newBusiness.id, url: newBusiness.website },
+            next_action: `Tito auditará el sitio web (${newBusiness.website}) para evaluar performance y SEO.`,
+            dedup_key: `TITO_AUDIT:${newBusiness.id}`,
+            status: 'PENDIENTE',
+            created_by: userId || 'LOLA_PIPELINE',
+          },
+        ]);
+      } else {
+        await supabase.from('orchestrator_tasks').insert([
+          {
+            agent: 'VERA',
+            task_type: 'VERA_STRATEGY',
+            workflow_id: 'FLUJO_B',
+            business_id: newBusiness.id,
+            business_name: newBusiness.name,
+            priority: 'MEDIA',
+            payload: { businessId: newBusiness.id, without_website: true },
+            next_action: `Vera formulará estrategia para negocio sin web (Landing Express).`,
+            dedup_key: `VERA_STRATEGY:${newBusiness.id}`,
+            status: 'PENDIENTE',
+            created_by: userId || 'LOLA_PIPELINE',
+          },
+        ]);
+      }
+    } catch (taskErr) {
+      console.warn('No se pudo encolar tarea para orquestador desde Lola:', taskErr);
+    }
 
     // Incrementar approved_count en la sesión de búsqueda
     const { data: searchRow } = await supabase

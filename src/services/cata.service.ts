@@ -506,7 +506,7 @@ Nos ocupamos de que la página web esté siempre online, protegida con SSL y fun
 
 Atentamente,
 Equipo Comercial • WebPilot AI
-Daro & Julieta`,
+Dirección WebPilot AI`,
     },
 
     // Situación 2: Mejoras técnicas detectadas por Tito
@@ -576,7 +576,7 @@ Estructura de inversión:
 ¿Cuándo les quedaría cómodo coordinar una breve llamada de 5 minutos para evaluar si se ajusta a sus planes?
 
 Muchas gracias por su tiempo,
-Daro & Julieta • WebPilot`,
+Dirección • WebPilot AI`,
     },
 
     // Situación 4: Consulta exploratoria inicial
@@ -599,7 +599,7 @@ Desde WebPilot preparamos una propuesta orientada a optimizar la captación de c
 Agradezco si me pueden indicar el contacto o si podemos coordinar unos minutos por esta vía.
 
 Cordialmente,
-Daro • WebPilot AI`,
+Equipo Comercial • WebPilot AI`,
     },
 
     // Situación 5: Retomar conversación / Seguimiento de presupuesto
@@ -624,8 +624,7 @@ Entendemos que los tiempos en la clínica suelen ser muy intensos, por lo que qu
 ¿Les viene bien que conversemos unos minutos esta semana?
 
 Un cordial saludo,
-Daro & Julieta
-WebPilot AI`,
+Dirección • WebPilot AI`,
     },
   };
 }
