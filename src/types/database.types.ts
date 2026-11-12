@@ -204,6 +204,53 @@ export interface LolaCandidate {
 
 export type ReferenceStatus = 'PENDIENTE' | 'APROBADA' | 'DESCARTADA';
 
+export interface ReferenceQualityGuidelines {
+  section_order: {
+    section: string;
+    purpose: string;
+  }[];
+  visual_style: {
+    palette_description: string;
+    primary_colors: string[];
+    background_tones: string[];
+    typography_family: string;
+    spacing_rhythm: string;
+  };
+  photography_composition: {
+    style: string;
+    framing: string;
+    atmosphere: string;
+  };
+  typography_hierarchy: {
+    hero_headline_formula: string;
+    section_eyebrow_formula: string;
+    body_readability: string;
+  };
+  cta_design: {
+    primary_channel: string;
+    button_styling: string;
+    microcopy: string;
+    frequency_and_placement: string;
+  };
+  treatments_presentation: {
+    layout: string;
+    card_elements: string[];
+    patient_orientation: string;
+  };
+  professional_presentation: {
+    focus: string;
+    tone: string;
+    reassurance_pillars: string[];
+  };
+  trust_elements: string[];
+  responsive_experience: {
+    desktop: string;
+    mobile: string;
+    thumb_zone_cta: string;
+  };
+  differentiating_factors: string[];
+}
+
 export interface IndustryReference {
   id: string;
   user_id?: string | null;
@@ -221,6 +268,7 @@ export interface IndustryReference {
   design_aspects: string[];
   selection_reason: string;
   notes?: string | null;
+  quality_guidelines?: ReferenceQualityGuidelines;
   status: ReferenceStatus;
   created_at: string;
   updated_at: string;

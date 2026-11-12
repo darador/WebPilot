@@ -1,6 +1,22 @@
 'use client';
 
-import { X, ExternalLink, CheckCircle2, Layers, Sparkles, Palette, MapPin, Edit3, ShieldCheck, HelpCircle } from 'lucide-react';
+import {
+  X,
+  ExternalLink,
+  CheckCircle2,
+  Layers,
+  Sparkles,
+  Palette,
+  MapPin,
+  Edit3,
+  ShieldCheck,
+  HelpCircle,
+  Smartphone,
+  User,
+  Compass,
+  Award,
+  MessageCircle,
+} from 'lucide-react';
 import { IndustryReference } from '@/types/database.types';
 
 interface ReferenceDetailModalProps {
@@ -207,6 +223,195 @@ export function ReferenceDetailModal({
               </div>
             </div>
           </div>
+
+          {/* Guía de Calidad y Criterios de Benchmark para Bruno (10 Puntos) */}
+          {reference.quality_guidelines && (
+            <div className="rounded-xl border border-sky-800/50 bg-gradient-to-b from-[#09152a] to-[#070e1c] p-5 space-y-5">
+              <div className="flex items-center justify-between border-b border-sky-900/40 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center font-bold text-xs border border-sky-500/30">
+                    <Compass className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white tracking-tight">
+                      Guía de Calidad y Criterios de Benchmark para Bruno
+                    </h3>
+                    <p className="text-[11px] text-sky-300/80">
+                      10 criterios observables extraídos de esta web para orientar el diseño de demos del rubro
+                    </p>
+                  </div>
+                </div>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/20 text-sky-300 border border-sky-500/40">
+                  Estándar WebPilot
+                </span>
+              </div>
+
+              {/* 1. Estructura y Orden de Secciones */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold text-sky-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-4 h-4 rounded-full bg-sky-500/20 text-sky-300 flex items-center justify-center text-[10px] font-mono">1</span>
+                  Estructura completa de la web y orden de sus secciones
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {reference.quality_guidelines.section_order?.map((item, idx) => (
+                    <div key={idx} className="p-2.5 rounded-lg bg-[#080d18] border border-sky-900/30">
+                      <span className="font-semibold text-slate-200 block text-[11px]">{idx + 1}. {item.section}</span>
+                      <span className="text-[10px] text-slate-400 leading-tight block mt-0.5">{item.purpose}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 2 & 3: Estilo Visual y Fotografía */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2 p-3.5 rounded-xl bg-[#080d18] border border-sky-900/30">
+                  <h4 className="text-xs font-bold text-sky-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="w-4 h-4 rounded-full bg-sky-500/20 text-sky-300 flex items-center justify-center text-[10px] font-mono">2</span>
+                    Estilo Visual y Paleta
+                  </h4>
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    {reference.quality_guidelines.visual_style?.palette_description}
+                  </p>
+                  <div className="text-[10px] text-slate-400 space-y-1 pt-1 border-t border-slate-800">
+                    <div><strong>Tipografía:</strong> {reference.quality_guidelines.visual_style?.typography_family}</div>
+                    <div><strong>Ritmo:</strong> {reference.quality_guidelines.visual_style?.spacing_rhythm}</div>
+                  </div>
+                </div>
+
+                <div className="space-y-2 p-3.5 rounded-xl bg-[#080d18] border border-sky-900/30">
+                  <h4 className="text-xs font-bold text-sky-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="w-4 h-4 rounded-full bg-sky-500/20 text-sky-300 flex items-center justify-center text-[10px] font-mono">3</span>
+                    Uso de Fotografías y Composición
+                  </h4>
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    {reference.quality_guidelines.photography_composition?.style}
+                  </p>
+                  <div className="text-[10px] text-slate-400 space-y-1 pt-1 border-t border-slate-800">
+                    <div><strong>Encuadre:</strong> {reference.quality_guidelines.photography_composition?.framing}</div>
+                    <div><strong>Atmósfera:</strong> {reference.quality_guidelines.photography_composition?.atmosphere}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4 & 5: Jerarquía de Títulos y Botones CTA */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2 p-3.5 rounded-xl bg-[#080d18] border border-sky-900/30">
+                  <h4 className="text-xs font-bold text-sky-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="w-4 h-4 rounded-full bg-sky-500/20 text-sky-300 flex items-center justify-center text-[10px] font-mono">4</span>
+                    Jerarquía de Títulos y Textos
+                  </h4>
+                  <div className="text-[11px] text-slate-300 space-y-1.5">
+                    <div><span className="text-sky-400 font-semibold">Fórmula Hero:</span> {reference.quality_guidelines.typography_hierarchy?.hero_headline_formula}</div>
+                    <div><span className="text-sky-400 font-semibold">Eyebrows:</span> {reference.quality_guidelines.typography_hierarchy?.section_eyebrow_formula}</div>
+                    <div><span className="text-sky-400 font-semibold">Cuerpo:</span> {reference.quality_guidelines.typography_hierarchy?.body_readability}</div>
+                  </div>
+                </div>
+
+                <div className="space-y-2 p-3.5 rounded-xl bg-[#080d18] border border-sky-900/30">
+                  <h4 className="text-xs font-bold text-sky-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="w-4 h-4 rounded-full bg-sky-500/20 text-sky-300 flex items-center justify-center text-[10px] font-mono">5</span>
+                    Diseño de Botones y CTAs
+                  </h4>
+                  <div className="text-[11px] text-slate-300 space-y-1.5">
+                    <div><span className="text-emerald-400 font-semibold">Canal:</span> {reference.quality_guidelines.cta_design?.primary_channel}</div>
+                    <div><span className="text-emerald-400 font-semibold">Estilo:</span> {reference.quality_guidelines.cta_design?.button_styling}</div>
+                    <div><span className="text-emerald-400 font-semibold">Microcopy:</span> {reference.quality_guidelines.cta_design?.microcopy}</div>
+                    <div><span className="text-emerald-400 font-semibold">Ubicación:</span> {reference.quality_guidelines.cta_design?.frequency_and_placement}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 6 & 7: Tratamientos y Presentación Profesional */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2 p-3.5 rounded-xl bg-[#080d18] border border-sky-900/30">
+                  <h4 className="text-xs font-bold text-sky-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="w-4 h-4 rounded-full bg-sky-500/20 text-sky-300 flex items-center justify-center text-[10px] font-mono">6</span>
+                    Presentación de Tratamientos
+                  </h4>
+                  <p className="text-[11px] text-slate-300">
+                    <strong>Diseño:</strong> {reference.quality_guidelines.treatments_presentation?.layout}
+                  </p>
+                  <p className="text-[11px] text-slate-300">
+                    <strong>Enfoque:</strong> {reference.quality_guidelines.treatments_presentation?.patient_orientation}
+                  </p>
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    {reference.quality_guidelines.treatments_presentation?.card_elements?.map((el, i) => (
+                      <span key={i} className="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300 border border-slate-700">
+                        {el}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2 p-3.5 rounded-xl bg-[#080d18] border border-sky-900/30">
+                  <h4 className="text-xs font-bold text-sky-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="w-4 h-4 rounded-full bg-sky-500/20 text-sky-300 flex items-center justify-center text-[10px] font-mono">7</span>
+                    Presentación de la Profesional
+                  </h4>
+                  <p className="text-[11px] text-slate-300">
+                    <strong>Foco:</strong> {reference.quality_guidelines.professional_presentation?.focus}
+                  </p>
+                  <p className="text-[11px] text-slate-300">
+                    <strong>Tono:</strong> {reference.quality_guidelines.professional_presentation?.tone}
+                  </p>
+                  <div className="space-y-1 pt-1">
+                    {reference.quality_guidelines.professional_presentation?.reassurance_pillars?.map((p, i) => (
+                      <div key={i} className="flex items-center gap-1.5 text-[10px] text-slate-300">
+                        <CheckCircle2 className="h-3 w-3 text-emerald-400 shrink-0" />
+                        <span>{p}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* 8, 9 & 10: Confianza, Mobile y Diferenciadores */}
+              <div className="space-y-3 pt-2 border-t border-sky-900/30">
+                {/* 8: Confianza */}
+                <div>
+                  <h4 className="text-xs font-bold text-sky-300 uppercase tracking-wider flex items-center gap-1.5 mb-2">
+                    <span className="w-4 h-4 rounded-full bg-sky-500/20 text-sky-300 flex items-center justify-center text-[10px] font-mono">8</span>
+                    Elementos de Confianza y Profesionalismo (Sin datos inventados)
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    {reference.quality_guidelines.trust_elements?.map((el, i) => (
+                      <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-[#080d18] border border-slate-800 text-[11px] text-slate-300">
+                        <ShieldCheck className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                        <span>{el}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 9: Responsive */}
+                <div className="p-3.5 rounded-xl bg-[#080d18] border border-sky-900/30 space-y-1">
+                  <h4 className="text-xs font-bold text-sky-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="w-4 h-4 rounded-full bg-sky-500/20 text-sky-300 flex items-center justify-center text-[10px] font-mono">9</span>
+                    Experiencia de Navegación en Escritorio y Celular
+                  </h4>
+                  <p className="text-[11px] text-slate-300"><strong>Escritorio:</strong> {reference.quality_guidelines.responsive_experience?.desktop}</p>
+                  <p className="text-[11px] text-slate-300"><strong>Celular:</strong> {reference.quality_guidelines.responsive_experience?.mobile}</p>
+                  <p className="text-[11px] text-emerald-300"><strong>Zona del pulgar:</strong> {reference.quality_guidelines.responsive_experience?.thumb_zone_cta}</p>
+                </div>
+
+                {/* 10: Diferenciación */}
+                <div>
+                  <h4 className="text-xs font-bold text-sky-300 uppercase tracking-wider flex items-center gap-1.5 mb-2">
+                    <span className="w-4 h-4 rounded-full bg-sky-500/20 text-sky-300 flex items-center justify-center text-[10px] font-mono">10</span>
+                    Características que se destacan frente a una plantilla genérica
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    {reference.quality_guidelines.differentiating_factors?.map((fact, i) => (
+                      <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-[#080d18] border border-slate-800 text-[11px] text-slate-200">
+                        <Award className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                        <span>{fact}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Observaciones Internas */}
           {reference.notes && (

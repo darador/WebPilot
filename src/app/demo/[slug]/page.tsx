@@ -62,6 +62,17 @@ export default async function DemoPage({ params }: DemoPageProps) {
   const matchDr = content.businessName.match(/(Dra?\.\s+[A-Za-zÁÉÍÓÚáéíóúñÑ\s]+)/i);
   const professionalName = content.about?.professionalName || (matchDr ? matchDr[1].trim() : content.businessName);
 
+  // Titular y subtítulo adaptados con la fórmula del benchmark
+  const heroTitle =
+    isDental && (!content.hero.title || content.hero.title.includes('lo que más te importa'))
+      ? 'Cuidamos tu sonrisa con atención personalizada y tecnología de avanzada'
+      : content.hero.title;
+
+  const heroSubtitle =
+    isDental && (!content.hero.subtitle || content.hero.subtitle.includes('nuestros tratamientos y servicios'))
+      ? `Atención odontológica integral en ${content.contact.city || 'Quilmes'}. Tratamientos modernos, confort y turnos puntuales para vos y tu familia.`
+      : content.hero.subtitle;
+
   // Presentación del consultorio / profesional
   const aboutData = {
     heading: content.about?.heading || (isDental ? 'Sobre el Consultorio' : isPet ? 'Sobre la Veterinaria' : 'Sobre Nosotros'),
@@ -226,11 +237,11 @@ export default async function DemoPage({ params }: DemoPageProps) {
               </div>
 
               <h1 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight leading-[1.12]">
-                {content.hero.title}
+                {heroTitle}
               </h1>
 
               <p className="text-base sm:text-lg text-slate-600 leading-relaxed font-normal max-w-xl">
-                {content.hero.subtitle}
+                {heroSubtitle}
               </p>
 
               <div className="pt-2 flex flex-wrap items-center gap-3">
