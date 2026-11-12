@@ -132,7 +132,7 @@ export default async function DemoPage({ params }: DemoPageProps) {
       ]);
 
   return (
-    <div className="min-h-screen bg-white text-slate-800 font-sans antialiased selection:bg-[#25D366] selection:text-white">
+    <div className="min-h-screen bg-[#edf2f7] text-slate-800 font-sans antialiased selection:bg-[#128C7E] selection:text-white">
       {/* 1. BANNER OBLIGATORIO DE PROPUESTA CONCEPTUAL (DISCRETO Y PROFESIONAL) */}
       <div className="sticky top-0 z-50 bg-slate-900 border-b border-slate-800 text-slate-300 px-4 py-2 text-xs shadow-md">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
@@ -154,14 +154,14 @@ export default async function DemoPage({ params }: DemoPageProps) {
       </div>
 
       {/* 2. NAVBAR MODERNA Y LUMINOSA */}
-      <header className="border-b border-slate-200/80 bg-white/95 backdrop-blur-md sticky top-[33px] sm:top-[33px] z-40 shadow-xs">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <header className="border-b border-slate-200/90 bg-white/95 backdrop-blur-md sticky top-[33px] sm:top-[33px] z-40 shadow-xs">
+        <div className="max-w-6xl mx-auto px-4 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-base shadow-xs ${theme.iconBox}`}>
               {isDental ? <Stethoscope className="h-5 w-5" /> : <Sparkles className="h-5 w-5" />}
             </div>
             <div>
-              <span className="text-base sm:text-lg font-black tracking-tight text-slate-900 block leading-tight">
+              <span className="text-base sm:text-lg font-black tracking-tight text-[#0c2340] block leading-tight">
                 {content.businessName}
               </span>
               <span className="text-[11px] text-slate-500 font-medium block">
@@ -172,31 +172,31 @@ export default async function DemoPage({ params }: DemoPageProps) {
 
           {/* Menú de Navegación Desktop */}
           <nav className="hidden lg:flex items-center gap-6 text-xs font-semibold text-slate-600">
-            <a href="#especialidades" className="hover:text-slate-900 transition-colors">
+            <a href="#especialidades" className="hover:text-[#0c2340] transition-colors">
               Especialidades
             </a>
-            <a href="#sobre-nosotros" className="hover:text-slate-900 transition-colors">
+            <a href="#sobre-nosotros" className="hover:text-[#0c2340] transition-colors">
               Sobre Nosotros
             </a>
-            <a href="#ventajas" className="hover:text-slate-900 transition-colors">
+            <a href="#ventajas" className="hover:text-[#0c2340] transition-colors">
               Instalaciones y Confort
             </a>
-            <a href="#faqs" className="hover:text-slate-900 transition-colors">
+            <a href="#faqs" className="hover:text-[#0c2340] transition-colors">
               Preguntas Frecuentes
             </a>
-            <a href="#contacto" className="hover:text-slate-900 transition-colors">
+            <a href="#contacto" className="hover:text-[#0c2340] transition-colors">
               Ubicación
             </a>
           </nav>
 
-          {/* Botón WhatsApp Destacado */}
+          {/* Botón WhatsApp Destacado (Verde Business Maduro, No Chillón) */}
           <div className="flex items-center gap-2.5">
             {whatsappLink ? (
               <a
                 href={whatsappLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold text-white bg-[#25D366] hover:bg-[#20ba59] transition-all shadow-md hover:shadow-lg hover:scale-[1.02]"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold text-white bg-[#128C7E] hover:bg-[#0e7064] transition-all shadow-sm hover:shadow-md hover:scale-[1.02]"
               >
                 <MessageCircle className="h-4 w-4 fill-white" />
                 <span className="hidden sm:inline">WhatsApp Directo</span>
@@ -213,7 +213,7 @@ export default async function DemoPage({ params }: DemoPageProps) {
             ) : (
               <a
                 href="#contacto"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 transition-all shadow-sm"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold text-white bg-[#0c2340] hover:bg-[#123156] transition-all shadow-sm"
               >
                 <span>Contacto</span>
               </a>
@@ -222,17 +222,17 @@ export default async function DemoPage({ params }: DemoPageProps) {
         </div>
       </header>
 
-      {/* 3. HERO SECTION CON FOTOGRAFÍA PROTAGONISTA Y COMPOSICIÓN EDITORIAL */}
-      <section className={`relative overflow-hidden py-14 sm:py-20 lg:py-24 bg-gradient-to-b ${theme.heroGradient} border-b border-slate-100`}>
-        {/* Mancha decorativa suave de fondo */}
-        <div className={`absolute top-0 right-0 w-[500px] h-[500px] rounded-full blur-3xl opacity-30 pointer-events-none ${theme.heroAccentBlob}`} />
+      {/* 3. HERO SECTION (RECUADRO EDITORIAL LUMINOSO) */}
+      <section className="max-w-6xl mx-auto px-4 pt-6 pb-3 sm:pt-8 sm:pb-4">
+        <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-10 lg:p-12 relative overflow-hidden">
+          {/* Mancha decorativa suave de fondo dentro del recuadro */}
+          <div className="absolute top-0 right-0 w-[420px] h-[420px] rounded-full blur-3xl opacity-20 pointer-events-none bg-sky-100" />
 
-        <div className="max-w-6xl mx-auto px-4 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
+          <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
             {/* Columna Izquierda: Mensaje, Titular y Acciones */}
             <div className="lg:col-span-7 space-y-6">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold border shadow-2xs bg-sky-50/80 text-[#0c2340] border-sky-200/80">
-                <span className={`w-2 h-2 rounded-full ${theme.dotColor}`} />
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold border shadow-2xs bg-sky-50 text-[#0c2340] border-sky-200/80">
+                <span className="w-2 h-2 rounded-full bg-sky-600" />
                 <span>{visuals.categoryLabel} • {content.contact.city || 'Atención Local'}</span>
               </div>
 
@@ -250,7 +250,7 @@ export default async function DemoPage({ params }: DemoPageProps) {
                     href={whatsappLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-xl text-sm font-bold text-white bg-[#25D366] hover:bg-[#20ba59] transition-all shadow-md hover:shadow-lg hover:scale-[1.02]"
+                    className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-xl text-sm font-bold text-white bg-[#128C7E] hover:bg-[#0e7064] transition-all shadow-sm hover:shadow-md hover:scale-[1.02]"
                   >
                     <MessageCircle className="h-5 w-5 fill-white" />
                     <span>{content.hero.ctaPrimary.label || 'Consultar por WhatsApp'}</span>
@@ -258,7 +258,7 @@ export default async function DemoPage({ params }: DemoPageProps) {
                 ) : (
                   <a
                     href="#contacto"
-                    className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl text-sm font-bold text-white bg-[#0c2340] hover:bg-[#123156] transition-all shadow-md"
+                    className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl text-sm font-bold text-white bg-[#0c2340] hover:bg-[#123156] transition-all shadow-sm"
                   >
                     <span>{content.hero.ctaPrimary.label || 'Contactar ahora'}</span>
                   </a>
@@ -275,10 +275,10 @@ export default async function DemoPage({ params }: DemoPageProps) {
                 )}
               </div>
 
-              {/* Píldoras de Confianza Operativa Verídica (Azul clínico / Petrol blue, sin verde) */}
+              {/* Píldoras de Confianza Operativa Verídica */}
               <div className="pt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 border-t border-slate-200/80">
                 {visuals.trustPills.map((pill, idx) => (
-                  <div key={idx} className="flex items-center gap-2.5 p-3 rounded-xl bg-white/90 border border-slate-200/80 shadow-2xs">
+                  <div key={idx} className="flex items-center gap-2.5 p-3 rounded-xl bg-[#f8fafc] border border-slate-200/80 shadow-2xs">
                     {pill.iconType === 'location' ? (
                       <MapPin className="h-4 w-4 text-sky-700 shrink-0" />
                     ) : pill.iconType === 'calendar' ? (
@@ -297,14 +297,11 @@ export default async function DemoPage({ params }: DemoPageProps) {
 
             {/* Columna Derecha: Fotografía Protagonista en Marco Moderno */}
             <div className="lg:col-span-5 relative">
-              {/* Marco decorativo posterior sutil */}
-              <div className={`absolute -inset-2 rounded-3xl opacity-40 blur-xs transform rotate-1 ${theme.heroAccentBlob}`} />
-
-              <div className="relative rounded-3xl overflow-hidden shadow-2xl border-4 border-white bg-white">
+              <div className="relative rounded-2xl overflow-hidden shadow-xl border-4 border-slate-50 bg-slate-100">
                 <img
                   src={content.hero.imageUrl || visuals.heroImage.url}
                   alt={visuals.heroImage.alt}
-                  className="w-full h-[380px] sm:h-[440px] object-cover hover:scale-102 transition-transform duration-700"
+                  className="w-full h-[360px] sm:h-[420px] object-cover hover:scale-102 transition-transform duration-700"
                   loading="eager"
                   decoding="async"
                 />
@@ -329,7 +326,7 @@ export default async function DemoPage({ params }: DemoPageProps) {
 
           {/* Benchmark notice */}
           {content.benchmarkNotice && (
-            <div className="mt-8 pt-4 border-t border-slate-200/60 flex items-center gap-2 text-xs text-slate-500">
+            <div className="mt-8 pt-4 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-500">
               <Compass className="h-3.5 w-3.5 text-sky-600 shrink-0" />
               <span>{content.benchmarkNotice}</span>
             </div>
@@ -337,17 +334,17 @@ export default async function DemoPage({ params }: DemoPageProps) {
         </div>
       </section>
 
-      {/* 4. SECCIÓN SOBRE NOSOTROS / PRESENTACIÓN PROFESIONAL */}
-      <section id="sobre-nosotros" className="py-16 sm:py-24 bg-white border-b border-slate-100">
-        <div className="max-w-6xl mx-auto px-4">
+      {/* 4. SECCIÓN SOBRE NOSOTROS / PRESENTACIÓN PROFESIONAL (RECUADRO EDITORIAL) */}
+      <section id="sobre-nosotros" className="max-w-6xl mx-auto px-4 py-3 sm:py-4">
+        <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-10 lg:p-12">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
             {/* Fotografía de las Instalaciones del Consultorio (Sin personas ficticias) */}
             <div className="lg:col-span-5 relative">
-              <div className="rounded-3xl overflow-hidden shadow-lg border-4 border-slate-50 bg-slate-100">
+              <div className="rounded-2xl overflow-hidden shadow-lg border-4 border-slate-50 bg-slate-100">
                 <img
                   src={aboutData.imageUrl}
                   alt={visuals.aboutImage.alt}
-                  className="w-full h-[360px] sm:h-[400px] object-cover"
+                  className="w-full h-[340px] sm:h-[380px] object-cover"
                   loading="lazy"
                   decoding="async"
                 />
@@ -396,9 +393,9 @@ export default async function DemoPage({ params }: DemoPageProps) {
                     href={whatsappLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-xs font-bold text-sky-800 hover:text-[#0c2340] group transition-colors"
+                    className="inline-flex items-center gap-2 text-xs font-bold text-[#128C7E] hover:text-[#0e7064] group transition-colors"
                   >
-                    <MessageCircle className="h-4 w-4 text-[#25D366] fill-[#25D366]" />
+                    <MessageCircle className="h-4 w-4 text-[#128C7E] fill-[#128C7E]" />
                     <span className="group-hover:underline">Coordinar una primera consulta en el consultorio</span>
                     <ArrowRight className="h-3.5 w-3.5 text-sky-700 group-hover:translate-x-0.5 transition-transform" />
                   </a>
@@ -409,9 +406,9 @@ export default async function DemoPage({ params }: DemoPageProps) {
         </div>
       </section>
 
-      {/* 5. ESPECIALIDADES Y TRATAMIENTOS (TARJETAS CON RECURSOS VISUALES FOTOGRÁFICOS) */}
-      <section id="especialidades" className="py-16 sm:py-24 bg-[#f8fafc] border-b border-slate-100">
-        <div className="max-w-6xl mx-auto px-4 space-y-12">
+      {/* 5. ESPECIALIDADES Y TRATAMIENTOS (RECUADRO EDITORIAL) */}
+      <section id="especialidades" className="max-w-6xl mx-auto px-4 py-3 sm:py-4">
+        <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-10 lg:p-12 space-y-10">
           <div className="max-w-2xl space-y-2">
             <span className={`text-xs font-bold uppercase tracking-wider block ${theme.accentText}`}>
               Especialidades Odontológicas
@@ -433,7 +430,7 @@ export default async function DemoPage({ params }: DemoPageProps) {
               return (
                 <div
                   key={idx}
-                  className="rounded-2xl border border-slate-200/80 bg-white hover:border-sky-300 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between overflow-hidden group shadow-2xs"
+                  className="rounded-2xl border border-slate-200/80 bg-[#f8fafc] hover:bg-white hover:border-sky-300 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between overflow-hidden group shadow-2xs"
                 >
                   {/* Fotografía temática del servicio */}
                   <div className="h-44 w-full overflow-hidden relative bg-slate-100">
@@ -462,16 +459,16 @@ export default async function DemoPage({ params }: DemoPageProps) {
                     </div>
 
                     {whatsappLink && (
-                      <div className="pt-3 border-t border-slate-100">
+                      <div className="pt-3 border-t border-slate-200/70">
                         <a
                           href={`${whatsappLink}&text=${encodeURIComponent(
                             `Hola, me comunico desde la web para consultar por el tratamiento de: ${srv.title}`
                           )}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-[#0c2340] transition-colors group-hover:underline"
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-[#128C7E] transition-colors group-hover:underline"
                         >
-                          <MessageCircle className="h-3.5 w-3.5 text-[#25D366] fill-[#25D366]" />
+                          <MessageCircle className="h-3.5 w-3.5 text-[#128C7E] fill-[#128C7E]" />
                           <span>Consultar por este tratamiento</span>
                         </a>
                       </div>
@@ -484,9 +481,9 @@ export default async function DemoPage({ params }: DemoPageProps) {
         </div>
       </section>
 
-      {/* 6. INSTALACIONES Y CONFORT (CRITERIO EDITORIAL, NO DASHBOARD) */}
-      <section id="ventajas" className="py-16 sm:py-24 bg-white border-b border-slate-100">
-        <div className="max-w-6xl mx-auto px-4 space-y-12">
+      {/* 6. INSTALACIONES Y CONFORT (RECUADRO EDITORIAL) */}
+      <section id="ventajas" className="max-w-6xl mx-auto px-4 py-3 sm:py-4">
+        <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-10 lg:p-12 space-y-10">
           <div className="max-w-2xl space-y-2">
             <span className={`text-xs font-bold uppercase tracking-wider block ${theme.accentText}`}>
               Criterio de Atención y Espacio
@@ -499,7 +496,7 @@ export default async function DemoPage({ params }: DemoPageProps) {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
             {content.features.items.map((feat, idx) => (
               <div
                 key={idx}
@@ -520,10 +517,10 @@ export default async function DemoPage({ params }: DemoPageProps) {
         </div>
       </section>
 
-      {/* 7. PREGUNTAS FRECUENTES (FAQS PRÁCTICAS) */}
-      <section id="faqs" className="py-16 sm:py-24 bg-[#f8fafc] border-b border-slate-100">
-        <div className="max-w-3xl mx-auto px-4 space-y-8">
-          <div className="text-center space-y-2">
+      {/* 7. PREGUNTAS FRECUENTES (RECUADRO EDITORIAL) */}
+      <section id="faqs" className="max-w-6xl mx-auto px-4 py-3 sm:py-4">
+        <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-10 lg:p-12 space-y-8">
+          <div className="text-center space-y-2 max-w-xl mx-auto">
             <span className={`text-xs font-bold uppercase tracking-wider ${theme.accentText}`}>
               Resolvé tus Dudas
             </span>
@@ -532,11 +529,11 @@ export default async function DemoPage({ params }: DemoPageProps) {
             </h2>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-3 max-w-3xl mx-auto">
             {faqsData.map((faq, idx) => (
               <div
                 key={idx}
-                className="p-5 rounded-2xl border border-slate-200/80 bg-white shadow-2xs hover:border-sky-200 transition-all space-y-2"
+                className="p-5 rounded-2xl border border-slate-200/80 bg-[#f8fafc] shadow-2xs hover:border-sky-200 transition-all space-y-2"
               >
                 <h4 className="text-sm sm:text-base font-bold text-[#0c2340]">
                   {faq.question}
@@ -550,9 +547,9 @@ export default async function DemoPage({ params }: DemoPageProps) {
         </div>
       </section>
 
-      {/* 8. CONTACTO Y UBICACIÓN EN GOOGLE MAPS */}
-      <section id="contacto" className="py-16 sm:py-24 bg-white border-b border-slate-100">
-        <div className="max-w-6xl mx-auto px-4">
+      {/* 8. CONTACTO Y UBICACIÓN EN GOOGLE MAPS (RECUADRO EDITORIAL) */}
+      <section id="contacto" className="max-w-6xl mx-auto px-4 pt-3 pb-12 sm:pt-4 sm:pb-16">
+        <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-10 lg:p-12">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
             {/* Datos de contacto */}
             <div className="space-y-6">
@@ -574,9 +571,9 @@ export default async function DemoPage({ params }: DemoPageProps) {
                     href={whatsappLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-3.5 p-4 rounded-2xl bg-white border border-slate-200/90 text-slate-900 hover:border-emerald-400 hover:shadow-xs transition-all"
+                    className="flex items-center gap-3.5 p-4 rounded-2xl bg-[#f8fafc] border border-slate-200/90 text-slate-900 hover:border-[#128C7E] hover:shadow-xs transition-all"
                   >
-                    <div className="w-10 h-10 rounded-xl bg-[#25D366] text-white flex items-center justify-center shrink-0 shadow-sm">
+                    <div className="w-10 h-10 rounded-xl bg-[#128C7E] text-white flex items-center justify-center shrink-0 shadow-sm">
                       <MessageCircle className="h-5 w-5 fill-white" />
                     </div>
                     <div>
@@ -701,7 +698,7 @@ export default async function DemoPage({ params }: DemoPageProps) {
             href={whatsappLink}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2.5 px-4 py-3 rounded-full bg-[#25D366] hover:bg-[#20ba59] text-white shadow-xl hover:shadow-2xl hover:scale-105 transition-all font-bold text-xs group"
+            className="flex items-center gap-2.5 px-4 py-3 rounded-full bg-[#128C7E] hover:bg-[#0e7064] text-white shadow-xl hover:shadow-2xl hover:scale-105 transition-all font-bold text-xs group"
             title="Consultar directamente por WhatsApp"
           >
             <MessageCircle className="h-5 w-5 fill-white" />
