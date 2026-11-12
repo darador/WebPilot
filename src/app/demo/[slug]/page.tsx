@@ -64,38 +64,38 @@ export default async function DemoPage({ params }: DemoPageProps) {
 
   // Titular y subtítulo adaptados con la fórmula del benchmark
   const heroTitle =
-    isDental && (!content.hero.title || content.hero.title.includes('lo que más te importa'))
-      ? 'Cuidamos tu sonrisa con atención personalizada y tecnología de avanzada'
+    isDental && (!content.hero.title || content.hero.title.includes('lo que más te importa') || content.hero.title.includes('tecnología'))
+      ? 'Atención odontológica integral y cuidado de tu salud bucal'
       : content.hero.title;
 
   const heroSubtitle =
-    isDental && (!content.hero.subtitle || content.hero.subtitle.includes('nuestros tratamientos y servicios'))
-      ? `Atención odontológica integral en ${content.contact.city || 'Quilmes'}. Tratamientos modernos, confort y turnos puntuales para vos y tu familia.`
+    isDental && (!content.hero.subtitle || content.hero.subtitle.includes('nuestros tratamientos y servicios') || content.hero.subtitle.includes('turnos puntuales'))
+      ? `Consultorio odontológico en ${content.contact.city || 'Quilmes'}. Atención personalizada para niños, jóvenes y adultos con turnos programados y contacto directo por WhatsApp.`
       : content.hero.subtitle;
 
   // Presentación del consultorio / profesional
   const aboutData = {
     heading: content.about?.heading || (isDental ? 'Sobre el Consultorio' : isPet ? 'Sobre la Veterinaria' : 'Sobre Nosotros'),
     title: content.about?.title || (isDental
-      ? 'Atención odontológica de confianza, calidez y calidad humana'
+      ? 'Atención odontológica cercana y profesional en Quilmes'
       : isPet
       ? 'Dedicación absoluta por el bienestar de los animales'
       : 'Compromiso profesional y atención de excelencia'),
     professionalName,
     role: content.about?.role || (isDental ? 'Especialista en Odontología Integral' : isPet ? 'Médico Veterinario' : 'Equipo Profesional'),
-    imageUrl: content.about?.imageUrl || visuals.aboutImage.url,
-    description: content.about?.description || (isDental
-      ? `En ${content.businessName} nos dedicamos a cuidar tu salud bucal con un trato cercano, empático y libre de dolor. Combinamos tecnología moderna e instalaciones confortables para que te sientas seguro y a gusto en cada consulta.`
-      : `En ${content.businessName} priorizamos la cercanía, la excelencia y la confianza para brindarte un servicio transparente y a la altura de tus expectativas.`),
-    highlights: content.about?.highlights || (isDental
+    imageUrl: visuals.aboutImage.url,
+    description: (isDental || content.about?.description?.includes('libre de dolor') || content.about?.description?.includes('tecnología de última generación'))
+      ? `En ${content.businessName} nos dedicamos al cuidado integral de la salud bucal. Nos enfocamos en ofrecer un trato cercano, explicaciones claras sobre cada tratamiento y un ambiente confortable en cada consulta.`
+      : content.about?.description || `En ${content.businessName} priorizamos la cercanía, la excelencia y la confianza para brindarte un servicio transparente y a la altura de tus expectativas.`,
+    highlights: isDental
       ? [
-          'Diagnóstico integral y sin dolor con equipamiento moderno',
-          'Atención personalizada para niños, jóvenes y adultos',
-          'Puntualidad en los turnos para cuidar tu tiempo',
+          'Atención odontológica para niños, jóvenes y adultos',
+          'Consultas y tratamientos planificados según cada necesidad',
+          'Atención con cita previa para organizar mejor tu visita',
         ]
-      : [
+      : (content.about?.highlights || [
           'Atención personalizada orientada a resultados',
-          'Tecnología y métodos actualizados',
+          'Métodos de atención actualizados',
           'Canales ágiles de contacto directo vía WhatsApp',
         ]),
   };
@@ -223,20 +223,20 @@ export default async function DemoPage({ params }: DemoPageProps) {
       </header>
 
       {/* 3. HERO SECTION CON FOTOGRAFÍA PROTAGONISTA Y COMPOSICIÓN EDITORIAL */}
-      <section className={`relative overflow-hidden py-12 sm:py-20 lg:py-24 bg-gradient-to-b ${theme.heroGradient} border-b border-slate-100`}>
+      <section className={`relative overflow-hidden py-14 sm:py-20 lg:py-24 bg-gradient-to-b ${theme.heroGradient} border-b border-slate-100`}>
         {/* Mancha decorativa suave de fondo */}
-        <div className={`absolute top-0 right-0 w-[500px] h-[500px] rounded-full blur-3xl opacity-40 pointer-events-none ${theme.heroAccentBlob}`} />
+        <div className={`absolute top-0 right-0 w-[500px] h-[500px] rounded-full blur-3xl opacity-30 pointer-events-none ${theme.heroAccentBlob}`} />
 
         <div className="max-w-6xl mx-auto px-4 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
             {/* Columna Izquierda: Mensaje, Titular y Acciones */}
             <div className="lg:col-span-7 space-y-6">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold border shadow-2xs bg-white text-slate-800 border-slate-200">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold border shadow-2xs bg-sky-50/80 text-[#0c2340] border-sky-200/80">
                 <span className={`w-2 h-2 rounded-full ${theme.dotColor}`} />
                 <span>{visuals.categoryLabel} • {content.contact.city || 'Atención Local'}</span>
               </div>
 
-              <h1 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight leading-[1.12]">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#0c2340] tracking-tight leading-[1.14]">
                 {heroTitle}
               </h1>
 
@@ -250,7 +250,7 @@ export default async function DemoPage({ params }: DemoPageProps) {
                     href={whatsappLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-xl text-sm font-bold text-white bg-[#25D366] hover:bg-[#20ba59] transition-all shadow-lg shadow-emerald-500/20 hover:scale-[1.02]"
+                    className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-xl text-sm font-bold text-white bg-[#25D366] hover:bg-[#20ba59] transition-all shadow-md hover:shadow-lg hover:scale-[1.02]"
                   >
                     <MessageCircle className="h-5 w-5 fill-white" />
                     <span>{content.hero.ctaPrimary.label || 'Consultar por WhatsApp'}</span>
@@ -258,7 +258,7 @@ export default async function DemoPage({ params }: DemoPageProps) {
                 ) : (
                   <a
                     href="#contacto"
-                    className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl text-sm font-bold text-white bg-slate-900 hover:bg-slate-800 transition-all shadow-md"
+                    className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl text-sm font-bold text-white bg-[#0c2340] hover:bg-[#123156] transition-all shadow-md"
                   >
                     <span>{content.hero.ctaPrimary.label || 'Contactar ahora'}</span>
                   </a>
@@ -267,27 +267,27 @@ export default async function DemoPage({ params }: DemoPageProps) {
                 {content.hero.ctaSecondary && (
                   <a
                     href={content.hero.ctaSecondary.action || '#especialidades'}
-                    className={`inline-flex items-center gap-2 px-5 py-3.5 rounded-xl text-sm font-bold transition-all border ${theme.btnSecondary}`}
+                    className="inline-flex items-center gap-2 px-5 py-3.5 rounded-xl text-sm font-semibold transition-all bg-white hover:bg-slate-50 text-[#0c2340] border border-slate-300 shadow-2xs"
                   >
                     <span>{content.hero.ctaSecondary.label || 'Ver Especialidades'}</span>
-                    <ArrowRight className="h-4 w-4" />
+                    <ArrowRight className="h-4 w-4 text-sky-700" />
                   </a>
                 )}
               </div>
 
-              {/* Píldoras de Confianza Operativa Verídica (Sin datos inventados) */}
+              {/* Píldoras de Confianza Operativa Verídica (Azul clínico / Petrol blue, sin verde) */}
               <div className="pt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 border-t border-slate-200/80">
                 {visuals.trustPills.map((pill, idx) => (
-                  <div key={idx} className="flex items-center gap-2.5 p-2.5 rounded-xl bg-white/90 border border-slate-200/70 shadow-2xs">
+                  <div key={idx} className="flex items-center gap-2.5 p-3 rounded-xl bg-white/90 border border-slate-200/80 shadow-2xs">
                     {pill.iconType === 'location' ? (
-                      <MapPin className="h-4 w-4 text-sky-600 shrink-0" />
+                      <MapPin className="h-4 w-4 text-sky-700 shrink-0" />
                     ) : pill.iconType === 'calendar' ? (
-                      <Calendar className="h-4 w-4 text-emerald-600 shrink-0" />
+                      <Calendar className="h-4 w-4 text-sky-700 shrink-0" />
                     ) : (
-                      <ShieldCheck className="h-4 w-4 text-indigo-600 shrink-0" />
+                      <ShieldCheck className="h-4 w-4 text-sky-700 shrink-0" />
                     )}
                     <div className="text-xs">
-                      <span className="font-bold text-slate-900 block leading-tight">{pill.title}</span>
+                      <span className="font-bold text-[#0c2340] block leading-tight">{pill.title}</span>
                       <span className="text-[10px] text-slate-500">{content.contact.city ? `${pill.subtitle}` : pill.subtitle}</span>
                     </div>
                   </div>
@@ -297,8 +297,8 @@ export default async function DemoPage({ params }: DemoPageProps) {
 
             {/* Columna Derecha: Fotografía Protagonista en Marco Moderno */}
             <div className="lg:col-span-5 relative">
-              {/* Marco decorativo posterior */}
-              <div className={`absolute -inset-2 rounded-3xl opacity-60 blur-xs transform rotate-1 ${theme.heroAccentBlob}`} />
+              {/* Marco decorativo posterior sutil */}
+              <div className={`absolute -inset-2 rounded-3xl opacity-40 blur-xs transform rotate-1 ${theme.heroAccentBlob}`} />
 
               <div className="relative rounded-3xl overflow-hidden shadow-2xl border-4 border-white bg-white">
                 <img
@@ -309,13 +309,13 @@ export default async function DemoPage({ params }: DemoPageProps) {
                   decoding="async"
                 />
 
-                {/* Tarjeta flotante inferior sobre la imagen */}
-                <div className="absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur-md p-3.5 rounded-2xl shadow-lg border border-slate-100 flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-                    <Check className="h-4 w-4 stroke-[3]" />
+                {/* Tarjeta flotante inferior sobre la imagen (Refinada y clínica) */}
+                <div className="absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur-md p-3.5 rounded-2xl shadow-xl border border-slate-100 flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-sky-50 text-sky-800 flex items-center justify-center shrink-0 border border-sky-200/70">
+                    <Stethoscope className="h-4 w-4" />
                   </div>
                   <div>
-                    <span className="text-xs font-bold text-slate-900 block">
+                    <span className="text-xs font-bold text-[#0c2340] block">
                       {visuals.heroImage.badgeLabel}
                     </span>
                     <span className="text-[10px] text-slate-500">
@@ -340,10 +340,10 @@ export default async function DemoPage({ params }: DemoPageProps) {
       {/* 4. SECCIÓN SOBRE NOSOTROS / PRESENTACIÓN PROFESIONAL */}
       <section id="sobre-nosotros" className="py-16 sm:py-24 bg-white border-b border-slate-100">
         <div className="max-w-6xl mx-auto px-4">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
-            {/* Fotografía de la Clínica / Consultorio */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
+            {/* Fotografía de las Instalaciones del Consultorio (Sin personas ficticias) */}
             <div className="lg:col-span-5 relative">
-              <div className="rounded-3xl overflow-hidden shadow-xl border-4 border-slate-50 bg-slate-100">
+              <div className="rounded-3xl overflow-hidden shadow-lg border-4 border-slate-50 bg-slate-100">
                 <img
                   src={aboutData.imageUrl}
                   alt={visuals.aboutImage.alt}
@@ -353,13 +353,13 @@ export default async function DemoPage({ params }: DemoPageProps) {
                 />
               </div>
 
-              {/* Badge flotante inferior */}
-              <div className="mt-3 p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-center">
-                <span className="text-xs font-extrabold text-slate-900 block">
+              {/* Pie de foto institucional */}
+              <div className="mt-3 p-3.5 rounded-2xl bg-[#f8fafc] border border-slate-200/80 text-center">
+                <span className="text-xs font-bold text-[#0c2340] block">
                   {aboutData.professionalName}
                 </span>
-                <span className="text-[11px] font-semibold text-sky-700 block">
-                  {aboutData.role}
+                <span className="text-[11px] font-medium text-slate-500 block">
+                  Atención profesional en consultorio • Quilmes
                 </span>
               </div>
             </div>
@@ -370,7 +370,7 @@ export default async function DemoPage({ params }: DemoPageProps) {
                 <span className={`text-xs font-bold uppercase tracking-wider block ${theme.accentText}`}>
                   {aboutData.heading}
                 </span>
-                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                <h2 className="text-2xl sm:text-3xl font-black text-[#0c2340] tracking-tight">
                   {aboutData.title}
                 </h2>
               </div>
@@ -379,10 +379,10 @@ export default async function DemoPage({ params }: DemoPageProps) {
                 {aboutData.description}
               </p>
 
-              <div className="space-y-3 pt-2">
+              <div className="space-y-2.5 pt-2">
                 {aboutData.highlights?.map((h, idx) => (
-                  <div key={idx} className="flex items-start gap-3 p-3 rounded-xl bg-slate-50/80 border border-slate-200/70">
-                    <div className="mt-0.5 w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                  <div key={idx} className="flex items-start gap-3 p-3 rounded-xl bg-[#f8fafc] border border-slate-200/70">
+                    <div className="mt-0.5 w-5 h-5 rounded-full bg-sky-50 text-sky-700 border border-sky-200 flex items-center justify-center shrink-0">
                       <CheckCircle2 className="h-3.5 w-3.5" />
                     </div>
                     <span className="text-xs sm:text-sm font-medium text-slate-700">{h}</span>
@@ -396,10 +396,11 @@ export default async function DemoPage({ params }: DemoPageProps) {
                     href={whatsappLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-xs font-bold text-emerald-700 hover:text-emerald-800 hover:underline"
+                    className="inline-flex items-center gap-2 text-xs font-bold text-sky-800 hover:text-[#0c2340] group transition-colors"
                   >
-                    <span>Coordinar una primera consulta en el consultorio</span>
-                    <ArrowRight className="h-3.5 w-3.5" />
+                    <MessageCircle className="h-4 w-4 text-[#25D366] fill-[#25D366]" />
+                    <span className="group-hover:underline">Coordinar una primera consulta en el consultorio</span>
+                    <ArrowRight className="h-3.5 w-3.5 text-sky-700 group-hover:translate-x-0.5 transition-transform" />
                   </a>
                 </div>
               )}
@@ -409,17 +410,17 @@ export default async function DemoPage({ params }: DemoPageProps) {
       </section>
 
       {/* 5. ESPECIALIDADES Y TRATAMIENTOS (TARJETAS CON RECURSOS VISUALES FOTOGRÁFICOS) */}
-      <section id="especialidades" className="py-16 sm:py-24 bg-slate-50/70 border-b border-slate-100">
+      <section id="especialidades" className="py-16 sm:py-24 bg-[#f8fafc] border-b border-slate-100">
         <div className="max-w-6xl mx-auto px-4 space-y-12">
           <div className="max-w-2xl space-y-2">
             <span className={`text-xs font-bold uppercase tracking-wider block ${theme.accentText}`}>
-              Especialidades y Atención
+              Especialidades Odontológicas
             </span>
-            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+            <h2 className="text-2xl sm:text-3xl font-black text-[#0c2340] tracking-tight">
               {content.services.heading}
             </h2>
             {content.services.subheading && (
-              <p className="text-sm text-slate-600 leading-relaxed">
+              <p className="text-sm text-slate-600 leading-relaxed font-normal">
                 {content.services.subheading}
               </p>
             )}
@@ -432,7 +433,7 @@ export default async function DemoPage({ params }: DemoPageProps) {
               return (
                 <div
                   key={idx}
-                  className="rounded-2xl border border-slate-200/90 bg-white hover:border-sky-300 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between overflow-hidden group shadow-xs"
+                  className="rounded-2xl border border-slate-200/80 bg-white hover:border-sky-300 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between overflow-hidden group shadow-2xs"
                 >
                   {/* Fotografía temática del servicio */}
                   <div className="h-44 w-full overflow-hidden relative bg-slate-100">
@@ -443,7 +444,7 @@ export default async function DemoPage({ params }: DemoPageProps) {
                       loading="lazy"
                       decoding="async"
                     />
-                    <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-xs px-2.5 py-1 rounded-full text-[10px] font-bold text-slate-800 shadow-xs">
+                    <div className="absolute top-3 right-3 bg-slate-900/70 text-white backdrop-blur-xs px-2.5 py-0.5 rounded-full text-[10px] font-semibold shadow-xs">
                       0{idx + 1}
                     </div>
                   </div>
@@ -451,7 +452,7 @@ export default async function DemoPage({ params }: DemoPageProps) {
                   <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-base font-extrabold text-slate-900 leading-snug group-hover:text-sky-700 transition-colors">
+                        <h3 className="text-base font-bold text-[#0c2340] leading-snug group-hover:text-sky-700 transition-colors">
                           {srv.title}
                         </h3>
                       </div>
@@ -468,10 +469,10 @@ export default async function DemoPage({ params }: DemoPageProps) {
                           )}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-800 transition-colors group-hover:underline"
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-[#0c2340] transition-colors group-hover:underline"
                         >
-                          <MessageCircle className="h-3.5 w-3.5 fill-emerald-600 text-white" />
-                          <span>Consultar por WhatsApp</span>
+                          <MessageCircle className="h-3.5 w-3.5 text-[#25D366] fill-[#25D366]" />
+                          <span>Consultar por este tratamiento</span>
                         </a>
                       </div>
                     )}
@@ -483,34 +484,34 @@ export default async function DemoPage({ params }: DemoPageProps) {
         </div>
       </section>
 
-      {/* 6. INSTALACIONES Y CONFORT (VALORES REALES) */}
+      {/* 6. INSTALACIONES Y CONFORT (CRITERIO EDITORIAL, NO DASHBOARD) */}
       <section id="ventajas" className="py-16 sm:py-24 bg-white border-b border-slate-100">
-        <div className="max-w-6xl mx-auto px-4 space-y-10">
+        <div className="max-w-6xl mx-auto px-4 space-y-12">
           <div className="max-w-2xl space-y-2">
             <span className={`text-xs font-bold uppercase tracking-wider block ${theme.accentText}`}>
-              Instalaciones y Confort
+              Criterio de Atención y Espacio
             </span>
-            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-              {content.features.heading}
+            <h2 className="text-2xl sm:text-3xl font-black text-[#0c2340] tracking-tight">
+              Instalaciones y Cuidado del Paciente
             </h2>
-            <p className="text-sm text-slate-600">
-              Cuidamos cada detalle de tu experiencia para que te sientas cómodo, seguro y bien atendido.
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Cuidamos cada detalle para que tu experiencia en el consultorio sea clara, ordenada y confortable.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-2">
             {content.features.items.map((feat, idx) => (
               <div
                 key={idx}
-                className="p-6 rounded-2xl border border-slate-200/80 bg-slate-50/50 hover:bg-white hover:shadow-md transition-all space-y-3"
+                className="p-6 rounded-2xl border border-slate-200/80 bg-[#f8fafc] hover:bg-white hover:shadow-md transition-all space-y-3.5 shadow-2xs"
               >
-                <div className={`h-10 w-10 rounded-xl flex items-center justify-center font-bold ${theme.iconBox}`}>
-                  <ShieldCheck className="h-5 w-5" />
+                <div className="h-10 w-10 rounded-xl flex items-center justify-center font-bold bg-sky-50 text-sky-800 border border-sky-200/70">
+                  {idx === 0 ? <ShieldCheck className="h-5 w-5" /> : idx === 1 ? <Sparkles className="h-5 w-5" /> : <Calendar className="h-5 w-5" />}
                 </div>
-                <h3 className="text-base font-bold text-slate-900">
+                <h3 className="text-base font-bold text-[#0c2340]">
                   {feat.title}
                 </h3>
-                <p className="text-xs text-slate-600 leading-relaxed font-normal">
+                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal">
                   {feat.description}
                 </p>
               </div>
@@ -520,13 +521,13 @@ export default async function DemoPage({ params }: DemoPageProps) {
       </section>
 
       {/* 7. PREGUNTAS FRECUENTES (FAQS PRÁCTICAS) */}
-      <section id="faqs" className="py-16 sm:py-24 bg-slate-50/60 border-b border-slate-100">
-        <div className="max-w-4xl mx-auto px-4 space-y-8">
+      <section id="faqs" className="py-16 sm:py-24 bg-[#f8fafc] border-b border-slate-100">
+        <div className="max-w-3xl mx-auto px-4 space-y-8">
           <div className="text-center space-y-2">
             <span className={`text-xs font-bold uppercase tracking-wider ${theme.accentText}`}>
               Resolvé tus Dudas
             </span>
-            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+            <h2 className="text-2xl sm:text-3xl font-black text-[#0c2340] tracking-tight">
               Preguntas Frecuentes
             </h2>
           </div>
@@ -535,9 +536,9 @@ export default async function DemoPage({ params }: DemoPageProps) {
             {faqsData.map((faq, idx) => (
               <div
                 key={idx}
-                className="p-5 rounded-2xl border border-slate-200/90 bg-white shadow-2xs hover:shadow-xs transition-all space-y-2"
+                className="p-5 rounded-2xl border border-slate-200/80 bg-white shadow-2xs hover:border-sky-200 transition-all space-y-2"
               >
-                <h4 className="text-sm sm:text-base font-bold text-slate-900">
+                <h4 className="text-sm sm:text-base font-bold text-[#0c2340]">
                   {faq.question}
                 </h4>
                 <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal">
@@ -559,7 +560,7 @@ export default async function DemoPage({ params }: DemoPageProps) {
                 <span className={`text-xs font-bold uppercase tracking-wider block ${theme.accentText}`}>
                   Coordinación de Turnos y Consultas
                 </span>
-                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                <h2 className="text-2xl sm:text-3xl font-black text-[#0c2340] tracking-tight">
                   {content.contact.heading}
                 </h2>
                 <p className="text-sm text-slate-600">
@@ -573,14 +574,14 @@ export default async function DemoPage({ params }: DemoPageProps) {
                     href={whatsappLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-3.5 p-4 rounded-2xl bg-emerald-50 border border-emerald-300 text-emerald-950 hover:bg-emerald-100/70 transition-all shadow-xs"
+                    className="flex items-center gap-3.5 p-4 rounded-2xl bg-white border border-slate-200/90 text-slate-900 hover:border-emerald-400 hover:shadow-xs transition-all"
                   >
                     <div className="w-10 h-10 rounded-xl bg-[#25D366] text-white flex items-center justify-center shrink-0 shadow-sm">
                       <MessageCircle className="h-5 w-5 fill-white" />
                     </div>
                     <div>
-                      <span className="font-extrabold text-sm text-slate-900 block">WhatsApp de Atención Rápida</span>
-                      <span className="text-xs text-emerald-800 font-medium">
+                      <span className="font-extrabold text-sm text-[#0c2340] block">WhatsApp de Atención Rápida</span>
+                      <span className="text-xs text-slate-500 font-medium">
                         {content.contact.whatsappPhone || content.contact.phone} • Click para enviar mensaje directo
                       </span>
                     </div>

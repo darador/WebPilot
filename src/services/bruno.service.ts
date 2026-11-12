@@ -294,8 +294,8 @@ export async function generateDemoForBusiness(
   let heroSubtitle = `Conocé nuestros tratamientos y servicios en ${city || 'la zona'}. Coordiná tu consulta directamente por WhatsApp.`;
 
   if (isDental) {
-    heroTitle = `Cuidamos tu sonrisa con atención personalizada y tecnología de avanzada`;
-    heroSubtitle = `Atención odontológica integral en ${city || 'Quilmes'}. Tratamientos modernos, confort y turnos puntuales para vos y tu familia.`;
+    heroTitle = `Atención odontológica integral y cuidado de tu salud bucal`;
+    heroSubtitle = `Consultorio odontológico en ${city || 'Quilmes'}. Atención personalizada para niños, jóvenes y adultos con turnos programados y contacto directo por WhatsApp.`;
   } else if (isPet) {
     heroTitle = `La mejor atención médica y cariño para la salud de tu mascota`;
     heroSubtitle = `Clínica veterinaria, vacunación y cirugías en ${city || 'la zona'}. Cuidamos a tu compañero con profesionalismo y vocación.`;
@@ -310,7 +310,7 @@ export async function generateDemoForBusiness(
   const about = {
     heading: isDental ? 'Sobre el Consultorio' : isPet ? 'Sobre la Veterinaria' : 'Sobre Nosotros',
     title: isDental
-      ? 'Atención odontológica de confianza y calidad humana'
+      ? 'Atención odontológica cercana y profesional en Quilmes'
       : isPet
       ? 'Dedicación absoluta por el bienestar de los animales'
       : 'Compromiso profesional y atención de excelencia',
@@ -318,13 +318,13 @@ export async function generateDemoForBusiness(
     role: isDental ? 'Especialista en Odontología Integral' : isPet ? 'Médico Veterinario' : 'Equipo Profesional',
     imageUrl: visuals.aboutImage.url,
     description: isDental
-      ? `En ${business.name} nos dedicamos a cuidar tu salud bucal con un trato cercano, empático y libre de dolor. Combinamos tecnología de última generación con instalaciones confortables para que te sientas a gusto en cada consulta.`
+      ? `En ${business.name} nos dedicamos al cuidado integral de la salud bucal. Nos enfocamos en ofrecer un trato cercano, explicaciones claras sobre cada tratamiento y un ambiente confortable en cada consulta.`
       : `En ${business.name} priorizamos la cercanía, la excelencia y la confianza para brindarte un servicio transparente y a la altura de tus expectativas.`,
     highlights: isDental
       ? [
-          'Diagnóstico integral y sin dolor con equipamiento moderno',
-          'Atención personalizada para niños, jóvenes y adultos',
-          'Puntualidad en los turnos para cuidar tu tiempo',
+          'Atención odontológica para niños, jóvenes y adultos',
+          'Consultas y tratamientos planificados según cada necesidad',
+          'Atención con cita previa para organizar mejor tu visita',
         ]
       : [
           'Atención personalizada orientada a resultados',
@@ -390,20 +390,20 @@ export async function generateDemoForBusiness(
       items: servicesItemsWithImages,
     },
     features: {
-      heading: '¿Por qué elegirnos?',
+      heading: 'Criterio de Atención y Espacio',
       items: isDental
         ? [
             {
-              title: 'Atención Sin Dolor',
-              description: 'Técnicas y cuidados modernos para una experiencia cómoda, tranquila y sin estrés.',
+              title: 'Atención Personalizada',
+              description: 'Evaluamos cada caso en forma particular para recomendarte la alternativa adecuada.',
             },
             {
-              title: 'Tecnología y Precisión',
-              description: 'Equipamiento digital e instrumental de última generación para diagnósticos certeros.',
+              title: 'Instalaciones Confortables',
+              description: 'Espacio acondicionado para que te sientas a gusto en cada consulta.',
             },
             {
-              title: 'Turnos Puntuales',
-              description: 'Respetamos tu tiempo coordinando turnos directos y sin largas esperas.',
+              title: 'Atención con Cita Previa',
+              description: 'Coordinamos los turnos con anticipación para facilitar la organización de tu visita.',
             },
           ]
         : [
