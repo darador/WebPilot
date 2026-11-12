@@ -120,8 +120,11 @@ export default function OrchestratorPage() {
       const json = await res.json();
       if (json.success) {
         const sum = json.data;
+        const tasksDone = sum?.tasks_completed ?? sum?.processedTasks ?? 0;
+        const tasksNew = sum?.tasks_created ?? sum?.chainsTriggered ?? 0;
+        const approvals = sum?.approvals_needed ?? 0;
         setCycleNotice(
-          `Ciclo completado: ${sum.processedTasks} tareas procesadas, ${sum.chainsTriggered} nuevos encadenamientos iniciados.`
+          `Ciclo completado: ${tasksDone} tareas completadas, ${tasksNew} nuevas acciones iniciadas${approvals > 0 ? ` (${approvals} requieren Autorización de CEO)` : ''}.`
         );
         fetchData();
         setTimeout(() => setCycleNotice(null), 6000);
@@ -608,7 +611,9 @@ export default function OrchestratorPage() {
                 agent: 'Cata',
               },
             ].map((f) => {
-              const isEnabled = overview?.config?.active_flows?.[f.id] ?? true;
+              const activeFlows = (overview?.config?.active_flows as Record<string, boolean>) || {};
+              const lowerKey = f.id.toLowerCase().replace('_', '');
+              const isEnabled = activeFlows[f.id] ?? activeFlows[lowerKey] ?? true;
               return (
                 <div
                   key={f.id}

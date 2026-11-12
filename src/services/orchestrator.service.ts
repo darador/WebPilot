@@ -441,7 +441,7 @@ export async function createOrchestratorTask(
       ? `${taskData.task_type}:${taskData.business_id}`
       : `${taskData.task_type}:${JSON.stringify(taskData.payload || {})}`);
 
-  // 2. Verificar duplicado activo en memoria o Supabase
+  // 2. Verificar duplicado activo en memoria local
   const activeExisting = LOCAL_TASKS_CACHE.find(
     (t) =>
       t.dedup_key === dedupKey &&
@@ -449,7 +449,25 @@ export async function createOrchestratorTask(
   );
 
   if (activeExisting) {
-    return { task: activeExisting, wasDuplicate: true };
+    return { task: sanitizeTaskMessages(activeExisting), wasDuplicate: true };
+  }
+
+  // 3. Verificar duplicado activo en Supabase
+  try {
+    const { data: existingDb } = await supabase
+      .from('orchestrator_tasks')
+      .select('*, business:businesses(*)')
+      .eq('dedup_key', dedupKey)
+      .in('status', ['PENDIENTE', 'EN_EJECUCION', 'ESPERANDO_APROBACION'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existingDb) {
+      return { task: sanitizeTaskMessages(existingDb as OrchestratorTask), wasDuplicate: true };
+    }
+  } catch (err) {
+    // Si la tabla no está disponible o falla RLS temporalmente, se apoya en memoria local
   }
 
   const newTask: OrchestratorTask = {
@@ -719,6 +737,26 @@ export async function executeOrchestratorTask(
           throw new Error('TITO_AUDIT requiere business_id');
         }
 
+        // 1. Verificar si el negocio cuenta con sitio web válido
+        const { data: bData } = await supabase
+          .from('businesses')
+          .select('id, name, website')
+          .eq('id', task.business_id)
+          .maybeSingle();
+
+        const siteUrl = bData?.website || task.payload?.url;
+        if (!siteUrl || siteUrl.trim().length <= 3) {
+          // El comercio no tiene sitio web: Tito no intenta auditarlo y lo identifica para Vera
+          resultPayload = {
+            hasWebsite: false,
+            score: null,
+            skipped: true,
+            reason: 'Comercio sin sitio web registrado. Transferido a Vera para evaluación de desarrollo desde cero.',
+          };
+          nextActionMsg = `Comercio sin sitio web. Tito transfiere el prospecto a Vera para propuesta de Landing Express.`;
+          break;
+        }
+
         const auditRes = await auditBusiness(task.business_id, supabase);
 
         resultPayload = {
@@ -738,6 +776,27 @@ export async function executeOrchestratorTask(
       case 'VERA_STRATEGY': {
         if (!task.business_id) {
           throw new Error('VERA_STRATEGY requiere business_id');
+        }
+
+        // Verificar que no se analice prematuramente si tiene web pero la auditoría de Tito está pendiente
+        const { data: bData } = await supabase
+          .from('businesses')
+          .select('id, name, website, audits(*)')
+          .eq('id', task.business_id)
+          .maybeSingle();
+
+        const bAudits = Array.isArray(bData?.audits) ? bData.audits : [];
+        const hasCompletedAudit = bAudits.some((a: any) => a.status === 'COMPLETADO' || a.score != null);
+        const hasWeb = Boolean(bData?.website && bData.website.trim().length > 3);
+
+        if (hasWeb && !hasCompletedAudit) {
+          resultPayload = {
+            delayed: true,
+            reason: 'Auditoría técnica de Tito aún no finalizada.',
+          };
+          nextActionMsg = `Evaluación pausada: esperando que Tito complete la auditoría de ${bData?.website}.`;
+          finalStatus = 'PENDIENTE';
+          break;
         }
 
         const analysis = await analyzeBusiness(task.business_id, undefined, supabase);
@@ -767,6 +826,41 @@ export async function executeOrchestratorTask(
           throw new Error('BRUNO_DEMO requiere business_id');
         }
 
+        // Bruno solo recibe oportunidades evaluadas y aprobadas por Vera
+        const { data: bData } = await supabase
+          .from('businesses')
+          .select('id, name, audits(*)')
+          .eq('id', task.business_id)
+          .maybeSingle();
+
+        const bAudits = Array.isArray(bData?.audits) ? bData.audits : [];
+        const latestAudit = bAudits.length > 0 ? bAudits[0] : null;
+        const veraStrategy = latestAudit?.ai_insights?.vera_strategy;
+
+        if (!veraStrategy) {
+          resultPayload = {
+            skipped: true,
+            reason: 'Negocio sin diagnóstico estratégico previo de Vera.',
+          };
+          nextActionMsg = `Generación de demo cancelada: requiere evaluación previa de Vera.`;
+          finalStatus = 'CANCELADA';
+          break;
+        }
+
+        if (
+          veraStrategy.commercialOutcome === 'BUENA_PRESENCIA' ||
+          veraStrategy.actionRecommendation === 'NO_OFRECER' ||
+          veraStrategy.markedAsNoOpportunity
+        ) {
+          resultPayload = {
+            skipped: true,
+            reason: 'Vera determinó que el comercio tiene presencia sólida o no ofrecer servicios.',
+          };
+          nextActionMsg = `Bruno descarta generación de demo: Vera dictaminó no ofrecer servicios comerciales.`;
+          finalStatus = 'COMPLETADA';
+          break;
+        }
+
         // Protección contra demos duplicadas activas
         const existingDemos = await getClientDemos({}, supabase);
         const activeDemo = existingDemos.find(
@@ -786,7 +880,7 @@ export async function executeOrchestratorTask(
           const demo = await generateDemoForBusiness(
             task.business_id,
             {
-              productType: task.payload.productType,
+              productType: task.payload.productType || veraStrategy.recommendedServices?.[0]?.serviceName,
               customTitle: task.payload.customTitle,
             },
             supabase
@@ -815,10 +909,23 @@ export async function executeOrchestratorTask(
         const opps = cataData?.opportunities || [];
         const opp = opps.find((o) => o.business?.id === task.business_id) || opps[0];
 
-        if (!opp) {
+        if (!opp || !opp.business) {
           resultPayload = { skipped: true, reason: 'No hay oportunidad registrada en Cata' };
           nextActionMsg = 'No se encontró oportunidad activa para preparar mensajes.';
         } else {
+          // Si la oportunidad tiene demo generada pero aún no fue aprobada por el CEO, esperar
+          if (opp.demo && opp.demo.status !== 'APROBADA') {
+            resultPayload = {
+              delayed: true,
+              demoStatus: opp.demo.status,
+              reason: 'Demo conceptual pendiente de Autorización de CEO.',
+            };
+            nextActionMsg = `Cata en pausa: esperando Autorización de CEO para la demo antes de redactar borradores comerciales.`;
+            finalStatus = 'ESPERANDO_APROBACION';
+            requiresApproval = true;
+            break;
+          }
+
           const drafts = generateCataMessages(
             opp.business,
             opp.veraStrategy,
@@ -831,6 +938,7 @@ export async function executeOrchestratorTask(
             businessName: opp.business.name,
             draftsPrepared: draftsCount,
             channelSuggestions: ['WhatsApp Directo', 'Correo Formal'],
+            drafts,
           };
           nextActionMsg = `${draftsCount} borradores comerciales preparados por Cata. Listos para envío manual previa aprobación humana.`;
         }
@@ -915,7 +1023,16 @@ export async function runOrchestratorCycle(client?: any): Promise<OrchestratorCy
   let tasksFailedCount = 0;
   let approvalsNeededCount = 0;
 
-  // 2. Procesar tareas pendientes existentes en cola
+  // Helper para verificar si un flujo está activo (soporta 'flujoA' o 'FLUJO_A')
+  const isFlowActive = (flowKey: 'flujoA' | 'flujoB' | 'flujoC' | 'flujoD') => {
+    const uppercase = flowKey.replace('flujo', 'FLUJO_') as string;
+    const flows = config.active_flows as Record<string, boolean>;
+    return Boolean(flows[flowKey] ?? flows[uppercase] ?? true);
+  };
+
+  // ----------------------------------------------------------------------------
+  // ETAPA 1: Procesar tareas pendientes preexistentes en cola (ej: manuales / reintentos)
+  // ----------------------------------------------------------------------------
   const pendingTasks = await getOrchestratorTasks({ status: 'PENDIENTE', limit: 10 }, supabase);
 
   for (const task of pendingTasks) {
@@ -932,86 +1049,215 @@ export async function runOrchestratorCycle(client?: any): Promise<OrchestratorCy
     }
   }
 
-  // 3. FLUJO B: Encadenamiento y detección de auditorías técnicas y evaluaciones comerciales
-  if (config.active_flows.flujoB) {
-    try {
-      // Buscar negocios sin auditoría
-      const { data: businesses } = await supabase
-        .from('businesses')
-        .select('*, audits(*)')
-        .order('created_at', { ascending: false })
-        .limit(20);
+  // ----------------------------------------------------------------------------
+  // ETAPA 2: FLUJO A — LOLA (Detección informativa de nuevos prospectos descubiertos)
+  // ----------------------------------------------------------------------------
+  try {
+    const { count: pendingCandidates } = await supabase
+      .from('lola_candidates')
+      .select('id', { count: 'exact', head: true })
+      .eq('import_status', 'DESCUBIERTO');
 
-      if (businesses && businesses.length > 0) {
-        let auditsEnqueued = 0;
+    if (pendingCandidates && pendingCandidates > 0) {
+      agentsActiveSet.add('LOLA');
+      details.push(`[LOLA] Hay ${pendingCandidates} comercios descubiertos en Lola disponibles para selección e incorporación.`);
+    }
+  } catch (e) {
+    // Si la tabla no está en Supabase todavía o falla la consulta, se omite
+  }
 
-        for (const b of businesses) {
-          const hasAudit = Array.isArray(b.audits) && b.audits.length > 0;
-          const hasWebsite = Boolean(b.website && b.website.trim().length > 3);
+  // ----------------------------------------------------------------------------
+  // ETAPA 3: FLUJO B — TITO (Auditoría Técnica de sitios web)
+  // Audita comercios que TIENEN sitio web y aún NO cuentan con auditoría técnica.
+  // Si no tiene sitio web, Tito NO lo audita y se deja para evaluación directa en Vera.
+  // ----------------------------------------------------------------------------
+  let businesses: any[] = [];
+  try {
+    const { data: bList } = await supabase
+      .from('businesses')
+      .select('*, audits(*)')
+      .order('created_at', { ascending: false })
+      .limit(30);
 
-          // Si tiene sitio web y no tiene auditoría: Asignar a Tito
-          if (hasWebsite && !hasAudit && auditsEnqueued < config.limits.max_tito_audits_per_cycle) {
-            const { task, wasDuplicate } = await createOrchestratorTask(
-              {
-                agent: 'TITO',
-                task_type: 'TITO_AUDIT',
-                workflow_id: 'FLUJO_B',
-                business_id: b.id,
-                business_name: b.name,
-                priority: 'MEDIA',
-                payload: { businessId: b.id, url: b.website },
-                next_action: `Tito auditará el sitio web (${b.website}) para evaluar performance y SEO.`,
-                dedup_key: `TITO_AUDIT:${b.id}`,
-              },
-              supabase
-            );
+    if (bList) businesses = bList;
+  } catch (err: any) {
+    console.warn('Orquestador: Error consultando prospectos en Supabase:', err);
+  }
 
-            if (!wasDuplicate) {
-              auditsEnqueued++;
-              tasksCreatedCount++;
-              details.push(`[TITO] Tarea creada para auditar a ${b.name}`);
+  if (isFlowActive('flujoB') && businesses.length > 0) {
+    let auditsRunCount = 0;
+    const maxTito = config.limits.max_tito_audits_per_cycle || 10;
+
+    for (const b of businesses) {
+      if (auditsRunCount >= maxTito) break;
+
+      const audits = Array.isArray(b.audits) ? b.audits : [];
+      const hasCompletedAudit = audits.some((a: any) => a.status === 'COMPLETADO' || a.score != null);
+      const hasWebsite = Boolean(b.website && b.website.trim().length > 3);
+
+      // Si tiene sitio web y no tiene auditoría previa completada: Asignar y ejecutar Tito
+      if (hasWebsite && !hasCompletedAudit) {
+        const { task, wasDuplicate } = await createOrchestratorTask(
+          {
+            agent: 'TITO',
+            task_type: 'TITO_AUDIT',
+            workflow_id: 'FLUJO_B',
+            business_id: b.id,
+            business_name: b.name,
+            priority: 'MEDIA',
+            payload: { businessId: b.id, url: b.website },
+            next_action: `Tito auditará el sitio web (${b.website}) para evaluar performance y SEO.`,
+            dedup_key: `TITO_AUDIT:${b.id}`,
+          },
+          supabase
+        );
+
+        if (!wasDuplicate && task.status === 'PENDIENTE') {
+          auditsRunCount++;
+          tasksCreatedCount++;
+          agentsActiveSet.add('TITO');
+
+          try {
+            const finished = await executeOrchestratorTask(task, supabase);
+            if (finished.status === 'COMPLETADA') {
+              tasksCompletedCount++;
+              details.push(`[TITO] Auditoría técnica completada para ${b.name}: Puntaje ${finished.result?.score || 'N/A'}/100.`);
+              // Actualizar audits localmente para que Vera pueda procesarlo en esta misma pasada del ciclo
+              b.audits = [{ id: finished.result?.auditId, score: finished.result?.score, ai_insights: {} }];
+            } else if (finished.status === 'FALLIDA') {
+              tasksFailedCount++;
+              details.push(`[TITO] Falló auditoría de ${b.name}: ${finished.error_message}`);
             }
-          }
-
-          // Si NO tiene sitio web y no tiene estrategia: Asignar directo a Vera (Regla: negocios sin web van directo a Vera)
-          if (!hasWebsite && !hasAudit) {
-            const { wasDuplicate } = await createOrchestratorTask(
-              {
-                agent: 'VERA',
-                task_type: 'VERA_STRATEGY',
-                workflow_id: 'FLUJO_B',
-                business_id: b.id,
-                business_name: b.name,
-                priority: 'ALTA',
-                payload: { businessId: b.id, withoutWebsite: true },
-                next_action: `Negocio sin web. Vera evaluará propuesta de desarrollo desde cero (Landing Express).`,
-                dedup_key: `VERA_STRATEGY:${b.id}`,
-              },
-              supabase
-            );
-
-            if (!wasDuplicate) {
-              tasksCreatedCount++;
-              details.push(`[VERA] Tarea creada para evaluar oportunidad sin web en ${b.name}`);
-            }
+          } catch (err: any) {
+            tasksFailedCount++;
+            details.push(`[TITO] Error ejecutando auditoría de ${b.name}: ${err.message}`);
           }
         }
       }
-    } catch (err: any) {
-      console.warn('Orquestador Flujo B: Advertencia durante el encadenamiento:', err);
     }
   }
 
-  // 4. FLUJO C: Detección de oportunidades para generación de demos de Bruno
-  if (config.active_flows.flujoC) {
+  // ----------------------------------------------------------------------------
+  // ETAPA 4: FLUJO B — VERA (Estrategia y Evaluación Comercial)
+  // Evalúa:
+  // a) Negocios CON sitio web que ya tienen auditoría técnica (Tito) y aún NO tienen estrategia de Vera.
+  // b) Negocios SIN sitio web que aún NO tienen estrategia de Vera (desarrollo desde cero).
+  // No analiza prematuramente si la auditoría técnica requerida está pendiente.
+  // ----------------------------------------------------------------------------
+  if (isFlowActive('flujoB') && businesses.length > 0) {
+    let veraRunCount = 0;
+    const maxVera = 10;
+
+    for (const b of businesses) {
+      if (veraRunCount >= maxVera) break;
+
+      const audits = Array.isArray(b.audits) ? b.audits : [];
+      const latestAudit = audits.length > 0 ? audits[0] : null;
+      const hasVeraStrategy = Boolean(latestAudit?.ai_insights?.vera_strategy);
+      const hasWebsite = Boolean(b.website && b.website.trim().length > 3);
+
+      // CASO A: Negocio CON sitio web que YA tiene auditoría técnica y aún no tiene estrategia de Vera
+      if (hasWebsite && latestAudit && !hasVeraStrategy) {
+        const { task, wasDuplicate } = await createOrchestratorTask(
+          {
+            agent: 'VERA',
+            task_type: 'VERA_STRATEGY',
+            workflow_id: 'FLUJO_B',
+            business_id: b.id,
+            business_name: b.name,
+            priority: 'ALTA',
+            payload: { businessId: b.id, auditId: latestAudit.id },
+            next_action: `Vera analizará la auditoría técnica y formulará la estrategia comercial para ${b.name}.`,
+            dedup_key: `VERA_STRATEGY:${b.id}`,
+          },
+          supabase
+        );
+
+        if (!wasDuplicate && task.status === 'PENDIENTE') {
+          veraRunCount++;
+          tasksCreatedCount++;
+          agentsActiveSet.add('VERA');
+
+          try {
+            const finished = await executeOrchestratorTask(task, supabase);
+            if (finished.status === 'COMPLETADA') {
+              tasksCompletedCount++;
+              const outcome = finished.result?.commercialOutcomeLabel || finished.result?.commercialOutcome || 'Estrategia formulada';
+              details.push(`[VERA] Estrategia completada para ${b.name}: ${outcome}.`);
+              if (latestAudit.ai_insights) {
+                latestAudit.ai_insights.vera_strategy = finished.result;
+              }
+            } else if (finished.status === 'FALLIDA') {
+              tasksFailedCount++;
+              details.push(`[VERA] Falló evaluación de ${b.name}: ${finished.error_message}`);
+            }
+          } catch (err: any) {
+            tasksFailedCount++;
+            details.push(`[VERA] Error en evaluación de ${b.name}: ${err.message}`);
+          }
+        }
+      }
+
+      // CASO B: Negocio SIN sitio web que todavía no tiene estrategia comercial de Vera
+      if (!hasWebsite && !hasVeraStrategy) {
+        const { task, wasDuplicate } = await createOrchestratorTask(
+          {
+            agent: 'VERA',
+            task_type: 'VERA_STRATEGY',
+            workflow_id: 'FLUJO_B',
+            business_id: b.id,
+            business_name: b.name,
+            priority: 'ALTA',
+            payload: { businessId: b.id, withoutWebsite: true },
+            next_action: `Negocio sin web. Vera evaluará propuesta de desarrollo desde cero (Landing Express).`,
+            dedup_key: `VERA_STRATEGY:${b.id}`,
+          },
+          supabase
+        );
+
+        if (!wasDuplicate && task.status === 'PENDIENTE') {
+          veraRunCount++;
+          tasksCreatedCount++;
+          agentsActiveSet.add('VERA');
+
+          try {
+            const finished = await executeOrchestratorTask(task, supabase);
+            if (finished.status === 'COMPLETADA') {
+              tasksCompletedCount++;
+              const outcome = finished.result?.commercialOutcomeLabel || finished.result?.commercialOutcome || 'Estrategia formulada';
+              details.push(`[VERA] Estrategia sin web completada para ${b.name}: ${outcome}.`);
+            } else if (finished.status === 'FALLIDA') {
+              tasksFailedCount++;
+              details.push(`[VERA] Falló evaluación sin web de ${b.name}: ${finished.error_message}`);
+            }
+          } catch (err: any) {
+            tasksFailedCount++;
+            details.push(`[VERA] Error en evaluación sin web de ${b.name}: ${err.message}`);
+          }
+        }
+      }
+    }
+  }
+
+  // ----------------------------------------------------------------------------
+  // ETAPA 5: FLUJO C — BRUNO (Demos Comerciales para Oportunidades Claras)
+  // Recibe ÚNICAMENTE los prospectos evaluados por Vera con OPORTUNIDAD_CLARA.
+  // Respeta límites y requiere Autorización de CEO en el visor.
+  // ----------------------------------------------------------------------------
+  if (isFlowActive('flujoC')) {
     try {
       const { getEligibleBusinessesForDemo } = await import('@/services/bruno.service');
       const eligible = await getEligibleBusinessesForDemo(supabase);
 
       let demosCreated = 0;
+      const maxBruno = config.limits.max_bruno_demos_per_cycle || 3;
+
       for (const item of eligible) {
-        if (!item.hasExistingDemo && demosCreated < config.limits.max_bruno_demos_per_cycle) {
-          const { wasDuplicate } = await createOrchestratorTask(
+        if (demosCreated >= maxBruno) break;
+
+        // Solo crear demo si Vera dictaminó oportunidad y no existe demo activa
+        if (item.hasStrategy && !item.hasExistingDemo) {
+          const { task, wasDuplicate } = await createOrchestratorTask(
             {
               agent: 'BRUNO',
               task_type: 'BRUNO_DEMO',
@@ -1029,10 +1275,27 @@ export async function runOrchestratorCycle(client?: any): Promise<OrchestratorCy
             supabase
           );
 
-          if (!wasDuplicate) {
+          if (!wasDuplicate && task.status === 'PENDIENTE') {
             demosCreated++;
             tasksCreatedCount++;
-            details.push(`[BRUNO] Tarea de demo creada para ${item.business.name}`);
+            agentsActiveSet.add('BRUNO');
+
+            try {
+              const finished = await executeOrchestratorTask(task, supabase);
+              if (finished.status === 'ESPERANDO_APROBACION') {
+                approvalsNeededCount++;
+                details.push(`[BRUNO] Demo conceptual creada para ${item.business.name}. Requiere Autorización de CEO en el visor.`);
+              } else if (finished.status === 'COMPLETADA') {
+                tasksCompletedCount++;
+                details.push(`[BRUNO] Demo lista para ${item.business.name}.`);
+              } else if (finished.status === 'FALLIDA') {
+                tasksFailedCount++;
+                details.push(`[BRUNO] Falló generación de demo para ${item.business.name}: ${finished.error_message}`);
+              }
+            } catch (err: any) {
+              tasksFailedCount++;
+              details.push(`[BRUNO] Error generando demo para ${item.business.name}: ${err.message}`);
+            }
           }
         }
       }
@@ -1041,12 +1304,77 @@ export async function runOrchestratorCycle(client?: any): Promise<OrchestratorCy
     }
   }
 
-  // 5. Consolidar resumen del ciclo
+  // ----------------------------------------------------------------------------
+  // ETAPA 6: FLUJO D — CATA (Contacto Comercial y Seguimiento)
+  // Prepara borradores personalizados para oportunidades con demo aprobada por el CEO.
+  // Nunca envía mensajes de forma automática.
+  // ----------------------------------------------------------------------------
+  if (isFlowActive('flujoD')) {
+    try {
+      const { getCataOpportunities } = await import('@/services/cata.service');
+      const cataData = await getCataOpportunities(supabase);
+      const opps = cataData?.opportunities || [];
+
+      let draftsPrepared = 0;
+      const maxCata = 5;
+
+      for (const opp of opps) {
+        if (draftsPrepared >= maxCata) break;
+
+        const demoApproved = !opp.demo || opp.demo.status === 'APROBADA';
+        const isQualified = opp.veraStrategy && (
+          opp.veraStrategy.commercialOutcome === 'OPORTUNIDAD_CLARA' ||
+          opp.veraStrategy.commercialOutcome === 'PROPUESTA_OPCIONAL'
+        );
+
+        if (isQualified && demoApproved && opp.business?.id) {
+          const { task, wasDuplicate } = await createOrchestratorTask(
+            {
+              agent: 'CATA',
+              task_type: 'CATA_FOLLOWUP',
+              workflow_id: 'FLUJO_D',
+              business_id: opp.business.id,
+              business_name: opp.business.name,
+              priority: 'MEDIA',
+              payload: { businessId: opp.business.id },
+              next_action: `Cata preparará borradores de mensajes comerciales para ${opp.business.name}.`,
+              dedup_key: `CATA_FOLLOWUP:${opp.business.id}`,
+            },
+            supabase
+          );
+
+          if (!wasDuplicate && task.status === 'PENDIENTE') {
+            draftsPrepared++;
+            tasksCreatedCount++;
+            agentsActiveSet.add('CATA');
+
+            try {
+              const finished = await executeOrchestratorTask(task, supabase);
+              if (finished.status === 'COMPLETADA') {
+                tasksCompletedCount++;
+                details.push(`[CATA] Borradores comerciales preparados para ${opp.business.name} (WhatsApp y Correo).`);
+              } else if (finished.status === 'FALLIDA') {
+                tasksFailedCount++;
+              }
+            } catch (err: any) {
+              tasksFailedCount++;
+            }
+          }
+        }
+      }
+    } catch (err: any) {
+      console.warn('Orquestador Flujo D: Advertencia durante el encadenamiento:', err);
+    }
+  }
+
+  // ----------------------------------------------------------------------------
+  // ETAPA 7: Consolidar Resumen del Ciclo
+  // ----------------------------------------------------------------------------
   const summary: OrchestratorCycleSummary = {
     cycle_id: cycleId,
     timestamp,
     status: tasksFailedCount > 0 ? 'PARCIAL' : 'COMPLETADO',
-    tasks_processed: pendingTasks.length,
+    tasks_processed: pendingTasks.length + tasksCreatedCount,
     tasks_created: tasksCreatedCount,
     tasks_completed: tasksCompletedCount,
     tasks_failed: tasksFailedCount,
@@ -1093,6 +1421,13 @@ export async function getOrchestratorOverview(client?: any): Promise<{
       lastTask: string | null;
     }
   >;
+  agentStatuses: Array<{
+    agent: OrchestratorAgentName;
+    name: string;
+    role: string;
+    state: 'DISPONIBLE' | 'OCUPADO' | 'EN_ESPERA';
+    lastTask: { type: string; status: string } | null;
+  }>;
   recentTasks: OrchestratorTask[];
   pendingApprovals: OrchestratorTask[];
 }> {
@@ -1113,6 +1448,11 @@ export async function getOrchestratorOverview(client?: any): Promise<{
   const getAgentLastTask = (agent: OrchestratorAgentName) => {
     const t = allTasks.find((item) => item.agent === agent);
     return t ? `${t.task_type} (${t.status})` : null;
+  };
+
+  const getAgentLastTaskObj = (agent: OrchestratorAgentName) => {
+    const t = allTasks.find((item) => item.agent === agent);
+    return t ? { type: t.task_type, status: t.status } : null;
   };
 
   const getAgentState = (agent: OrchestratorAgentName): 'DISPONIBLE' | 'OCUPADO' | 'EN_ESPERA' => {
@@ -1164,6 +1504,44 @@ export async function getOrchestratorOverview(client?: any): Promise<{
     },
   };
 
+  const agentStatuses = [
+    {
+      agent: 'LOLA' as OrchestratorAgentName,
+      name: 'Lola',
+      role: 'Prospección en Google Places',
+      state: getAgentState('LOLA'),
+      lastTask: getAgentLastTaskObj('LOLA'),
+    },
+    {
+      agent: 'TITO' as OrchestratorAgentName,
+      name: 'Tito',
+      role: 'Auditoría Técnica y SEO',
+      state: getAgentState('TITO'),
+      lastTask: getAgentLastTaskObj('TITO'),
+    },
+    {
+      agent: 'VERA' as OrchestratorAgentName,
+      name: 'Vera',
+      role: 'Estrategia y Evaluación Comercial',
+      state: getAgentState('VERA'),
+      lastTask: getAgentLastTaskObj('VERA'),
+    },
+    {
+      agent: 'BRUNO' as OrchestratorAgentName,
+      name: 'Bruno',
+      role: 'Desarrollo Web y Propuestas Demo',
+      state: getAgentState('BRUNO'),
+      lastTask: getAgentLastTaskObj('BRUNO'),
+    },
+    {
+      agent: 'CATA' as OrchestratorAgentName,
+      name: 'Cata',
+      role: 'Contacto Comercial y Seguimiento',
+      state: getAgentState('CATA'),
+      lastTask: getAgentLastTaskObj('CATA'),
+    },
+  ];
+
   const pendingApprovals = allTasks.filter(
     (t) => t.requires_human_approval && t.status === 'ESPERANDO_APROBACION'
   );
@@ -1172,6 +1550,7 @@ export async function getOrchestratorOverview(client?: any): Promise<{
     config,
     counts,
     agentsStatus,
+    agentStatuses,
     recentTasks: allTasks.slice(0, 20),
     pendingApprovals,
   };
