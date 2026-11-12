@@ -273,6 +273,69 @@ export async function investigateWebsite(url: string | null | undefined): Promis
   }
 }
 
+/**
+ * Obtiene la clave de Google Maps/Places API desde las variables de entorno.
+ * Soporta GOOGLE_MAPS_API_KEY, GOOGLE_PLACES_API_KEY y NEXT_PUBLIC_GOOGLE_MAPS_API_KEY.
+ * Limpia comillas o espacios accidentales.
+ */
+export function getGoogleMapsApiKey(): string | null {
+  const rawKey =
+    process.env.GOOGLE_MAPS_API_KEY ||
+    process.env.GOOGLE_PLACES_API_KEY ||
+    process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ||
+    null;
+
+  if (!rawKey) return null;
+  const clean = rawKey.trim().replace(/^['"]+|['"]+$/g, '');
+  return clean.length > 0 ? clean : null;
+}
+
+/**
+ * Traduce y formatea los errores de Google Places API a mensajes comprensibles para el usuario.
+ */
+function formatGooglePlacesError(status: number, errorBody: any): string {
+  const code = errorBody?.error?.code || status;
+  const rawMsg = errorBody?.error?.message || '';
+  const details = JSON.stringify(errorBody?.error?.details || []);
+  const combined = `${rawMsg} ${details}`.toUpperCase();
+
+  if (code === 400 || combined.includes('API_KEY_INVALID') || combined.includes('INVALID_ARGUMENT')) {
+    return 'La clave de Google Maps configurada (GOOGLE_MAPS_API_KEY) es inválida o tiene un formato incorrecto. Verificá la clave generada en Google Cloud Console.';
+  }
+
+  if (
+    combined.includes('BILLING_NOT_ENABLED') ||
+    combined.includes('BILLING_DISABLED') ||
+    combined.includes('BILLING')
+  ) {
+    return 'Tu proyecto de Google Cloud no tiene una cuenta de facturación vinculada o activa. Google exige vincular una tarjeta para activar la cuota gratuita mensual de $200 USD.';
+  }
+
+  if (
+    code === 403 ||
+    combined.includes('PERMISSION_DENIED') ||
+    combined.includes('ACCESS_TOKEN_SCOPE_INSUFFICIENT') ||
+    combined.includes('PLACES_API_NOT_ENABLED') ||
+    combined.includes('NOT_ENABLED') ||
+    combined.includes('API HAS NOT BEEN USED')
+  ) {
+    if (combined.includes('IP_REFERRER_BLOCKED') || combined.includes('HTTP_REFERRER')) {
+      return 'La clave de Google Maps tiene restricciones de IP o dominio HTTP que impiden que el servidor consulte Google Places.';
+    }
+    return 'La API "Places API (New)" no está habilitada en tu proyecto de Google Cloud Console. Buscala en la biblioteca de APIs de console.cloud.google.com y hacé clic en "Habilitar".';
+  }
+
+  if (code === 429 || combined.includes('RESOURCE_EXHAUSTED') || combined.includes('QUOTA')) {
+    return 'Se ha alcanzado la cuota o límite de consultas de Google Places API en tu cuenta de Google Cloud.';
+  }
+
+  if (status >= 500) {
+    return `Los servidores de Google Places experimentaron un error temporal (HTTP ${status}). Intentá nuevamente en unos instantes.`;
+  }
+
+  return `Google Places API respondió con error (HTTP ${status}): ${rawMsg || 'Error en la solicitud'}`;
+}
+
 // ============================================================================
 // ETAPA 1 — DESCUBRIR (Text Search con FieldMask Basic/Essentials)
 // Optimización de costos: No pide teléfono ni sitio web en esta etapa.
@@ -285,12 +348,13 @@ export async function runLolaDiscovery(
   search: LolaSearch;
   candidates: LolaCandidate[];
 }> {
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+  const apiKey = getGoogleMapsApiKey();
 
-  if (!apiKey || !apiKey.trim()) {
+  if (!apiKey) {
     throw new Error(
-      'Falta configurar la variable de entorno GOOGLE_MAPS_API_KEY en .env.local. ' +
-      'Para buscar comercios reales con Lola mediante Google Places API (New), ingresá tu clave de API en la configuración.'
+      'Falta configurar la variable de entorno GOOGLE_MAPS_API_KEY. ' +
+      'Si estás ejecutando en Vercel, agregala en Project Settings ➔ Environment Variables. ' +
+      'Si estás ejecutando en local, agregala en el archivo .env.local.'
     );
   }
 
@@ -338,7 +402,7 @@ export async function runLolaDiscovery(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Goog-Api-Key': apiKey.trim(),
+        'X-Goog-Api-Key': apiKey,
         'X-Goog-FieldMask': fieldMask,
       },
       body: JSON.stringify({
@@ -350,41 +414,80 @@ export async function runLolaDiscovery(
 
     if (!res.ok) {
       const errorBody = await res.json().catch(() => null);
-      const errorMsg =
-        errorBody?.error?.message ||
-        `HTTP ${res.status}: ${res.statusText || 'Error en Google Places API'}`;
-
-      throw new Error(`Google Places API respondió con error: ${errorMsg}`);
+      throw new Error(formatGooglePlacesError(res.status, errorBody));
     }
 
     const json = await res.json();
     const rawPlaces = json.places || [];
 
+    // Manejo cuando no hay resultados
+    if (rawPlaces.length === 0) {
+      const duration_ms = Date.now() - startTime;
+      const { data: updatedSearch } = await supabase
+        .from('lola_searches')
+        .update({
+          status: 'COMPLETADO',
+          total_found: 0,
+          duration_ms,
+        })
+        .eq('id', searchSession.id)
+        .select()
+        .single();
+
+      return {
+        search: (updatedSearch as LolaSearch) || searchSession,
+        candidates: [],
+      };
+    }
+
+    // Deduplicación preventiva contra comercios ya registrados en el CRM (businesses)
+    const { data: existingBusinesses } = await supabase
+      .from('businesses')
+      .select('id, name, google_place_id');
+
+    const existingPlaceIds = new Set<string>();
+    const existingNames = new Set<string>();
+
+    (existingBusinesses || []).forEach((b: any) => {
+      if (b.google_place_id) existingPlaceIds.add(b.google_place_id);
+      if (b.name) existingNames.add(b.name.trim().toLowerCase());
+    });
+
     // Guardar candidatos descubiertos en lola_candidates con import_status = 'DESCUBIERTO'
-    const candidateInserts: any[] = rawPlaces.map((p: any) => ({
-      search_id: searchSession.id,
-      place_id: p.id,
-      name: p.displayName?.text || 'Comercio sin nombre informado',
-      industry: params.industry,
-      city: params.city,
-      state_province: params.state_province || 'Buenos Aires',
-      country: params.country || 'Argentina',
-      address: p.formattedAddress || `${params.city}, Argentina`,
-      website: null,
-      phone: null,
-      email: null,
-      source: 'Google Places API (New) — Descubrimiento',
-      has_website: false,
-      has_whatsapp: false,
-      has_forms: false,
-      is_mobile_friendly: false,
-      site_title: null,
-      site_description: null,
-      services_detected: [],
-      notes: 'Descubierto en Google Places. Pendiente de selección para investigación en profundidad.',
-      verified_status: 'PENDIENTE',
-      import_status: 'DESCUBIERTO' as LolaCandidateStatus,
-    }));
+    const candidateInserts: any[] = rawPlaces.map((p: any) => {
+      const placeId = p.id;
+      const displayName = p.displayName?.text || 'Comercio sin nombre informado';
+      const isAlreadyInCrm =
+        (placeId && existingPlaceIds.has(placeId)) ||
+        existingNames.has(displayName.trim().toLowerCase());
+
+      return {
+        search_id: searchSession.id,
+        place_id: placeId,
+        name: displayName,
+        industry: params.industry,
+        city: params.city,
+        state_province: params.state_province || 'Buenos Aires',
+        country: params.country || 'Argentina',
+        address: p.formattedAddress || `${params.city}, Argentina`,
+        website: null,
+        phone: null,
+        email: null,
+        source: 'Google Places API (New) — Descubrimiento',
+        has_website: false,
+        has_whatsapp: false,
+        has_forms: false,
+        is_mobile_friendly: false,
+        site_title: null,
+        site_description: null,
+        services_detected: [],
+        notes: isAlreadyInCrm
+          ? 'Comercio ya registrado en el CRM WebPilot.'
+          : 'Descubierto en Google Places. Pendiente de selección para investigación en profundidad.',
+        verified_status: isAlreadyInCrm ? 'DUPLICADO' : 'PENDIENTE',
+        import_status: isAlreadyInCrm ? 'DESCARTADO' : ('DESCUBIERTO' as LolaCandidateStatus),
+      };
+    });
 
     let insertedCandidates: LolaCandidate[] = [];
     if (candidateInserts.length > 0) {
@@ -443,9 +546,9 @@ export async function investigateSelectedCandidates(
     return { investigatedCandidates: [], apiCallsCount: 0 };
   }
 
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
-  if (!apiKey || !apiKey.trim()) {
-    throw new Error('Falta configurar GOOGLE_MAPS_API_KEY para realizar la investigación.');
+  const apiKey = getGoogleMapsApiKey();
+  if (!apiKey) {
+    throw new Error('Falta configurar la variable GOOGLE_MAPS_API_KEY para realizar la investigación de comercios.');
   }
 
   const supabase = client || createClient();
@@ -469,14 +572,15 @@ export async function investigateSelectedCandidates(
     let address = cand.address;
 
     // 2. Si tiene place_id y aún no tiene teléfono/sitio web consultado, consultar Google Place Details
-    if (cand.place_id && (!phone || !website)) {
+    // Solo si no es un comercio duplicado para no consumir cuotas innecesariamente
+    if (cand.place_id && cand.verified_status !== 'DUPLICADO' && (!phone || !website)) {
       try {
         const detailsUrl = `https://places.googleapis.com/v1/places/${encodeURIComponent(cand.place_id)}`;
         const detailsRes = await fetch(detailsUrl, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-            'X-Goog-Api-Key': apiKey.trim(),
+            'X-Goog-Api-Key': apiKey,
             'X-Goog-FieldMask': 'id,displayName,nationalPhoneNumber,websiteUri,formattedAddress',
           },
         });
@@ -631,13 +735,15 @@ export async function approveLolaCandidates(
   // 2. Obtener negocios existentes para deduplicación estricta
   const { data: existingBusinesses } = await supabase
     .from('businesses')
-    .select('id, name, email, website');
+    .select('id, name, email, website, google_place_id');
 
+  const existingPlaceIds = new Set<string>();
   const existingDomains = new Set<string>();
   const existingEmails = new Set<string>();
   const existingNames = new Set<string>();
 
   existingBusinesses?.forEach((b: any) => {
+    if (b.google_place_id) existingPlaceIds.add(b.google_place_id);
     if (b.website) existingDomains.add(normalizeDomain(b.website));
     if (b.email) existingEmails.add(normalizeEmail(b.email));
     if (b.name) existingNames.add(b.name.trim().toLowerCase());
@@ -656,12 +762,13 @@ export async function approveLolaCandidates(
     const candEmail = normalizeEmail(cand.email);
     const candName = cand.name.trim().toLowerCase();
 
-    // Detección de duplicados
+    // Detección de duplicados (por place_id, dominio, email o nombre)
+    const isDupPlaceId = cand.place_id && existingPlaceIds.has(cand.place_id);
     const isDupDomain = candDomain && existingDomains.has(candDomain);
     const isDupEmail = candEmail && existingEmails.has(candEmail);
     const isDupName = existingNames.has(candName);
 
-    if (isDupDomain || isDupEmail || isDupName) {
+    if (isDupPlaceId || isDupDomain || isDupEmail || isDupName) {
       duplicateCount++;
       continue;
     }
@@ -703,6 +810,7 @@ export async function approveLolaCandidates(
         {
           user_id: userId || null,
           name: cand.name,
+          google_place_id: cand.place_id || null,
           industry: cand.industry || null,
           city: cand.city || null,
           state_province: cand.state_province || null,
@@ -726,6 +834,7 @@ export async function approveLolaCandidates(
     createdBusinesses.push(newBusiness as Business);
 
     // Registrar en los sets locales para evitar duplicar en el mismo lote
+    if (cand.place_id) existingPlaceIds.add(cand.place_id);
     if (candDomain) existingDomains.add(candDomain);
     if (candEmail) existingEmails.add(candEmail);
     existingNames.add(candName);

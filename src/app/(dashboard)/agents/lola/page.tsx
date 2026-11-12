@@ -255,12 +255,16 @@ export default function LolaAgentPage() {
 
       const total = data.search.total_found;
 
-      // Mensaje exacto requerido por el flujo
       setConversation({
         userPrompt,
-        lolaReplies: [
-          `Encontré ${total} negocios. Revisá los candidatos y elegí cuáles querés que investigue en profundidad.`,
-        ],
+        lolaReplies:
+          total === 0
+            ? [
+                `No encontré comercios para ${industry} en ${city}. Probá con un rubro más amplio o revisá que la localidad esté bien escrita.`,
+              ]
+            : [
+                `Encontré ${total} negocios. Revisá los candidatos y elegí cuáles querés que investigue en profundidad.`,
+              ],
       });
 
       fetchHistory();
@@ -270,16 +274,16 @@ export default function LolaAgentPage() {
         err?.message?.includes('clave de API') ||
         err?.message?.includes('API key');
 
-      setErrorMessage(err.message || 'Ocurrió un error inesperado');
+      setErrorMessage(err.message || 'Ocurrió un error inesperado al consultar Google Places.');
       setConversation((prev) => ({
         userPrompt: prev?.userPrompt || userPrompt,
         lolaReplies: isMissingApiKey
           ? [
-              'Para buscar comercios reales necesito que esté configurada la variable GOOGLE_MAPS_API_KEY en el servidor (.env.local).',
-              'Una vez configurada tu clave de Google Places API (New), podré rastrear negocios reales al instante.',
+              'Para buscar comercios reales necesito que esté configurada la variable GOOGLE_MAPS_API_KEY en el servidor.',
+              'Si estás en Vercel, agregala en Project Settings ➔ Environment Variables. Si estás en local, agregala en .env.local.',
             ]
           : [
-              `Ocurrió un error al consultar Google Places API: ${err.message || 'error de conexión'}.`,
+              `Ocurrió un problema: ${err.message || 'error de conexión'}.`,
             ],
       }));
     } finally {
@@ -298,10 +302,14 @@ export default function LolaAgentPage() {
   };
 
   const toggleSelectAll = () => {
-    if (selectedIds.length === candidates.length) {
+    // Solo seleccionar aquellos que no estén ya en el CRM o descartados
+    const selectable = candidates.filter(
+      (c) => c.verified_status !== 'DUPLICADO' && c.import_status !== 'APROBADO' && c.import_status !== 'DESCARTADO'
+    );
+    if (selectedIds.length === selectable.length) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(candidates.map((c) => c.id));
+      setSelectedIds(selectable.map((c) => c.id));
     }
   };
 
@@ -641,6 +649,7 @@ export default function LolaAgentPage() {
                     onChange={(e) => setMaxResults(Number(e.target.value))}
                     className="w-full px-3.5 py-2.5 rounded-lg bg-slate-950/80 border border-slate-700/80 text-white text-sm focus:outline-none focus:border-cyan-500 transition-colors"
                   >
+                    <option value={5}>5 negocios (prueba rápida)</option>
                     <option value={10}>10 negocios</option>
                     <option value={15}>15 negocios</option>
                     <option value={20}>20 negocios (máximo)</option>
@@ -1032,6 +1041,11 @@ export default function LolaAgentPage() {
                         {c.manually_edited && (
                           <span className="inline-block mt-1 text-[10px] px-1.5 py-0.2 rounded bg-amber-950/60 text-amber-300 border border-amber-800/50">
                             Editado manualmente
+                          </span>
+                        )}
+                        {c.verified_status === 'DUPLICADO' && (
+                          <span className="inline-block mt-1 text-[10px] px-1.5 py-0.2 rounded bg-amber-950/60 text-amber-300 border border-amber-800/50 ml-1">
+                            Ya en CRM
                           </span>
                         )}
                       </td>
