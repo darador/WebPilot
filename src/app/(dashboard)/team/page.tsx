@@ -75,7 +75,7 @@ export default function TeamPage() {
                 </span>
               </div>
               <h2 className="mt-2 text-xl font-bold tracking-tight text-white">
-                Los 6 Asistentes Digitales de WebPilot AI
+                El Equipo de Asistentes Digitales de WebPilot AI
               </h2>
               <p className="mt-1 text-xs text-slate-300 max-w-2xl leading-relaxed">
                 Cada miembro de nuestro equipo autónomo cumple una función clave en la agencia: desde encontrar negocios
@@ -231,7 +231,11 @@ export default function TeamPage() {
                   {isOperative ? (
                     <Link
                       href={
-                        agent.id === 'cata'
+                        agent.id === 'patricia'
+                          ? '/orchestrator'
+                          : agent.id === 'bruno'
+                          ? '/agents/bruno'
+                          : agent.id === 'cata'
                           ? '/agents/cata'
                           : agent.id === 'vera'
                           ? '/agents/vera'
@@ -240,7 +244,11 @@ export default function TeamPage() {
                           : '/agents/lola'
                       }
                       className={`flex w-full items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold text-white shadow-md transition-all hover:scale-[1.02] ${
-                        agent.id === 'cata'
+                        agent.id === 'patricia'
+                          ? 'bg-gradient-to-r from-sky-500 to-cyan-600 shadow-sky-500/20 hover:from-sky-400 hover:to-cyan-500'
+                          : agent.id === 'bruno'
+                          ? 'bg-gradient-to-r from-orange-500 to-amber-600 shadow-orange-500/20 hover:from-orange-400 hover:to-amber-500'
+                          : agent.id === 'cata'
                           ? 'bg-gradient-to-r from-rose-500 to-pink-600 shadow-rose-500/20 hover:from-rose-400 hover:to-pink-500'
                           : agent.id === 'tito'
                           ? 'bg-gradient-to-r from-emerald-500 to-teal-600 shadow-emerald-500/20 hover:from-emerald-400 hover:to-teal-500'
