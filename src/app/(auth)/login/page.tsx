@@ -7,50 +7,28 @@ import { createClient } from '@/lib/supabase/client';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setErrorMessage(null);
-    setSuccessMessage(null);
 
     const supabase = createClient();
 
     try {
-      if (isSignUp) {
-        const { error, data } = await supabase.auth.signUp({
-          email,
-          password,
-        });
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-        if (error) throw error;
+      if (error) throw error;
 
-        if (data.session) {
-          router.push('/');
-          router.refresh();
-        } else {
-          setSuccessMessage(
-            'Cuenta registrada. Si tu proyecto de Supabase tiene confirmación de email activada, revisá tu casilla; de lo contrario ya podés iniciar sesión.'
-          );
-          setIsSignUp(false);
-        }
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (error) throw error;
-
-        router.push('/');
-        router.refresh();
-      }
+      router.push('/');
+      router.refresh();
     } catch (err: any) {
       console.error('Auth error:', err);
       setErrorMessage(
@@ -76,9 +54,7 @@ export default function LoginPage() {
             </span>
           </div>
           <p className="mt-1 text-xs text-slate-400">
-            {isSignUp
-              ? 'Creá tu acceso al centro de operaciones'
-              : 'Ingresá al centro de gestión automatizada'}
+            Centro de operaciones y agentes autónomos
           </p>
         </div>
 
@@ -87,12 +63,6 @@ export default function LoginPage() {
           {errorMessage && (
             <div className="rounded-lg border border-red-900/50 bg-red-950/30 p-3 text-xs text-red-300">
               {errorMessage}
-            </div>
-          )}
-
-          {successMessage && (
-            <div className="rounded-lg border border-emerald-900/50 bg-emerald-950/30 p-3 text-xs text-emerald-300">
-              {successMessage}
             </div>
           )}
 
@@ -130,7 +100,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-        {/* Submit */}
+          {/* Submit */}
           <button
             type="submit"
             disabled={isLoading}
@@ -143,9 +113,14 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="mt-6 flex items-center justify-center gap-1.5 text-[11px] text-slate-500">
-          <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
-          <span>Acceso privado protegido con Supabase Auth & RLS</span>
+        <div className="mt-6 pt-4 border-t border-[#1a2336] flex flex-col items-center gap-1.5 text-center">
+          <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-medium">
+            <ShieldCheck className="h-3.5 w-3.5 text-cyan-400" />
+            <span>Acceso Privado e Intransferible</span>
+          </div>
+          <p className="text-[10px] text-slate-500 max-w-xs">
+            Registro público inhabilitado. El ingreso requiere una cuenta previamente creada y autorizada por el administrador.
+          </p>
         </div>
       </div>
     </div>
