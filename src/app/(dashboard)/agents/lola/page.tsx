@@ -249,9 +249,19 @@ export default function LolaAgentPage() {
         throw new Error(data.error || 'Error al ejecutar descubrimiento con Google Places API.');
       }
 
+      const cands = data.candidates || [];
       setCurrentSearch(data.search);
-      setCandidates(data.candidates || []);
-      setSelectedIds([]); // Estrictamente deseleccionados
+      setCandidates(cands);
+      // Pre-seleccionar todos los candidatos válidos (no duplicados) para agilizar las acciones
+      const validIds = cands
+        .filter(
+          (c: any) =>
+            c.verified_status !== 'DUPLICADO' &&
+            c.import_status !== 'APROBADO' &&
+            c.import_status !== 'DESCARTADO'
+        )
+        .map((c: any) => c.id);
+      setSelectedIds(validIds);
 
       const total = data.search.total_found;
 
@@ -263,7 +273,7 @@ export default function LolaAgentPage() {
                 `No encontré comercios para ${industry} en ${city}. Probá con un rubro más amplio o revisá que la localidad esté bien escrita.`,
               ]
             : [
-                `Encontré ${total} negocios. Revisá los candidatos y elegí cuáles querés que investigue en profundidad.`,
+                `Encontré ${total} negocios. Pre-seleccioné los válidos para que puedas investigarlos e incorporarlos al CRM, o procesarlos directamente con Patricia.`,
               ],
       });
 

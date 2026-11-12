@@ -548,7 +548,7 @@ export async function investigateSelectedCandidates(
 
   const apiKey = getGoogleMapsApiKey();
   if (!apiKey) {
-    throw new Error('Falta configurar la variable GOOGLE_MAPS_API_KEY para realizar la investigación de comercios.');
+    console.warn('Lola: Variable GOOGLE_MAPS_API_KEY no configurada. Se continuará con auditoría web estática si hay URL registrada.');
   }
 
   const supabase = client || createClient();
@@ -573,7 +573,7 @@ export async function investigateSelectedCandidates(
 
     // 2. Si tiene place_id y aún no tiene teléfono/sitio web consultado, consultar Google Place Details
     // Solo si no es un comercio duplicado para no consumir cuotas innecesariamente
-    if (cand.place_id && cand.verified_status !== 'DUPLICADO' && (!phone || !website)) {
+    if (apiKey && cand.place_id && cand.verified_status !== 'DUPLICADO' && (!phone || !website)) {
       try {
         const detailsUrl = `https://places.googleapis.com/v1/places/${encodeURIComponent(cand.place_id)}`;
         const detailsRes = await fetch(detailsUrl, {

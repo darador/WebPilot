@@ -1050,20 +1050,61 @@ export async function runOrchestratorCycle(client?: any): Promise<OrchestratorCy
   }
 
   // ----------------------------------------------------------------------------
-  // ETAPA 2: FLUJO A — LOLA (Detección informativa de nuevos prospectos descubiertos)
+  // ETAPA 2: FLUJO A & B — INGESTIÓN DE CANDIDATOS DESCUBIERTOS POR LOLA AL CRM
+  // Patricia detecta comercios descubiertos en lola_candidates que aún no ingresaron
+  // al CRM (businesses). Los investiga (obtiene website y teléfono) y los incorpora
+  // deduplicados para que Tito y Vera los procesen en esta misma pasada.
   // ----------------------------------------------------------------------------
   try {
-    const { count: pendingCandidates } = await supabase
+    const { data: pendingCandidates } = await supabase
       .from('lola_candidates')
-      .select('id', { count: 'exact', head: true })
-      .eq('import_status', 'DESCUBIERTO');
+      .select('*')
+      .in('import_status', ['DESCUBIERTO', 'INVESTIGADO', 'PENDIENTE'])
+      .is('business_id', null)
+      .order('created_at', { ascending: false })
+      .limit(config.limits.max_new_candidates_per_cycle || 20);
 
-    if (pendingCandidates && pendingCandidates > 0) {
+    if (pendingCandidates && pendingCandidates.length > 0) {
       agentsActiveSet.add('LOLA');
-      details.push(`[LOLA] Hay ${pendingCandidates} comercios descubiertos en Lola disponibles para selección e incorporación.`);
+
+      // 1. Filtrar solo los no descartados ni duplicados
+      const validCandidates = pendingCandidates.filter(
+        (c: any) => c.verified_status !== 'DUPLICADO' && c.import_status !== 'DESCARTADO'
+      );
+
+      if (validCandidates.length > 0) {
+        // 2. Investigar los que aún no tengan website o teléfono para poder auditar con Tito
+        const uninvestigatedIds = validCandidates
+          .filter((c: any) => !c.website && !c.phone && c.place_id && c.import_status !== 'INVESTIGADO')
+          .map((c: any) => c.id);
+
+        if (uninvestigatedIds.length > 0) {
+          try {
+            const { investigateSelectedCandidates } = await import('@/services/lola.service');
+            await investigateSelectedCandidates(uninvestigatedIds, supabase);
+            details.push(`[LOLA] Se investigaron datos y sitios web para ${uninvestigatedIds.length} comercios descubiertos.`);
+          } catch (e: any) {
+            console.warn('Orquestador: Error investigando candidatos en Places:', e.message);
+          }
+        }
+
+        // 3. Incorporar los comercios al CRM (businesses) respetando deduplicación
+        const { approveLolaCandidates } = await import('@/services/lola.service');
+        const approvedRes = await approveLolaCandidates(
+          validCandidates.map((c: any) => c.id),
+          null,
+          supabase
+        );
+
+        if (approvedRes.approvedCount > 0) {
+          tasksCreatedCount += approvedRes.approvedCount;
+          tasksCompletedCount += approvedRes.approvedCount;
+          details.push(`[LOLA] ${approvedRes.approvedCount} nuevos comercios incorporados al CRM (${approvedRes.duplicateCount} duplicados omitidos).`);
+        }
+      }
     }
-  } catch (e) {
-    // Si la tabla no está en Supabase todavía o falla la consulta, se omite
+  } catch (err: any) {
+    console.warn('Orquestador: Advertencia durante la ingestión de candidatos de Lola:', err);
   }
 
   // ----------------------------------------------------------------------------
