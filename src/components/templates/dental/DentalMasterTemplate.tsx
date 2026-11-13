@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import {
   Phone,
   Mail,
@@ -22,9 +23,10 @@ import { ClientDemo } from '@/types/database.types';
 
 interface DentalMasterTemplateProps {
   demo: ClientDemo;
+  currentVariant?: 'a' | 'b';
 }
 
-export function DentalMasterTemplate({ demo }: DentalMasterTemplateProps) {
+export function DentalMasterTemplate({ demo, currentVariant = 'a' }: DentalMasterTemplateProps) {
   const { content } = demo;
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeFaq, setActiveFaq] = useState<number | null>(0);
@@ -127,20 +129,43 @@ export function DentalMasterTemplate({ demo }: DentalMasterTemplateProps) {
     <div className="min-h-screen bg-[#FAF9F5] text-[#2D2128] font-sans antialiased selection:bg-[#5E2750] selection:text-white">
       {/* 1. TOP BAR INSTITUCIONAL DELGADA */}
       <aside aria-label="Aviso de muestra conceptual" className="bg-[#2D2128] text-[#E8DDD7] text-xs py-2 px-4 border-b border-[#3E2E38] sticky top-0 z-50 shadow-sm">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
-          <div className="flex items-center gap-2">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2.5 text-center sm:text-left">
+          <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
             <span className="px-2 py-0.5 rounded text-[10px] font-black tracking-wider uppercase bg-[#C49A8F] text-[#2D2128]">
               Muestra Conceptual
             </span>
             <span className="font-normal text-[#E8DDD7]">
-              Propuesta de presencia web diseñada por WebPilot AI para {rawBusinessName}
+              Propuesta web diseñada por WebPilot AI para {rawBusinessName}
             </span>
           </div>
 
-          <div className="flex items-center gap-4 text-[11px] text-[#C4B2AD]">
-            <span>{city}, Buenos Aires</span>
-            <span className="hidden md:inline">•</span>
-            <span className="hidden md:inline">Sin valor contractual</span>
+          {/* SELECTOR COMPARATIVO VERSIÓN A / VERSIÓN B */}
+          <div className="flex items-center gap-1.5 bg-[#3E2E38] p-0.5 rounded-lg border border-[#4E3B47] text-[11px]">
+            <span className="text-stone-400 px-2 py-0.5 text-[10px] uppercase font-semibold">
+              Comparar:
+            </span>
+            <Link
+              href={`/demo/${demo.slug}?v=a`}
+              className={`px-2.5 py-1 rounded-md font-semibold transition-all ${
+                currentVariant === 'a'
+                  ? 'bg-[#5E2750] text-white shadow-xs ring-1 ring-[#C49A8F]/40'
+                  : 'text-stone-300 hover:text-white hover:bg-white/5'
+              }`}
+              title="Versión A: Estilo editorial clásico con tipografía serif"
+            >
+              Versión A (Editorial)
+            </Link>
+            <Link
+              href={`/demo/${demo.slug}?v=b`}
+              className={`px-2.5 py-1 rounded-md font-semibold transition-all ${
+                currentVariant === 'b'
+                  ? 'bg-[#5E2750] text-white shadow-xs ring-1 ring-[#C49A8F]/40'
+                  : 'text-stone-300 hover:text-white hover:bg-white/5'
+              }`}
+              title="Versión B: Estilo contemporáneo con Manrope"
+            >
+              Versión B (Moderna)
+            </Link>
           </div>
         </div>
       </aside>
@@ -315,8 +340,8 @@ export function DentalMasterTemplate({ demo }: DentalMasterTemplateProps) {
                 </span>
               </div>
 
-              {/* Título Grande y Elegante */}
-              <h1 className="font-serif text-3xl sm:text-4xl lg:text-[44px] text-[#2D2128] font-normal tracking-tight leading-[1.16]">
+              {/* Título Grande y Elegante (Calibrado con mayor respiro y balance visual) */}
+              <h1 className="font-serif text-[26px] sm:text-[34px] lg:text-[41px] text-[#241A22] font-medium tracking-tight leading-[1.32] sm:leading-[1.34] lg:leading-[1.36] [text-wrap:balance] max-w-[540px] mb-5">
                 Odontología integral con dedicación, respeto y calidez humana
               </h1>
 

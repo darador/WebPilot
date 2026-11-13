@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { getDemoByIdOrSlug } from '@/services/bruno.service';
 import { getIndustryVisuals } from '@/lib/constants/industryVisuals';
 import { DentalMasterTemplate } from '@/components/templates/dental/DentalMasterTemplate';
+import { DentalModernTemplate } from '@/components/templates/dental/DentalModernTemplate';
 import {
   Phone,
   Mail,
@@ -34,9 +35,10 @@ export const metadata: Metadata = {
 
 interface DemoPageProps {
   params: { slug: string };
+  searchParams?: { v?: string; variant?: string };
 }
 
-export default async function DemoPage({ params }: DemoPageProps) {
+export default async function DemoPage({ params, searchParams }: DemoPageProps) {
   const demo = await getDemoByIdOrSlug(params.slug);
 
   if (!demo) {
@@ -55,9 +57,13 @@ export default async function DemoPage({ params }: DemoPageProps) {
     ind.includes('sonrisa') ||
     (content.businessName || '').toLowerCase().includes('di paolo');
 
-  // Si es rubro odontológico, renderizar la Plantilla Maestra Premium de Odontología
+  // Si es rubro odontológico, soportar Versión A (Editorial) y Versión B (Moderna con Manrope)
   if (isDental) {
-    return <DentalMasterTemplate demo={demo} />;
+    const isVariantB = searchParams?.v === 'b' || searchParams?.variant === 'b';
+    if (isVariantB) {
+      return <DentalModernTemplate demo={demo} currentVariant="b" />;
+    }
+    return <DentalMasterTemplate demo={demo} currentVariant="a" />;
   }
 
   const isPet = ind.includes('veterinari') || ind.includes('mascot');

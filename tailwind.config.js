@@ -10,6 +10,7 @@ module.exports = {
     extend: {
       fontFamily: {
         sans: ['"Plus Jakarta Sans"', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        manrope: ['Manrope', '"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'sans-serif'],
         heading: ['"Plus Jakarta Sans"', 'Outfit', 'sans-serif'],
         serif: ['"Playfair Display"', '"Cormorant Garamond"', 'Georgia', 'serif'],
         editorial: ['"Cormorant Garamond"', '"Playfair Display"', 'Georgia', 'serif'],
