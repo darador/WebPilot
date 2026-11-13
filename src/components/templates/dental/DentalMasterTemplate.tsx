@@ -124,7 +124,7 @@ export function DentalMasterTemplate({ demo }: DentalMasterTemplateProps) {
   ];
 
   return (
-    <div className="min-h-screen bg-[#FAF7F2] text-[#2D2128] font-['Plus_Jakarta_Sans',sans-serif] antialiased selection:bg-[#5E2750] selection:text-white">
+    <div className="min-h-screen bg-[#FAF9F5] text-[#2D2128] font-sans antialiased selection:bg-[#5E2750] selection:text-white">
       {/* 1. TOP BAR INSTITUCIONAL DELGADA */}
       <aside aria-label="Aviso de muestra conceptual" className="bg-[#2D2128] text-[#E8DDD7] text-xs py-2 px-4 border-b border-[#3E2E38] sticky top-0 z-50 shadow-sm">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
@@ -301,13 +301,17 @@ export function DentalMasterTemplate({ demo }: DentalMasterTemplateProps) {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
             {/* Columna Izquierda: Mensaje y Composición Editorial */}
             <div className="lg:col-span-6 space-y-6">
-              {/* Frase Destacada con Estilo Manuscrito / Cursiva Itálica */}
-              <div className="space-y-1">
+              {/* Frase Destacada con Estilo Manuscrito / Cursiva Itálica y Chip de Confianza */}
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#EFE4DA] text-[#6E4759] text-[11px] font-semibold border border-[#DFCFC2] shadow-2xs">
+                  <span className="text-amber-600 tracking-wider">★★★★★</span>
+                  <span>Atención Personalizada • {city}</span>
+                </div>
                 <span className="font-serif italic text-xl sm:text-2xl text-[#8E446E] block font-normal tracking-wide">
                   Cuidamos cada detalle de tu sonrisa
                 </span>
                 <span className="text-[11px] uppercase tracking-[0.24em] text-[#8C6D68] font-bold block">
-                  Consultorio Odontológico en Quilmes
+                  Consultorio Odontológico en {city}
                 </span>
               </div>
 
@@ -875,8 +879,12 @@ export function DentalMasterTemplate({ demo }: DentalMasterTemplateProps) {
           className="flex items-center gap-2.5 px-4 py-3 rounded-full bg-[#128C7E] hover:bg-[#0b6358] text-white shadow-xl hover:shadow-2xl hover:scale-105 transition-all font-semibold text-xs group"
           title="Consultar directamente por WhatsApp"
         >
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-300 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+          </span>
           <MessageCircle className="h-5 w-5 fill-white" />
-          <span className="hidden sm:inline">¿Tenés dudas? Escribinos</span>
+          <span className="hidden sm:inline">¿Tenés dudas? Escribinos por WhatsApp</span>
           <span className="sm:hidden">WhatsApp</span>
         </a>
       </aside>

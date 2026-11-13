@@ -1460,18 +1460,24 @@ export async function runOrchestratorCycle(client?: any): Promise<OrchestratorCy
     );
     const withoutWeb = businesses.filter((b) => !Boolean(b.website && b.website.trim().length > 3));
 
+    // Directiva comercial activa: Foco prioritario en prospectos sin sitio web (Landing Express).
+    const focusWithoutWebActive = true;
+
     await logOrchestratorEvent(
       {
         agent: 'PATRICIA',
         action_type: 'DECISION',
         cycle_id: cycleId,
         status: 'COMPLETADO',
-        description: `Evaluación de prospectos para Tito: ${needAudit.length} con sitio web requieren auditoría, ${alreadyAudited.length} ya cuentan con auditoría técnica vigente, ${withoutWeb.length} no poseen sitio web (se derivan a Vera para Landing Express).`,
+        description: focusWithoutWebActive
+          ? `Directiva de Foco Activo: Se priorizan los ${withoutWeb.length} prospectos sin sitio web para propuesta de desarrollo desde cero (Landing Express). Auditorías técnicas de Tito para sitios existentes (${needAudit.length}) pausadas temporalmente para concentrar esfuerzos.`
+          : `Evaluación de prospectos para Tito: ${needAudit.length} con sitio web requieren auditoría, ${alreadyAudited.length} ya cuentan con auditoría técnica vigente, ${withoutWeb.length} no poseen sitio web (se derivan a Vera para Landing Express).`,
       },
       supabase
     );
 
-    for (const b of businesses) {
+    if (!focusWithoutWebActive) {
+      for (const b of businesses) {
       if (auditsRunCount >= maxTito) {
         await logOrchestratorEvent(
           {
@@ -1567,6 +1573,7 @@ export async function runOrchestratorCycle(client?: any): Promise<OrchestratorCy
       }
     }
   }
+  }
 
   // ----------------------------------------------------------------------------
   // ETAPA 4: FLUJO B — VERA (Estrategia y Evaluación Comercial)
@@ -1575,21 +1582,18 @@ export async function runOrchestratorCycle(client?: any): Promise<OrchestratorCy
     let veraRunCount = 0;
     const maxVera = 10;
 
-    const waitingTito = businesses.filter(
-      (b) =>
-        Boolean(b.website && b.website.trim().length > 3) &&
-        (!Array.isArray(b.audits) || b.audits.length === 0)
-    );
+    const businessesWithWeb = businesses.filter((b) => Boolean(b.website && b.website.trim().length > 3));
+    const businessesWithoutWeb = businesses.filter((b) => !Boolean(b.website && b.website.trim().length > 3));
 
-    if (waitingTito.length > 0) {
+    // Directiva comercial activa: Prioridad 100% en comercios sin sitio web propio
+    if (businessesWithWeb.length > 0) {
       await logOrchestratorEvent(
         {
           agent: 'PATRICIA',
           action_type: 'DECISION',
           cycle_id: cycleId,
-          status: 'PENDIENTE',
-          description: `Vera omitió temporalmente ${waitingTito.length} prospectos porque su auditoría técnica de Tito aún no ha finalizado.`,
-          error_or_reason: 'Esperando auditoría técnica previa de Tito',
+          status: 'COMPLETADO',
+          description: `Directiva de Foco Activo: Vera prioriza oportunidades sin web. Se omiten temporalmente ${businessesWithWeb.length} comercios con sitio web para concentrar el análisis en los ${businessesWithoutWeb.length} comercios sin presencia digital (Landing Express).`,
         },
         supabase
       );
@@ -1616,82 +1620,9 @@ export async function runOrchestratorCycle(client?: any): Promise<OrchestratorCy
       const hasVeraStrategy = Boolean(latestAudit?.ai_insights?.vera_strategy);
       const hasWebsite = Boolean(b.website && b.website.trim().length > 3);
 
-      // CASO A: Negocio CON sitio web que YA tiene auditoría técnica y aún no tiene estrategia de Vera
-      if (hasWebsite && latestAudit && !hasVeraStrategy) {
-        const { task, wasDuplicate } = await createOrchestratorTask(
-          {
-            agent: 'VERA',
-            task_type: 'VERA_STRATEGY',
-            workflow_id: 'FLUJO_B',
-            business_id: b.id,
-            business_name: b.name,
-            priority: 'ALTA',
-            payload: { businessId: b.id, auditId: latestAudit.id },
-            next_action: `Vera analizará la auditoría técnica y formulará la estrategia comercial para ${b.name}.`,
-            dedup_key: `VERA_STRATEGY:${b.id}`,
-          },
-          supabase
-        );
-
-        if (!wasDuplicate && task.status === 'PENDIENTE') {
-          veraRunCount++;
-          tasksCreatedCount++;
-          agentsActiveSet.add('VERA');
-
-          const veraStart = Date.now();
-          try {
-            const finished = await executeOrchestratorTask(task, supabase);
-            const duration = Date.now() - veraStart;
-
-            if (finished.status === 'COMPLETADA') {
-              tasksCompletedCount++;
-              const outcome = finished.result?.commercialOutcomeLabel || finished.result?.commercialOutcome || 'Estrategia formulada';
-              details.push(`[VERA] Estrategia completada para ${b.name}: ${outcome}.`);
-              if (latestAudit.ai_insights) {
-                latestAudit.ai_insights.vera_strategy = finished.result;
-              }
-
-              await logOrchestratorEvent(
-                {
-                  agent: 'VERA',
-                  action_type: 'ESTRATEGIA_COMERCIAL',
-                  cycle_id: cycleId,
-                  business_id: b.id,
-                  business_name: b.name,
-                  task_id: task.id,
-                  status: 'COMPLETADO',
-                  description: `Vera formuló estrategia comercial para ${b.name}: Dictamen '${outcome}'. Propuesta: ${finished.result?.bundle?.services?.join(', ') || 'Solución Web'}.`,
-                  result_summary: outcome,
-                  result_data: finished.result,
-                  duration_ms: duration,
-                },
-                supabase
-              );
-            } else if (finished.status === 'FALLIDA') {
-              tasksFailedCount++;
-              details.push(`[VERA] Falló evaluación de ${b.name}: ${finished.error_message}`);
-
-              await logOrchestratorEvent(
-                {
-                  agent: 'VERA',
-                  action_type: 'ESTRATEGIA_COMERCIAL',
-                  cycle_id: cycleId,
-                  business_id: b.id,
-                  business_name: b.name,
-                  task_id: task.id,
-                  status: 'FALLIDO',
-                  description: `Falló evaluación de Vera para ${b.name}: ${finished.error_message}`,
-                  error_or_reason: finished.error_message,
-                  duration_ms: duration,
-                },
-                supabase
-              );
-            }
-          } catch (err: any) {
-            tasksFailedCount++;
-            details.push(`[VERA] Error en evaluación de ${b.name}: ${err.message}`);
-          }
-        }
+      // Directiva de foco: Omitir negocios con sitio web existente
+      if (hasWebsite) {
+        continue;
       }
 
       // CASO B: Negocio SIN sitio web que todavía no tiene estrategia comercial de Vera

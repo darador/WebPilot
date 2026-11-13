@@ -144,7 +144,7 @@ export default async function DemoPage({ params }: DemoPageProps) {
       ]);
 
   return (
-    <div className="min-h-screen bg-[#edf2f7] text-slate-800 font-sans antialiased selection:bg-[#128C7E] selection:text-white">
+    <div className="min-h-screen bg-[#FAF9F6] text-slate-800 font-sans antialiased selection:bg-[#128C7E] selection:text-white">
       {/* 1. BANNER OBLIGATORIO DE PROPUESTA CONCEPTUAL (DISCRETO Y PROFESIONAL) */}
       <div className="sticky top-0 z-50 bg-slate-900 border-b border-slate-800 text-slate-300 px-4 py-2 text-xs shadow-md">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">

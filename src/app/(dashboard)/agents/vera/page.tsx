@@ -76,7 +76,7 @@ export default function VeraAgentPage() {
     | 'with_web'
     | 'without_web'
     | 'tito_done'
-  >('all');
+  >('without_web');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzingStatus, setAnalyzingStatus] = useState<string | null>(null);
@@ -309,12 +309,21 @@ export default function VeraAgentPage() {
     }
   };
 
-  // Atajo primera prueba: Seleccionar los 19 negocios
+  // Directiva de Foco Activo: Seleccionar comercios sin sitio web (Landing Express)
+  const handleSelectWithoutWeb = () => {
+    const withoutWebIds = businesses
+      .filter((b) => !b.hasWebsite)
+      .map((b) => b.business.id);
+    setSelectedIds(withoutWebIds);
+    setFilterType('without_web');
+  };
+
+  // Seleccionar todos los negocios visibles
   const handleSelectAll19 = () => {
     setSelectedIds(businesses.map((b) => b.business.id));
   };
 
-  // Atajo primera prueba: Seleccionar los 3 consultorios auditados por Tito
+  // Seleccionar los auditados por Tito
   const handleSelectTitoAudited = () => {
     const titoIds = businesses
       .filter((b) => b.titoAudit.status === 'COMPLETADO')
@@ -572,6 +581,9 @@ export default function VeraAgentPage() {
     (b) => b.veraStrategy.hasStrategy && b.veraStrategy.commercialOutcome === 'INFORMACION_INSUFICIENTE'
   ).length;
 
+  const withoutWebCount = businesses.filter((b) => !b.hasWebsite).length;
+  const withWebCount = businesses.filter((b) => b.hasWebsite).length;
+
   return (
     <div>
       <Topbar
@@ -687,17 +699,18 @@ export default function VeraAgentPage() {
             {activeTab === 'opportunities' && (
               <div className="flex items-center gap-2">
                 <button
-                  onClick={handleSelectAll19}
-                  className="text-xs text-purple-300 hover:text-purple-200 underline font-medium px-2 py-1"
+                  onClick={handleSelectWithoutWeb}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-purple-200 bg-purple-950/70 border border-purple-500/50 hover:bg-purple-900/80 transition-all shadow-xs"
                 >
-                  Seleccionar los 19 negocios
+                  <Target className="w-3.5 h-3.5 text-purple-400" />
+                  <span>🎯 Seleccionar sin web ({withoutWebCount})</span>
                 </button>
                 <span className="text-slate-600">•</span>
                 <button
-                  onClick={handleSelectTitoAudited}
-                  className="text-xs text-cyan-300 hover:text-cyan-200 underline font-medium px-2 py-1"
+                  onClick={handleSelectAll19}
+                  className="text-xs text-slate-400 hover:text-slate-200 font-medium px-2 py-1"
                 >
-                  Seleccionar auditados por Tito ({titoDoneCount})
+                  Todos ({totalCount})
                 </button>
               </div>
             )}
@@ -726,15 +739,53 @@ export default function VeraAgentPage() {
         {/* PESTAÑA 1: OPORTUNIDADES COMERCIALES */}
         {activeTab === 'opportunities' && (
           <div className="space-y-4">
+            {/* Banner de Directiva Comercial Activa: Foco en Negocios Sin Web */}
+            <div className="p-4 rounded-xl border border-purple-500/40 bg-purple-950/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg shadow-purple-950/10">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/30 shrink-0">
+                  <Target className="w-5 h-5 text-purple-400" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    Directiva Comercial: Foco en Negocios Sin Sitio Web
+                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-purple-500/30 text-purple-200 border border-purple-500/40">
+                      Landing Express
+                    </span>
+                  </h3>
+                  <p className="text-xs text-purple-200/80 mt-0.5">
+                    Priorizamos prospectos sin presencia web propia para formular propuestas de desarrollo desde cero. Los negocios con web existente ({withWebCount}) se mantienen en pausa operativa.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleSelectWithoutWeb}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold whitespace-nowrap shadow-sm hover:shadow transition-all shrink-0"
+              >
+                <Target className="w-3.5 h-3.5" />
+                <span>Seleccionar sin web ({withoutWebCount})</span>
+              </button>
+            </div>
             {/* Action Bar & Filters */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-[#0c1220] p-4 rounded-xl border border-[#172238]">
               {/* Filter Pills */}
               <div className="flex flex-wrap items-center gap-1.5 text-xs">
                 <button
+                  onClick={() => setFilterType('without_web')}
+                  className={`px-3 py-1.5 rounded-lg font-semibold transition-all flex items-center gap-1.5 ${
+                    filterType === 'without_web'
+                      ? 'bg-purple-600 text-white shadow-sm ring-2 ring-purple-400/50'
+                      : 'bg-purple-950/40 text-purple-300 border border-purple-500/30 hover:bg-purple-900/60 hover:text-white'
+                  }`}
+                  title="Foco Activo: Negocios sin presencia web propia para desarrollo desde cero"
+                >
+                  <Target className="w-3.5 h-3.5" />
+                  <span>Sin Web ({withoutWebCount}) • Foco Activo</span>
+                </button>
+                <button
                   onClick={() => setFilterType('all')}
                   className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
                     filterType === 'all'
-                      ? 'bg-purple-600 text-white'
+                      ? 'bg-slate-700 text-white'
                       : 'bg-[#11192b] text-slate-400 hover:text-white'
                   }`}
                 >
@@ -802,17 +853,7 @@ export default function VeraAgentPage() {
                       : 'bg-[#11192b] text-slate-400 hover:text-white'
                   }`}
                 >
-                  Con Web ({businesses.filter((b) => b.hasWebsite).length})
-                </button>
-                <button
-                  onClick={() => setFilterType('without_web')}
-                  className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
-                    filterType === 'without_web'
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-[#11192b] text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Sin Web ({businesses.filter((b) => !b.hasWebsite).length})
+                  Con Web ({withWebCount})
                 </button>
                 <button
                   onClick={() => setFilterType('tito_done')}
@@ -901,7 +942,10 @@ export default function VeraAgentPage() {
                         const isSelected = selectedIds.includes(item.business.id);
                         const hasVera = item.veraStrategy.hasStrategy;
 
-                        return (
+                        const withoutWebCount = businesses.filter((b) => !b.hasWebsite).length;
+  const withWebCount = businesses.filter((b) => b.hasWebsite).length;
+
+  return (
                           <tr
                             key={item.business.id}
                             className={`hover:bg-[#11192b]/60 transition-colors ${
@@ -1139,7 +1183,10 @@ export default function VeraAgentPage() {
                         const hasReviews = item.reviewCount > 0;
                         const hasIssues = item.analysis && item.analysis.recurringIssues.length > 0;
 
-                        return (
+                        const withoutWebCount = businesses.filter((b) => !b.hasWebsite).length;
+  const withWebCount = businesses.filter((b) => b.hasWebsite).length;
+
+  return (
                           <tr key={item.business.id} className="hover:bg-[#11192b]/60 transition-colors">
                             <td className="py-3 px-4">
                               <div className="font-semibold text-white">
