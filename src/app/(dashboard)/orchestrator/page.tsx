@@ -732,6 +732,7 @@ export default function OrchestratorPage() {
               >
                 <option value="TODOS">Todos los Agentes</option>
                 <option value="LOLA">Lola</option>
+                <option value="NICO">Nico</option>
                 <option value="TITO">Tito</option>
                 <option value="VERA">Vera</option>
                 <option value="BRUNO">Bruno</option>

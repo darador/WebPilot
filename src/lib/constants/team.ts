@@ -1,5 +1,5 @@
 export interface AgentMember {
-  id: 'patricia' | 'lola' | 'tito' | 'vera' | 'bruno' | 'cata' | 'ramon';
+  id: 'patricia' | 'lola' | 'nico' | 'tito' | 'vera' | 'bruno' | 'cata' | 'ramon';
   name: string;
   codename: string;
   role: string;
@@ -63,6 +63,30 @@ export const TEAM_MEMBERS: AgentMember[] = [
       'Preparación de prospectos para validación humana',
     ],
     skills: ['Google Places API (New)', 'Detección Web SSRF-Safe', 'Extracción de Metadatos', 'Deduplicación Comercial'],
+  },
+  {
+    id: 'nico',
+    name: 'Nico',
+    codename: 'El investigador web',
+    role: 'Inteligencia Comercial y Prospección Web',
+    department: 'Inteligencia y Prospección Abierta',
+    responsibility: 'Descubrir comercios y profesionales en fuentes públicas de Internet (directorios, colegios profesionales, cámaras y webs oficiales), recolectar información comercial y conseguir emails verificados con trazabilidad de origen.',
+    personality: 'Investigadora, metódica, crítica y rigurosa.',
+    quote: '«Encontré negocios que todavía no estamos mirando».',
+    avatar: '/avatars/nico.png',
+    status: 'operativo',
+    color: '#6366f1',
+    bgColor: 'bg-indigo-500/10',
+    borderColor: 'border-indigo-500/30',
+    badgeClass: 'bg-indigo-500/15 text-indigo-300 border-indigo-700/50',
+    assignedTasks: [
+      'Investigación multicanal en directorios, asociaciones y registros públicos',
+      'Extracción y trazabilidad de emails con URL exacta y fecha de procedencia',
+      'Clasificación estricta de emails (Oficial, Secundario, Pendiente)',
+      'Detección de redes sociales oficiales y teléfonos de contacto',
+      'Deduplicación contra el CRM para enriquecer prospectos existentes o crear nuevos',
+    ],
+    skills: ['Extracción Web Multi-Fuente', 'Trazabilidad de Emails', 'Auditoría de Procedencia', 'Deduplicación Comercial', 'Crawling Ético SSRF-Safe'],
   },
   {
     id: 'tito',

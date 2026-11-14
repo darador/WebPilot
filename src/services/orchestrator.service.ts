@@ -23,6 +23,7 @@ import { getCataOpportunities, generateCataMessages } from '@/services/cata.serv
 // Configuración inicial por defecto
 export const DEFAULT_ORCHESTRATOR_LIMITS: OrchestratorLimits = {
   max_lola_searches_per_cycle: 2,
+  max_nico_searches_per_cycle: 2,
   max_new_candidates_per_cycle: 20,
   max_tito_audits_per_cycle: 10,
   max_bruno_demos_per_cycle: 3,
@@ -922,6 +923,43 @@ export async function executeOrchestratorTask(
         };
 
         nextActionMsg = `${discovery.candidates.length} prospectos descubiertos en ${city} (${industry}). Disponibles en Lola para inspección.`;
+        break;
+      }
+
+      // ----------------------------------------------------
+      // AGENTE NICO: Inteligencia Comercial y Prospección Web
+      // ----------------------------------------------------
+      case 'NICO_DISCOVERY': {
+        const city = task.payload.city || 'Quilmes';
+        const industry = task.payload.industry || 'Odontología';
+        const maxResults = Math.min(task.payload.maxResults || 20, 25);
+
+        const { runNicoProspecting } = await import('@/services/nico.service');
+        const discovery = await runNicoProspecting(
+          {
+            industry,
+            city,
+            max_results: maxResults,
+            sources: task.payload.sources,
+          },
+          null,
+          supabase
+        );
+
+        resultPayload = {
+          searchId: discovery.search.id,
+          totalFound: discovery.search.total_found,
+          newCount: discovery.search.new_prospects_count,
+          duplicateCount: discovery.search.duplicate_count,
+          withWebsiteCount: discovery.search.with_website_count,
+          withEmailCount: discovery.search.with_email_count,
+          officialEmailCount: discovery.search.official_email_count,
+          secondaryEmailCount: discovery.search.secondary_email_count,
+          city,
+          industry,
+        };
+
+        nextActionMsg = `${discovery.prospects.length} comercios descubiertos en Internet por Nico (${discovery.search.new_prospects_count} nuevos, ${discovery.search.official_email_count} emails oficiales). Disponibles en Nico para revisión.`;
         break;
       }
 
@@ -2012,6 +2050,12 @@ export async function getOrchestratorOverview(client?: any): Promise<{
       state: getAgentState('LOLA'),
       lastTask: getAgentLastTask('LOLA'),
     },
+    NICO: {
+      name: 'Nico',
+      role: 'Inteligencia Comercial y Prospección Web',
+      state: getAgentState('NICO'),
+      lastTask: getAgentLastTask('NICO'),
+    },
     TITO: {
       name: 'Tito',
       role: 'Auditoría Técnica y SEO',
@@ -2045,6 +2089,13 @@ export async function getOrchestratorOverview(client?: any): Promise<{
       role: 'Prospección en Google Places',
       state: getAgentState('LOLA'),
       lastTask: getAgentLastTaskObj('LOLA'),
+    },
+    {
+      agent: 'NICO' as OrchestratorAgentName,
+      name: 'Nico',
+      role: 'Inteligencia Comercial y Prospección Web',
+      state: getAgentState('NICO'),
+      lastTask: getAgentLastTaskObj('NICO'),
     },
     {
       agent: 'TITO' as OrchestratorAgentName,

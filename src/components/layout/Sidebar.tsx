@@ -20,6 +20,7 @@ import {
   BookOpen,
   Palette,
   Network,
+  Globe,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
@@ -46,6 +47,12 @@ const NAV_ITEMS = [
     href: '/agents/lola',
     icon: Sparkles,
     badge: 'Agente',
+  },
+  {
+    label: 'Nico — Inteligencia Web',
+    href: '/agents/nico',
+    icon: Globe,
+    badge: 'Nuevo',
   },
   {
     label: 'Tito — Auditoría',

@@ -202,6 +202,78 @@ export interface LolaCandidate {
   created_at: string;
 }
 
+// ==============================================================================
+// TIPOS DE NICO (AGENTE DE INTELIGENCIA COMERCIAL Y PROSPECCIÓN WEB)
+// ==============================================================================
+
+export type EmailVerificationStatus =
+  | 'VERIFICADO_EN_FUENTE_OFICIAL'
+  | 'ENCONTRADO_EN_FUENTE_SECUNDARIA'
+  | 'VALIDACION_TECNICA_PENDIENTE'
+  | 'NO_ENCONTRADO';
+
+export interface EmailProvenance {
+  email: string;
+  source_url: string;
+  source_type: 'OFICIAL' | 'SECUNDARIA';
+  extraction_date: string;
+  verification_status: EmailVerificationStatus;
+  context_snippet?: string;
+  mx_valid?: boolean | null;
+}
+
+export type NicoProspectStatus = 'DESCUBIERTO' | 'APROBADO' | 'DESCARTADO' | 'PENDIENTE';
+
+export interface NicoProspect {
+  id: string;
+  search_id: string;
+  name: string;
+  industry: string;
+  city: string;
+  state_province?: string | null;
+  country: string;
+  address?: string | null;
+  description?: string | null;
+  website?: string | null;
+  phone?: string | null;
+  whatsapp?: string | null;
+  contact_page_url?: string | null;
+  social_links?: { platform: string; url: string }[];
+  email?: string | null;
+  email_provenance?: EmailProvenance | null;
+  secondary_emails?: EmailProvenance[];
+  source_domain: string;
+  source_url: string;
+  source_name: string;
+  evidence_notes: string;
+  is_duplicate_crm: boolean;
+  duplicate_business_id?: string | null;
+  import_status: NicoProspectStatus;
+  business_id?: string | null;
+  created_at: string;
+}
+
+export interface NicoSearch {
+  id: string;
+  user_id?: string | null;
+  query_industry: string;
+  query_city: string;
+  max_results: number;
+  sources_used: string[];
+  is_paid_service: boolean;
+  total_found: number;
+  new_prospects_count: number;
+  duplicate_count: number;
+  with_website_count: number;
+  with_email_count: number;
+  official_email_count: number;
+  secondary_email_count: number;
+  status: 'EN_PROCESO' | 'COMPLETADO' | 'ERROR';
+  duration_ms: number;
+  error_message?: string | null;
+  created_at: string;
+}
+
 export type ReferenceStatus = 'PENDIENTE' | 'APROBADA' | 'DESCARTADA';
 
 export interface ReferenceQualityGuidelines {
@@ -379,10 +451,11 @@ export interface ClientDemo {
 // ORQUESTADOR — DIRECTOR DE OPERACIONES
 // ==============================================================================
 
-export type OrchestratorAgentName = 'PATRICIA' | 'LOLA' | 'TITO' | 'VERA' | 'BRUNO' | 'CATA';
+export type OrchestratorAgentName = 'PATRICIA' | 'LOLA' | 'NICO' | 'TITO' | 'VERA' | 'BRUNO' | 'CATA';
 
 export type OrchestratorTaskType =
   | 'LOLA_DISCOVERY'
+  | 'NICO_DISCOVERY'
   | 'TITO_AUDIT'
   | 'VERA_STRATEGY'
   | 'BRUNO_DEMO'
@@ -435,6 +508,7 @@ export interface OrchestratorTask {
 
 export interface OrchestratorLimits {
   max_lola_searches_per_cycle: number;
+  max_nico_searches_per_cycle?: number;
   max_new_candidates_per_cycle: number;
   max_tito_audits_per_cycle: number;
   max_bruno_demos_per_cycle: number;

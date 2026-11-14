@@ -29,6 +29,7 @@ interface ActivityLogViewProps {
 const AGENT_BADGES: Record<string, { bg: string; text: string; border: string; name: string }> = {
   PATRICIA: { bg: 'bg-indigo-500/10', text: 'text-indigo-400', border: 'border-indigo-500/30', name: 'Patricia' },
   LOLA: { bg: 'bg-cyan-500/10', text: 'text-cyan-400', border: 'border-cyan-500/30', name: 'Lola' },
+  NICO: { bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/30', name: 'Nico' },
   TITO: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/30', name: 'Tito' },
   VERA: { bg: 'bg-fuchsia-500/10', text: 'text-fuchsia-400', border: 'border-fuchsia-500/30', name: 'Vera' },
   BRUNO: { bg: 'bg-violet-500/10', text: 'text-violet-400', border: 'border-violet-500/30', name: 'Bruno' },
@@ -234,6 +235,7 @@ export const ActivityLogView: React.FC<ActivityLogViewProps> = () => {
               <option value="TODOS">Todos los agentes</option>
               <option value="PATRICIA">Patricia (Directora)</option>
               <option value="LOLA">Lola (Prospección)</option>
+              <option value="NICO">Nico (Inteligencia Web)</option>
               <option value="TITO">Tito (Auditoría Técnica)</option>
               <option value="VERA">Vera (Estrategia Comercial)</option>
               <option value="BRUNO">Bruno (Demos)</option>

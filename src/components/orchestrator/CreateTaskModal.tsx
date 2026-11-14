@@ -13,6 +13,7 @@ import {
   Target,
   Palette,
   PhoneCall,
+  Globe,
 } from 'lucide-react';
 import {
   OrchestratorAgentName,
@@ -30,6 +31,7 @@ interface CreateTaskModalProps {
 
 const AGENTS: { id: OrchestratorAgentName; name: string; icon: any; role: string }[] = [
   { id: 'LOLA', name: 'Lola', icon: Sparkles, role: 'Prospección Google Places' },
+  { id: 'NICO', name: 'Nico', icon: Globe, role: 'Inteligencia Web y Prospección' },
   { id: 'TITO', name: 'Tito', icon: SearchCode, role: 'Auditoría Técnica de Web' },
   { id: 'VERA', name: 'Vera', icon: Target, role: 'Estrategia Comercial' },
   { id: 'BRUNO', name: 'Bruno', icon: Palette, role: 'Demos y Desarrollo Web' },
@@ -39,6 +41,7 @@ const AGENTS: { id: OrchestratorAgentName; name: string; icon: any; role: string
 const TASK_TYPES_BY_AGENT: Record<OrchestratorAgentName, { type: OrchestratorTaskType; label: string }[]> = {
   PATRICIA: [{ type: 'APPROVAL_REVIEW', label: 'Revisión y Coordinación Operativa' }],
   LOLA: [{ type: 'LOLA_DISCOVERY', label: 'Búsqueda de Prospectos (Google Places)' }],
+  NICO: [{ type: 'NICO_DISCOVERY', label: 'Búsqueda en Internet y Prospección Web' }],
   TITO: [{ type: 'TITO_AUDIT', label: 'Auditoría Técnica de Sitio Web' }],
   VERA: [{ type: 'VERA_STRATEGY', label: 'Evaluación y Estrategia Comercial' }],
   BRUNO: [{ type: 'BRUNO_DEMO', label: 'Generación de Demo Comercial (Modo Demo)' }],
@@ -87,7 +90,7 @@ export function CreateTaskModal({
     try {
       const payload: Record<string, any> = {};
 
-      if (agent === 'LOLA') {
+      if (agent === 'LOLA' || agent === 'NICO') {
         payload.city = city.trim();
         payload.industry = industry.trim();
         payload.maxResults = Number(maxResults);
@@ -246,7 +249,7 @@ export function CreateTaskModal({
           </div>
 
           {/* Negocio relacionado (cuando corresponda) */}
-          {agent !== 'LOLA' && (
+          {agent !== 'LOLA' && agent !== 'NICO' && (
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1.5">
                 ID del Negocio (UUID de Supabase) *
@@ -262,11 +265,11 @@ export function CreateTaskModal({
             </div>
           )}
 
-          {/* Campos específicos de Lola */}
-          {agent === 'LOLA' && (
+          {/* Campos específicos de Prospección (Lola o Nico) */}
+          {(agent === 'LOLA' || agent === 'NICO') && (
             <div className="p-3 rounded-xl bg-[#080d18] border border-[#1a2336] space-y-3">
               <span className="text-[11px] uppercase tracking-wider text-cyan-400 font-bold block">
-                Parámetros de Búsqueda Lola
+                {agent === 'NICO' ? 'Parámetros de Inteligencia Web (Nico)' : 'Parámetros de Búsqueda Lola'}
               </span>
               <div className="grid grid-cols-2 gap-3">
                 <div>
