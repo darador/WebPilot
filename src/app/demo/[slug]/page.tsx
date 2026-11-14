@@ -313,14 +313,17 @@ export default async function DemoPage({ params, searchParams }: DemoPageProps) 
               </div>
             </div>
 
-            {/* Columna Derecha: Fotografía Protagonista en Marco Moderno */}
+            {/* Columna Derecha: Fotografía Protagonista en Marco Moderno (Optimizado LCP) */}
             <div className="lg:col-span-5 relative">
-              <div className="relative rounded-2xl overflow-hidden shadow-xl border-4 border-slate-50 bg-slate-100">
+              <div className="relative rounded-2xl overflow-hidden shadow-xl border-4 border-slate-50 bg-slate-100 aspect-[4/3] sm:aspect-[16/11]">
                 <img
                   src={content.hero.imageUrl || visuals.heroImage.url}
                   alt={visuals.heroImage.alt}
-                  className="w-full h-[360px] sm:h-[420px] object-cover hover:scale-102 transition-transform duration-700"
+                  width={1200}
+                  height={825}
+                  className="w-full h-full object-cover hover:scale-102 transition-transform duration-700"
                   loading="eager"
+                  fetchPriority="high"
                   decoding="async"
                 />
 

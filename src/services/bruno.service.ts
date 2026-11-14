@@ -647,3 +647,52 @@ export async function deleteDemo(id: string, client?: any): Promise<boolean> {
   }
   return true;
 }
+
+/**
+ * Pautas oficiales de Modern Web Guidance integradas al flujo de diseño de Bruno
+ * (GoogleChrome/modern-web-guidance)
+ */
+export const BRUNO_MODERN_WEB_STANDARDS = {
+  imageOptimization: {
+    heroLCP: {
+      fetchPriority: 'high' as const,
+      loading: 'eager' as const,
+      decoding: 'async' as const,
+      aspectRatio: 'aspect-[4/3] sm:aspect-[16/11]',
+      requiresExplicitDimensions: true,
+      notes: 'Garantiza detección temprana en el preload scanner y CLS = 0.',
+    },
+    belowTheFold: {
+      fetchPriority: 'low' as const,
+      loading: 'lazy' as const,
+      decoding: 'async' as const,
+      aspectRatio: 'aspect-[16/10]',
+      requiresExplicitDimensions: true,
+      notes: 'Difiere descarga fuera de viewport para preservar ancho de banda en móviles.',
+    },
+  },
+  cardStandard: {
+    semanticRoot: 'article',
+    containerQueries: '@container',
+    minTouchTargetPx: 44,
+    interactionIsolation: 'relative z-10 en botones o enlaces secundarios',
+    focusVisibleRing: 'focus-within:ring-2 focus-within:ring-[#5B2148]',
+    notes: 'Tarjetas semánticas independientes con layout adaptativo por contenedor.',
+  },
+  navigationStandard: {
+    landmark: 'nav',
+    accessibleLabel: 'Navegación principal',
+    mobileToggle: {
+      requiresAriaExpanded: true,
+      requiresAriaControls: true,
+      minTouchTargetPx: 44,
+    },
+    notes: 'Touch targets mínimos de 44x44px y accesibilidad por teclado garantizada.',
+  },
+  typographyPerformance: {
+    headlineWrap: '[text-wrap:balance]',
+    bodyWrap: '[text-wrap:pretty]',
+    contrastRatioWCAG: 'AA (>= 4.5:1 para texto normal, >= 3.0:1 para titulares)',
+    notes: 'Elimina palabras huérfanas y previene desbordes horizontales en mobile.',
+  },
+};
