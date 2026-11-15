@@ -26,6 +26,10 @@ import {
   FileCheck,
   Layers,
   Sparkles,
+  ShieldAlert,
+  Key,
+  Server,
+  Activity,
 } from 'lucide-react';
 import { NicoSearch, NicoProspect, EmailProvenance, EmailVerificationStatus } from '@/types/database.types';
 
@@ -430,42 +434,121 @@ export default function NicoAgentPage() {
 
       {/* 4. MÉTRICAS DE LA BÚSQUEDA ACTIVA */}
       {currentSearch && (
-        <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
-          <div className="p-3.5 rounded-xl bg-[#0c1322] border border-slate-800 shadow-sm">
-            <span className="text-[10px] font-mono text-slate-400 block uppercase">Encontrados</span>
-            <span className="text-xl font-bold text-white mt-0.5 block">{currentSearch.total_found}</span>
-            <span className="text-[10px] text-slate-500">en {currentSearch.query_city}</span>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
+            <div className="p-3.5 rounded-xl bg-[#0c1322] border border-slate-800 shadow-sm">
+              <span className="text-[10px] font-mono text-slate-400 block uppercase">Encontrados</span>
+              <span className="text-xl font-bold text-white mt-0.5 block">{currentSearch.total_found}</span>
+              <span className="text-[10px] text-slate-500">en {currentSearch.query_city}</span>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-indigo-950/20 border border-indigo-500/20 shadow-sm">
+              <span className="text-[10px] font-mono text-indigo-300 block uppercase">Nuevos Prospectos</span>
+              <span className="text-xl font-bold text-indigo-400 mt-0.5 block">{currentSearch.new_prospects_count}</span>
+              <span className="text-[10px] text-indigo-300/60">no existen en CRM</span>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-amber-950/20 border border-amber-500/20 shadow-sm">
+              <span className="text-[10px] font-mono text-amber-300 block uppercase">Duplicados</span>
+              <span className="text-xl font-bold text-amber-400 mt-0.5 block">{currentSearch.duplicate_count}</span>
+              <span className="text-[10px] text-amber-300/60">detectados en CRM</span>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-cyan-950/20 border border-cyan-500/20 shadow-sm">
+              <span className="text-[10px] font-mono text-cyan-300 block uppercase">Sitios Web</span>
+              <span className="text-xl font-bold text-cyan-400 mt-0.5 block">{currentSearch.with_website_count}</span>
+              <span className="text-[10px] text-cyan-300/60">páginas activas</span>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-emerald-950/20 border border-emerald-500/20 shadow-sm">
+              <span className="text-[10px] font-mono text-emerald-300 block uppercase">Email Oficial</span>
+              <span className="text-xl font-bold text-emerald-400 mt-0.5 block">{currentSearch.official_email_count}</span>
+              <span className="text-[10px] text-emerald-300/60">verificados en web</span>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-blue-950/20 border border-blue-500/20 shadow-sm">
+              <span className="text-[10px] font-mono text-blue-300 block uppercase">Email Secundario</span>
+              <span className="text-xl font-bold text-blue-400 mt-0.5 block">{currentSearch.secondary_email_count}</span>
+              <span className="text-[10px] text-blue-300/60">en directorios</span>
+            </div>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-indigo-950/20 border border-indigo-500/20 shadow-sm">
-            <span className="text-[10px] font-mono text-indigo-300 block uppercase">Nuevos Prospectos</span>
-            <span className="text-xl font-bold text-indigo-400 mt-0.5 block">{currentSearch.new_prospects_count}</span>
-            <span className="text-[10px] text-indigo-300/60">no existen en CRM</span>
-          </div>
+          {/* TELEMETRÍA Y TRANSPARENCIA DE FUENTES */}
+          {currentSearch.source_stats && currentSearch.source_stats.length > 0 && (
+            <div className="rounded-2xl border border-slate-800 bg-[#0c1322] p-4 sm:p-5 shadow-sm space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-indigo-400" />
+                  <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                    Telemetría y Estado de Fuentes Consultadas
+                  </h3>
+                </div>
+                <span className="text-[11px] font-mono text-slate-400">
+                  {currentSearch.duration_ms} ms de ejecución total
+                </span>
+              </div>
 
-          <div className="p-3.5 rounded-xl bg-amber-950/20 border border-amber-500/20 shadow-sm">
-            <span className="text-[10px] font-mono text-amber-300 block uppercase">Duplicados</span>
-            <span className="text-xl font-bold text-amber-400 mt-0.5 block">{currentSearch.duplicate_count}</span>
-            <span className="text-[10px] text-amber-300/60">detectados en CRM</span>
-          </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                {currentSearch.source_stats.map((src) => {
+                  let badge = (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700">
+                      <Compass className="h-3 w-3" />
+                      Sin resultados
+                    </span>
+                  );
 
-          <div className="p-3.5 rounded-xl bg-cyan-950/20 border border-cyan-500/20 shadow-sm">
-            <span className="text-[10px] font-mono text-cyan-300 block uppercase">Sitios Web</span>
-            <span className="text-xl font-bold text-cyan-400 mt-0.5 block">{currentSearch.with_website_count}</span>
-            <span className="text-[10px] text-cyan-300/60">páginas activas</span>
-          </div>
+                  if (src.status === 'DISPONIBLE') {
+                    badge = (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-950/50 text-emerald-300 border border-emerald-500/30">
+                        <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                        {src.hits_count > 0 ? `${src.hits_count} extraídos` : 'Disponible'}
+                      </span>
+                    );
+                  } else if (src.status === 'NO_CONFIGURADO') {
+                    badge = (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-950/50 text-blue-300 border border-blue-500/30">
+                        <Key className="h-3 w-3 text-blue-400" />
+                        Desacoplado / API Key
+                      </span>
+                    );
+                  } else if (src.status === 'BLOQUEADO_CAPTCHA') {
+                    badge = (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-950/50 text-amber-300 border border-amber-500/30">
+                        <ShieldAlert className="h-3 w-3 text-amber-400" />
+                        Anti-Bot (HTTP 403)
+                      </span>
+                    );
+                  } else if (src.status === 'ERROR') {
+                    badge = (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-red-950/50 text-red-300 border border-red-500/30">
+                        <AlertCircle className="h-3 w-3 text-red-400" />
+                        Error
+                      </span>
+                    );
+                  }
 
-          <div className="p-3.5 rounded-xl bg-emerald-950/20 border border-emerald-500/20 shadow-sm">
-            <span className="text-[10px] font-mono text-emerald-300 block uppercase">Email Oficial</span>
-            <span className="text-xl font-bold text-emerald-400 mt-0.5 block">{currentSearch.official_email_count}</span>
-            <span className="text-[10px] text-emerald-300/60">verificados en web</span>
-          </div>
-
-          <div className="p-3.5 rounded-xl bg-blue-950/20 border border-blue-500/20 shadow-sm">
-            <span className="text-[10px] font-mono text-blue-300 block uppercase">Email Secundario</span>
-            <span className="text-xl font-bold text-blue-400 mt-0.5 block">{currentSearch.secondary_email_count}</span>
-            <span className="text-[10px] text-blue-300/60">en directorios</span>
-          </div>
+                  return (
+                    <div
+                      key={src.source_id}
+                      className="p-3 rounded-xl bg-slate-950 border border-slate-800/80 flex flex-col justify-between space-y-2"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="font-semibold text-white text-xs leading-snug">{src.source_name}</div>
+                        {badge}
+                      </div>
+                      <p className="text-[11px] text-slate-400 leading-relaxed">{src.details || 'Consulta finalizada.'}</p>
+                      {src.duration_ms > 0 && (
+                        <div className="text-[10px] font-mono text-slate-500 flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          <span>{src.duration_ms} ms</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -531,6 +614,7 @@ export default function NicoAgentPage() {
                 <tr className="border-b border-slate-800 text-slate-400 uppercase font-mono text-[10px] bg-slate-950/60">
                   <th className="py-3 px-4 w-10">Sel.</th>
                   <th className="py-3 px-4">Comercio / Profesional</th>
+                  <th className="py-3 px-4">Fuente / Origen</th>
                   <th className="py-3 px-4">Web Oficial</th>
                   <th className="py-3 px-4">Email y Procedencia</th>
                   <th className="py-3 px-4">WhatsApp / Tel.</th>
@@ -566,6 +650,19 @@ export default function NicoAgentPage() {
                           <MapPin className="h-3 w-3 text-slate-500 shrink-0" />
                           <span>{p.address || `${p.city}, ${p.state_province || 'Buenos Aires'}`}</span>
                         </div>
+                      </td>
+
+                      <td className="py-3.5 px-4">
+                        <a
+                          href={p.source_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-300 hover:text-indigo-300 bg-slate-900 px-2 py-1 rounded-md border border-slate-800"
+                          title={`Ficha de origen: ${p.source_url}`}
+                        >
+                          <span className="truncate max-w-[130px]">{p.source_name}</span>
+                          <ExternalLink className="h-3 w-3 shrink-0 text-slate-500" />
+                        </a>
                       </td>
 
                       <td className="py-3.5 px-4">

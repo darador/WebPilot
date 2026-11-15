@@ -253,6 +253,22 @@ export interface NicoProspect {
   created_at: string;
 }
 
+export type NicoSourceStatus =
+  | 'DISPONIBLE'
+  | 'NO_CONFIGURADO'
+  | 'SIN_RESULTADOS'
+  | 'ERROR'
+  | 'BLOQUEADO_CAPTCHA';
+
+export interface NicoSourceTelemetry {
+  source_id: string;
+  source_name: string;
+  status: NicoSourceStatus;
+  hits_count: number;
+  duration_ms: number;
+  details?: string;
+}
+
 export interface NicoSearch {
   id: string;
   user_id?: string | null;
@@ -260,6 +276,7 @@ export interface NicoSearch {
   query_city: string;
   max_results: number;
   sources_used: string[];
+  source_stats?: NicoSourceTelemetry[];
   is_paid_service: boolean;
   total_found: number;
   new_prospects_count: number;
